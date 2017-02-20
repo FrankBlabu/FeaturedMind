@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 #
 # generate_images.py - Generate a set of training/test images
 #
