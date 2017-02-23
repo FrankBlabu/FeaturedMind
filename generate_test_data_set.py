@@ -78,6 +78,44 @@ def generate_arc (config):
     return image
 
 #--------------------------------------------------------------------------
+# Return the segment rect of an image rect
+# 
+# @param rect    Image rect [(x0, y0), (x1, y1)]
+# @param segment Segment (x, y) identifier
+# @return Rectangle of the segment [(x0, y0), (x1, y1)]
+def get_segment (rect, segment):
+    x = segment[0]
+    y = segment[1]
+    
+    assert x >= 0 and x <= 2
+    assert y >= 0 and y <= 2
+
+    size = (rect[1][0] - rect[0][0], rect[1][1] - rect[0][1])
+    
+    return [(rect[0][0] + int (round (x * size[0] / 3)),
+             rect[0][1] + int (round (y * size[1] / 3))),
+            (rect[0][0] + int (round ((x + 1) * size[0] / 3)),
+             rect[0][1] + int (round ((y + 1) * size[1] / 3)))]
+#--------------------------------------------------------------------------
+# Return corner point of rectangle
+#
+# @param rect Rectangle
+# @param n    Point number (from top left clockwise)
+# @return Point coordinates
+def get_rect_point (rect, n):
+    if n == 0:
+        return rect[0]
+    elif n == 1:
+        return (rect[1][0], rect[0][1])
+    elif n == 2:
+        return rect[1]
+    elif n == 3:
+        return (rect[0][0], rect[1][1])
+
+    assert False and 'Illegal rectangle point index'
+
+
+#--------------------------------------------------------------------------
 # Generate random training image
 #
 # @param config Configuration
@@ -113,18 +151,75 @@ def generate_training_image (config):
                           (config.width - inner_border_offset[0],
                            config.height - inner_border_offset[1])]
 
-    border = [(random.randint (outer_border_limit[0][0],
-                               inner_border_limit[0][0]),
-               random.randint (outer_border_limit[0][1],
-                               inner_border_limit[0][1])),
-              (random.randint (inner_border_limit[1][0],
-                               outer_border_limit[1][0]),
-               random.randint (inner_border_limit[1][1],
-                               outer_border_limit[1][1]))]
+    border_rect = [(random.randint (outer_border_limit[0][0],
+                                    inner_border_limit[0][0]),
+                    random.randint (outer_border_limit[0][1],
+                                    inner_border_limit[0][1])),
+                   (random.randint (inner_border_limit[1][0],
+                                    outer_border_limit[1][0]),
+                    random.randint (inner_border_limit[1][1],
+                                    outer_border_limit[1][1]))]
 
-    draw_pattern.rectangle (border, fill=None, outline='#ffffff')
+    #
+    # Compute segments of the specimen used
+    #
+    used_segments = [[True, True, True], [True, True, True], [True, True, True]]
+    border = []
 
-    print (border)
+    segment_mode = 0#random.randint (0, 2)
+
+    #
+    # Corner segments might be missing 
+    #
+    if segment_mode == 0:
+        used_segments[0][0] = random.randint (0, 9) > 5
+        used_segments[2][0] = random.randint (0, 9) > 5
+        used_segments[0][2] = random.randint (0, 9) > 5
+        used_segments[2][2] = random.randint (0, 9) > 5
+
+        segment = get_segment (border_rect, (0, 0))
+        used = used_segments[0][0]
+        
+        border.append (get_rect_point (segment, 3))
+        border.append (get_rect_point (segment, 0 if used else 2))
+        border.append (get_rect_point (segment, 1))
+
+        segment = get_segment (border_rect, (2, 0))
+        used = used_segments[2][0]
+
+        border.append (get_rect_point (segment, 0))
+        border.append (get_rect_point (segment, 1 if used else 3))
+        border.append (get_rect_point (segment, 2))
+
+        segment = get_segment (border_rect, (2, 2))
+        used = used_segments[2][2]
+
+        border.append (get_rect_point (segment, 1))
+        border.append (get_rect_point (segment, 2 if used else 0))
+        border.append (get_rect_point (segment, 3))
+
+        segment = get_segment (border_rect, (0, 2))
+        used = used_segments[0][2]
+
+        border.append (get_rect_point (segment, 2))
+        border.append (get_rect_point (segment, 3 if used else 1))
+        border.append (get_rect_point (segment, 0))
+
+    #
+    # Edge segments might be missing
+    #
+    elif segment_mode == 1:
+        pass
+
+    #
+    # Center segment might be missing
+    #
+    elif segment_mode == 2:
+        pass
+        
+    draw_pattern.rectangle (border_rect, fill=None, outline='#555555')
+    draw_pattern.polygon (border, fill=None, outline='#ffffff')
+
     image.paste (pattern, mask=pattern)
     
     return image
