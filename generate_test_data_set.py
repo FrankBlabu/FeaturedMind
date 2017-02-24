@@ -83,6 +83,7 @@ def generate_arc (config):
 # @param rect    Image rect [(x0, y0), (x1, y1)]
 # @param segment Segment (x, y) identifier
 # @return Rectangle of the segment [(x0, y0), (x1, y1)]
+#
 def get_segment (rect, segment):
     x = segment[0]
     y = segment[1]
@@ -102,6 +103,7 @@ def get_segment (rect, segment):
 # @param rect Rectangle
 # @param n    Point number (from top left clockwise)
 # @return Point coordinates
+#
 def get_rect_point (rect, n):
     if n == 0:
         return rect[0]
@@ -120,6 +122,7 @@ def get_rect_point (rect, n):
 #
 # @param config Configuration
 # @return Generated training image
+#
 def generate_training_image (config):
 
     #
@@ -161,12 +164,12 @@ def generate_training_image (config):
                                     outer_border_limit[1][1]))]
 
     #
-    # Compute segments of the specimen used
+    # Compute segments of the specimen used. There are 3x3 segments available
     #
-    used_segments = [[True, True, True], [True, True, True], [True, True, True]]
+    used_segments = 3 * [3 * [True]]
     border = []
 
-    segment_mode = 0#random.randint (0, 2)
+    segment_mode = 1#random.randint (0, 2)
 
     #
     # Corner segments might be missing 
@@ -209,8 +212,59 @@ def generate_training_image (config):
     # Edge segments might be missing
     #
     elif segment_mode == 1:
-        pass
+        used_segments[0][1] = random.randint (0, 9) > 5
+        used_segments[2][1] = random.randint (0, 9) > 5
+        used_segments[1][0] = random.randint (0, 9) > 5
+        used_segments[1][2] = random.randint (0, 9) > 5
 
+        segment = get_segment (border_rect, (0, 0))
+        border.append (get_rect_point (segment, 0))
+        
+        segment = get_segment (border_rect, (1, 0))
+        used = used_segments[1][0]
+        
+        border.append (get_rect_point (segment, 0))
+        if not used:
+            border.append (get_rect_point (segment, 3))
+            border.append (get_rect_point (segment, 2))
+        border.append (get_rect_point (segment, 1))
+
+        segment = get_segment (border_rect, (2, 0))
+        border.append (get_rect_point (segment, 1))
+        
+        segment = get_segment (border_rect, (2, 1))
+        used = used_segments[2][1]
+
+        border.append (get_rect_point (segment, 1))
+        if not used:        
+            border.append (get_rect_point (segment, 0))
+            border.append (get_rect_point (segment, 3))
+        border.append (get_rect_point (segment, 2))
+
+        segment = get_segment (border_rect, (2, 2))
+        border.append (get_rect_point (segment, 2))
+
+        segment = get_segment (border_rect, (1, 2))
+        used = used_segments[1][2]
+        
+        border.append (get_rect_point (segment, 2))
+        if not used:
+            border.append (get_rect_point (segment, 1))
+            border.append (get_rect_point (segment, 0))
+        border.append (get_rect_point (segment, 3))
+
+        segment = get_segment (border_rect, (0, 2))
+        border.append (get_rect_point (segment, 3))
+
+        segment = get_segment (border_rect, (0, 1))
+        used = used_segments[0][1]
+        
+        border.append (get_rect_point (segment, 3))
+        if not used:
+            border.append (get_rect_point (segment, 2))
+            border.append (get_rect_point (segment, 1))
+        border.append (get_rect_point (segment, 0))
+        
     #
     # Center segment might be missing
     #
