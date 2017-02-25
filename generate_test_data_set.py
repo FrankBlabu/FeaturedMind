@@ -169,7 +169,7 @@ def generate_training_image (config):
     used_segments = 3 * [3 * [True]]
     border = []
 
-    segment_mode = 1#random.randint (0, 2)
+    segment_mode = random.randint (0, 2)
 
     #
     # Corner segments might be missing 
@@ -209,11 +209,9 @@ def generate_training_image (config):
         border.append (get_rect_point (segment, 0))
 
     #
-    # Edge segments might be missing
+    # Top/down edge segments might be missing
     #
     elif segment_mode == 1:
-        used_segments[0][1] = random.randint (0, 9) > 5
-        used_segments[2][1] = random.randint (0, 9) > 5
         used_segments[1][0] = random.randint (0, 9) > 5
         used_segments[1][2] = random.randint (0, 9) > 5
 
@@ -232,15 +230,6 @@ def generate_training_image (config):
         segment = get_segment (border_rect, (2, 0))
         border.append (get_rect_point (segment, 1))
         
-        segment = get_segment (border_rect, (2, 1))
-        used = used_segments[2][1]
-
-        border.append (get_rect_point (segment, 1))
-        if not used:        
-            border.append (get_rect_point (segment, 0))
-            border.append (get_rect_point (segment, 3))
-        border.append (get_rect_point (segment, 2))
-
         segment = get_segment (border_rect, (2, 2))
         border.append (get_rect_point (segment, 2))
 
@@ -256,6 +245,35 @@ def generate_training_image (config):
         segment = get_segment (border_rect, (0, 2))
         border.append (get_rect_point (segment, 3))
 
+
+    #
+    # Left/right edge segments might be missing
+    #
+    elif segment_mode == 2:
+        used_segments[0][1] = random.randint (0, 9) > 5
+        used_segments[2][1] = random.randint (0, 9) > 5
+
+        segment = get_segment (border_rect, (0, 0))
+        border.append (get_rect_point (segment, 0))
+        
+        segment = get_segment (border_rect, (2, 0))
+        border.append (get_rect_point (segment, 1))
+        
+        segment = get_segment (border_rect, (2, 1))
+        used = used_segments[2][1]
+
+        border.append (get_rect_point (segment, 1))
+        if not used:        
+            border.append (get_rect_point (segment, 0))
+            border.append (get_rect_point (segment, 3))
+        border.append (get_rect_point (segment, 2))
+
+        segment = get_segment (border_rect, (2, 2))
+        border.append (get_rect_point (segment, 2))
+
+        segment = get_segment (border_rect, (0, 2))
+        border.append (get_rect_point (segment, 3))
+
         segment = get_segment (border_rect, (0, 1))
         used = used_segments[0][1]
         
@@ -264,12 +282,7 @@ def generate_training_image (config):
             border.append (get_rect_point (segment, 2))
             border.append (get_rect_point (segment, 1))
         border.append (get_rect_point (segment, 0))
-        
-    #
-    # Center segment might be missing
-    #
-    elif segment_mode == 2:
-        pass
+
         
     draw_pattern.rectangle (border_rect, fill=None, outline='#555555')
     draw_pattern.polygon (border, fill=None, outline='#ffffff')
