@@ -159,7 +159,7 @@ def create_feature (config, size):
     feature_offset = (inner_offset[0] + random.randint (0, inner_size[0] - feature_size[0]),
                       inner_offset[1] + random.randint (0, inner_size[1] - feature_size[1]))
 
-    feature_type = 0 # random.randint (0, 2)
+    feature_type = 1 # random.randint (0, 2)
     
     #
     # Feature type 1: Rectangle
@@ -171,7 +171,19 @@ def create_feature (config, size):
     # Feature type 2: Circle
     #
     elif feature_type == 1:
-        pass        
+        rect = []
+        
+        # XXX
+        draw.rectangle ((feature_offset, feature_size), fill=None, outline='#555555')
+        
+        if feature_size[0] > feature_size[1]:
+            rect.append ((int (feature_offset[0] + (feature_size[0] - feature_size[1]) / 2), feature_offset[1]))
+            rect.append ((rect[0][0] + feature_size[1], rect[0][1] + feature_size[1]))
+        else:
+            rect.append ((feature_offset[0], int (feature_offset[1] + (feature_size[1] - feature_size[0]) / 2)))
+            rect.append ((rect[0][0] + feature_size[0], rect[0][1] + feature_size[0]))
+
+        draw.ellipse (rect, fill=None, outline='#ffffff')
     
     #
     # Feature type 3: Slotted hole
@@ -353,10 +365,8 @@ def generate_training_image (config):
     #
     # Add some features to the available areas
     #
-    print ("Start", available)
     for y in range (0, 3):
         for x in range (0, 3):
-            print (x, y, available[x][y])
             if available[x][y] and random.randint (0, 9) < 5:
                 area = get_segment (border_rect, (x, y))
                 available[x][y] = False
