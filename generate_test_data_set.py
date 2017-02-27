@@ -72,7 +72,7 @@ class Vec2d:
 # CLASS Configuration
 #
 # Container keeping the generator configuration
-
+#
 class Configuration:
     def __init__ (self):
         parser = argparse.ArgumentParser ()
@@ -101,46 +101,75 @@ class Configuration:
 
 
 #--------------------------------------------------------------------------
-# Create an elliptical feature
+# CLASS TestImage
 #
-# @param image    Image to draw the ellipse into
-# @param center   Center of the feature
-# @param size     Size of the bounding box of the feature
-# @param rotation Rotation of the feature around its center in degrees
+# Class keeping the data of a single test set image
 #
-def create_elliptical_feature (image, center, size, rotation):
-    overlay = PIL.Image.new ('RGBA', size.asTuple ())
+class TestImage:
     
-    draw = PIL.ImageDraw.Draw (overlay)
-    draw.ellipse ([(0, 0), (size - (1, 1)).asTuple ()],
-                  outline='#ffffff', fill=None)
+    #
+    # Constructor
+    #
+    # @param size Size of the image in pixels
+    #
+    def __init__ (self, size):
+        self.image = PIL.Image.new ('RGBA', size.asTuple ())
+        self.mask  = PIL.Image.new ('1', size.asTuple ())
 
-    rotated = overlay.rotate (rotation, expand=True,
-                              resample=PIL.Image.BILINEAR)
-    
-    image.paste (rotated, (int (center.x - rotated.size.x / 2),
-                           int (center.y - rotated.size.y / 2)), rotated)
+    #
+    # Draw specimen border into image
+    #
+    # @param border Polygon defining the specimen border
+    #
+    def draw_border (self, border):
+        border_image = PIL.Image.new ('RGBA', self.image.size)
 
-#--------------------------------------------------------------------------
-# Generate a random arc based test image
-#
-# @param size Size of the generated image
-# @return Generated image
-#
-def generate_arc (config):
-    image = PIL.Image.new ('RGBA', config.size.asTuple ())
-    draw = PIL.ImageDraw.Draw (image)
+        draw = PIL.ImageDraw.Draw (border_image)
+        draw.polygon (border, fill=None, outline='#ffffff')
 
-    draw.arc ([(0, 0), (config.size - (1, 1)).asTuple ()], 0, 90, fill=None) 
+        self.image.paste (border_image, mask=border_image)
 
-    return image
+        draw = PIL.ImageDraw.Draw (self.mask)
+        draw.polygon (border, fill=None, outline='#ffffff')
+
+    #
+    # Draw rectangular feature
+    #
+    def draw_rectangular_feature (self, offset, size):
+        draw = PIL.ImageDraw.Draw (self.image)
+        draw.rectangle (self.to_rect (offset, size), fill=None, outline='#ffffff')
+        
+        draw = PIL.ImageDraw.Draw (self.mask)
+        draw.rectangle (self.to_rect (offset, size), fill=None, outline='#ffffff')
+            
+    #
+    # Draw circular feature
+    #
+    def draw_circular_feature (self, offset, size):
+        draw = PIL.ImageDraw.Draw (self.image)
+        draw.ellipse (self.to_rect (offset, size), fill=None, outline='#ffffff')
+        
+        draw = PIL.ImageDraw.Draw (self.mask)
+        draw.ellipse (self.to_rect (offset, size), fill=None, outline='#ffffff')
+
+    #
+    # Convert a (origin, size) tuple into a rectangle representation
+    # 
+    # @param origin Origin of the rectangle
+    # @param size   Size of the rectangle
+    # @return Rectangle in [(x0, y0), (x1, y1]) representation
+    #
+    def to_rect (self, origin, size):
+        return [origin.asTuple (), (origin + size - (1, 1)).asTuple ()]
+
+
 
 #--------------------------------------------------------------------------
 # Return the segment rect of an image rect
 # 
-# @param rect    Image rect [(x0, y0), (x1, y1)]
+# @param rect    Image rect [Vec2d (x0, y0), Vec2d (x1, y1)]
 # @param segment Segment (x, y) identifier
-# @return Rectangle of the segment [(x0, y0), (x1, y1)]
+# @return Rectangle of the segment [Vec2d (x0, y0), Vec2d (x1, y1)]
 #
 def get_segment (rect, segment):
     x = segment[0]
@@ -149,7 +178,7 @@ def get_segment (rect, segment):
     assert x >= 0 and x <= 2
     assert y >= 0 and y <= 2
 
-    size = Vec2d (rect[1].x - rect[0].x, rect[1].y - rect[0].y)
+    size = Vec2d (rect[1].x - rect[0].x + 1, rect[1].y - rect[0].y + 1)
     
     return [Vec2d (rect[0].x + x * size.x / 3,
                    rect[0].y + y * size.y / 3),
@@ -159,8 +188,8 @@ def get_segment (rect, segment):
 #--------------------------------------------------------------------------
 # Expand the segment to the bounding box of two segments
 #
-# @param rect1 Segment rect 1 [(x0, y0), (x1, y1)]
-# @param rect2 Segment rect 2 [(x0, y0), (x1, y1)]
+# @param rect1 Segment rect 1 [Vec2d (x0, y0), Vec2d (x1, y1)]
+# @param rect2 Segment rect 2 [Vec2d (x0, y0), Vec2d (x1, y1)]
 # @return Resulting segment covering the bounding box
 #
 def expand_segment (rect1, rect2):
@@ -192,30 +221,23 @@ def get_rect_point (rect, n):
 #
 # @param rect Rectangle
 # @return Size of the rectangle
+#
 def get_rect_size (rect):
     return Vec2d (rect[1].x - rect[0].x + 1, rect[1].y - rect[0].y + 1)
-
-#--------------------------------------------------------------------------
-# Convert a (origin, size) tuple into a rectangle representation
-# 
-# @param origin Origin of the rectangle
-# @param size   Size of the rectangle
-# @return Rectangle in [(x0, y0), (x1, y1]) representation
-def to_rect (origin, size):
-    return [origin.asTuple (), (origin + size - (1, 1)).asTuple ()]
 
 
 #--------------------------------------------------------------------------
 # Generate random feature
 #
 # @param config Configuration
-# @param size   Size of the area the feature may occupy
-def create_feature (config, size):
-    feature_image = PIL.Image.new ('RGBA', size.asTuple ())
-    draw = PIL.ImageDraw.Draw (feature_image)
-
-    inner_offset = 0.05 * size
-    inner_size = size - 2 * inner_offset
+# @param image  Image to draw into
+# @param area   Area the feature may occupy
+#
+def create_feature (config, image, area):
+    area_size = get_rect_size (area)
+    
+    inner_offset = 0.05 * area_size
+    inner_size = area_size - 2 * inner_offset
 
     assert inner_size.x > 10 and inner_size.y > 10
 
@@ -231,7 +253,7 @@ def create_feature (config, size):
     # Feature type 1: Rectangle
     #
     if feature_type == 0:
-        draw.rectangle (to_rect (feature_offset, feature_size), fill=None, outline='#ffffff')
+        image.draw_rectangular_feature (area[0] + feature_offset, feature_size)
         
     #
     # Feature type 2: Circle
@@ -244,7 +266,7 @@ def create_feature (config, size):
             feature_offset = feature_offset + (0, (feature_size.y - feature_size.x) / 2)
             feature_size = Vec2d (feature_size.x, feature_size.x)
 
-        draw.ellipse (to_rect (feature_offset, feature_size), fill=None, outline='#ffffff')
+        image.draw_circular_feature (area[0] + feature_offset, feature_size)
     
     #
     # Feature type 3: Slotted hole
@@ -252,7 +274,6 @@ def create_feature (config, size):
     elif feature_type == 2:
         pass
 
-    return feature_image
 
 #--------------------------------------------------------------------------
 # Generate random training image
@@ -262,11 +283,8 @@ def create_feature (config, size):
 #
 def generate_training_image (config):
 
-    #
-    # Final image
-    #
-    image = PIL.Image.new ('RGBA', config.size.asTuple ())
-    
+    image = TestImage (config.size)
+
     #
     # Compute area used for the specimen border
     #
@@ -284,6 +302,8 @@ def generate_training_image (config):
                                           outer_border_limit[1].x),
                           random.randint (inner_border_limit[1].y,
                                           outer_border_limit[1].y))]
+
+
 
     #
     # Compute segments of the specimen used. There are 3x3 segments available.
@@ -405,24 +425,14 @@ def generate_training_image (config):
             border.append (get_rect_point (segment, 1))
         border.append (get_rect_point (segment, 0))
 
-    #
-    # Copy border overlay into main image
-    #
-    border_image = PIL.Image.new ('RGBA', image.size)
-    draw_features = PIL.ImageDraw.Draw (border_image)
-
-    poly = [point.asTuple () for point in border]
-
-    draw_features.polygon (poly, fill=None, outline='#ffffff')
-
-    image.paste (border_image, mask=border_image)
+    image.draw_border ([point.asTuple () for point in border])
 
     #
     # Add some features to the available areas
     #
     for y in range (0, 3):
         for x in range (0, 3):
-            if available[x][y] and random.randint (0, 9) < 5:
+            if available[x][y] and random.randint (0, 9) < 7:
                 area = get_segment (border_rect, (x, y))
                 available[x][y] = False
                 
@@ -430,13 +440,11 @@ def generate_training_image (config):
                     area = expand_segment (area, get_segment (border_rect, (x+1, y)))
                     available[x+1][y] = False
 
-                if y < 2 and available[x][y+1] and random.randint (0, 9) < 5:
+                elif y < 2 and available[x][y+1] and random.randint (0, 9) < 5:
                     area = expand_segment (area, get_segment (border_rect, (x, y+1)))
                     available[x][y+1] = False
             
-                feature_image = create_feature (config, get_rect_size (area))
-                image.paste (feature_image, box=area[0].asTuple (), mask=feature_image)
-                                
+                create_feature (config, image, area)
                 
     return image
     
@@ -457,4 +465,4 @@ config = Configuration ()
 #
 image = generate_training_image (config)
 
-image.show ()
+image.image.show ()
