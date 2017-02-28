@@ -7,9 +7,14 @@
 
 import argparse
 import random
+
+from enum import Enum
+
 import PIL
 import PIL.Image
 import PIL.ImageDraw
+import PIL.ImageFilter
+
 
 #--------------------------------------------------------------------------
 # CLASS Vec2d
@@ -113,8 +118,16 @@ class TestImage:
     # @param size Size of the image in pixels
     #
     def __init__ (self, size):
-        self.image = PIL.Image.new ('RGBA', size.asTuple ())
+        #
+        # The complete test image
+        #
+        self.image = self.add_background_noise (PIL.Image.new ('RGBA', size.asTuple ()))
+        
+        #
+        # Mask marking the feature and border relevant pixels
+        #
         self.mask  = PIL.Image.new ('1', size.asTuple ())
+        
 
     #
     # Draw specimen border into image
@@ -125,9 +138,21 @@ class TestImage:
         border_image = PIL.Image.new ('RGBA', self.image.size)
 
         draw = PIL.ImageDraw.Draw (border_image)
+        
+        for y in range (border_image.size[1]):
+            for x in range (border_image.size[0]):
+                draw.point ((x, y), fill='#' + 3 * str (random.randint (5, 6)))
+        
         draw.polygon (border, fill=None, outline='#ffffff')
 
-        self.image.paste (border_image, mask=border_image)
+        border_image = border_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))
+
+        border_mask = PIL.Image.new ('1', self.image.size)
+
+        draw = PIL.ImageDraw.Draw (border_mask)
+        draw.polygon (border, fill='#fff', outline='#fff')
+
+        self.image.paste (border_image, mask=border_mask)
 
         draw = PIL.ImageDraw.Draw (self.mask)
         draw.polygon (border, fill=None, outline='#ffffff')
@@ -136,21 +161,48 @@ class TestImage:
     # Draw rectangular feature
     #
     def draw_rectangular_feature (self, offset, size):
-        draw = PIL.ImageDraw.Draw (self.image)
-        draw.rectangle (self.to_rect (offset, size), fill=None, outline='#ffffff')
+        feature_image = self.add_background_noise (PIL.Image.new ('RGBA', size.asTuple ()))
+        
+        draw = PIL.ImageDraw.Draw (feature_image)
+        draw.rectangle (self.to_native_rect (Vec2d (0, 0), size), fill=None, outline='#ffffff')
+        feature_image = feature_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))
+        
+        self.image.paste (feature_image, box=offset.asTuple ())
         
         draw = PIL.ImageDraw.Draw (self.mask)
-        draw.rectangle (self.to_rect (offset, size), fill=None, outline='#ffffff')
+        draw.rectangle (self.to_native_rect (offset, size), fill=None, outline='#ffffff')
             
     #
     # Draw circular feature
     #
     def draw_circular_feature (self, offset, size):
-        draw = PIL.ImageDraw.Draw (self.image)
-        draw.ellipse (self.to_rect (offset, size), fill=None, outline='#ffffff')
+        feature_image = self.add_background_noise (PIL.Image.new ('RGBA', size.asTuple ()))
+
+        draw = PIL.ImageDraw.Draw (feature_image)
+        draw.ellipse (self.to_native_rect (Vec2d (0, 0), size), fill=None, outline='#ffffff')
+        feature_image = feature_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))
+
+        mask_image = PIL.Image.new ('1', size.asTuple ())
+        draw = PIL.ImageDraw.Draw (mask_image)
+        draw.ellipse (self.to_native_rect (Vec2d (0, 0), size), fill='#fff', outline='#ffffff')
+
+        self.image.paste (feature_image, box=offset.asTuple (), mask=mask_image)
         
         draw = PIL.ImageDraw.Draw (self.mask)
-        draw.ellipse (self.to_rect (offset, size), fill=None, outline='#ffffff')
+        draw.ellipse (self.to_native_rect (offset, size), fill=None, outline='#ffffff')
+
+    #
+    # Add background noise to an image
+    #
+    def add_background_noise (self, image):
+        draw = PIL.ImageDraw.Draw (image)
+        
+        for y in range (image.size[1]):
+            for x in range (image.size[0]):
+                draw.point ((x, y), fill='#' + 3 * str (random.randint (0, 7)))
+
+        return image.filter (PIL.ImageFilter.GaussianBlur (radius=2))
+
 
     #
     # Convert a (origin, size) tuple into a rectangle representation
@@ -159,9 +211,23 @@ class TestImage:
     # @param size   Size of the rectangle
     # @return Rectangle in [(x0, y0), (x1, y1]) representation
     #
-    def to_rect (self, origin, size):
+    def to_native_rect (self, origin, size):
         return [origin.asTuple (), (origin + size - (1, 1)).asTuple ()]
-
+    
+    #
+    # Create sample from main image
+    #
+    # This function returns a single sample of the generated image which can
+    # be used for training together with a boolean flag indicating if the
+    # sample contains some part of a feature
+    #
+    # @param config Generator configuration
+    # @param x      Horizontal offset in pixels
+    # @param y      Vertical offset in pixels
+    # @return (Sample image, feature flag)
+    #
+    def create_sample (self, config, x, y):
+        pass
 
 
 #--------------------------------------------------------------------------
@@ -184,6 +250,7 @@ def get_segment (rect, segment):
                    rect[0].y + y * size.y / 3),
             Vec2d (rect[0].x + (x + 1) * size.x / 3,
                    rect[0].y + (y + 1) * size.y / 3)]
+    
 
 #--------------------------------------------------------------------------
 # Expand the segment to the bounding box of two segments
