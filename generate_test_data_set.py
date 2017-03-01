@@ -6,6 +6,8 @@
 #
 
 import argparse
+import math
+import pickle
 import random
 
 from enum import Enum
@@ -14,6 +16,7 @@ import PIL
 import PIL.Image
 import PIL.ImageDraw
 import PIL.ImageFilter
+import PIL.ImageStat
 
 
 #--------------------------------------------------------------------------
@@ -87,7 +90,7 @@ class Configuration:
                              help='Width of the generated images')
         parser.add_argument ('-y', '--height', type=int, default=480,
                              help='Height of the generated images')
-        parser.add_argument ('-n', '--number-of-images', type=int, default=20,
+        parser.add_argument ('-n', '--number-of-images', type=int, default=5,
                              help='Number of images generated')
         parser.add_argument ('-s', '--sample-size', type=int, default=32,
                              help='Edge size of each sample in pixels')
@@ -99,6 +102,7 @@ class Configuration:
         if args.height > 4096:
             assert 'Training image height is too large.'
 
+        self.file             = args.file
         self.size             = Vec2d (args.width, args.height)
         self.number_of_images = args.number_of_images
         self.sample_size      = args.sample_size
@@ -128,6 +132,27 @@ class TestImage:
         #
         self.mask  = PIL.Image.new ('1', size.asTuple ())
         
+        #
+        # List of samples
+        #
+        # Each sample is a tuple in the format (image, flag) where the flag
+        # indicates if the sample show a border (true) or not (false)
+        #
+        self.samples = []
+        
+    
+    def to_pickle (self, config):
+        dict = {}
+        dict['sample_size'] = config.sample_size
+        dict['samples'] = []
+        
+        for sample in self.samples:
+            dict['samples'].append ((sample[0].tobytes (), sample[1]))
+            
+        return dict
+        
+        
+
 
     #
     # Draw specimen border into image
@@ -348,7 +373,7 @@ def create_feature (config, image, area):
 # @param config Configuration
 # @return Generated training image
 #
-def generate_training_image (config):
+def generate_training_samples (config):
 
     image = TestImage (config.size)
 
@@ -513,6 +538,42 @@ def generate_training_image (config):
             
                 create_feature (config, image, area)
                 
+    #
+    # Create set of samples and border presence vector
+    #
+    count = 0
+    
+    positive_samples = []
+    negative_samples = []
+     
+    for y in range (0, int (math.floor (config.size.y / config.sample_size))):
+        for x in range (0, int (math.floor (config.size.x / config.sample_size))):
+            sample_area = [x * config.sample_size, 
+                           y * config.sample_size,
+                           (x + 1) * config.sample_size, 
+                           (y + 1) * config.sample_size]
+
+            sample = image.image.crop (sample_area).convert (mode='L')            
+            sample_mask = image.mask.crop (sample_area)
+            
+            stat = PIL.ImageStat.Stat (sample_mask)
+            
+            if stat.extrema[0][1] > 0:
+                positive_samples.append ((sample, True))
+            else:
+                negative_samples.append ((sample, False))
+            
+    random.shuffle (positive_samples)
+    random.shuffle (negative_samples)
+    
+    if len (negative_samples) > len (positive_samples):
+        negative_samples = negative_samples[0:len (positive_samples)]
+        
+    image.samples.extend (positive_samples)
+    image.samples.extend (negative_samples)
+    
+    random.shuffle (image.samples)
+                        
     return image
     
 
@@ -528,8 +589,19 @@ random.seed ()
 config = Configuration ()
 
 #
-# Create 8 bit grayscale image
+# Create test data sets
 #
-image = generate_training_image (config)
+dict = {}
+dict['version'] = 1
+dict['sample_size'] = config.sample_size
+dict['samples'] = []
 
-image.image.show ()
+for _ in range (config.number_of_images):
+    samples = generate_training_samples (config)
+    
+    for sample in samples.samples:
+        dict['samples'].append ((sample[0].tobytes (), sample[1]))
+    
+with open (config.file, 'wb') as file:
+    pickle.dump (dict, file, protocol=pickle.HIGHEST_PROTOCOL)
+    file.close ()
