@@ -529,7 +529,11 @@ for _ in range (config.number_of_images):
     samples = generate_training_samples (config)
     
     for sample in samples.samples:
-        dict['samples'].append ((sample[0].tobytes (), sample[1]))
+        entry = {}
+        entry['data'] = list (sample[0].getdata ())
+        entry['image'] = sample[0].tobytes ();
+        entry['border'] = sample[1]
+        dict['samples'].append (entry)
     
 with open (config.file, 'wb') as file:
     pickle.dump (dict, file, protocol=pickle.HIGHEST_PROTOCOL)
