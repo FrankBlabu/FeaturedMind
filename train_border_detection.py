@@ -26,18 +26,24 @@ class TrainingData:
     def __init__ (self, data):
         self.sample_size = data['sample_size']
         self.training_data = []
-        self.border = []
+        self.labels = []
         
         for sample in data['samples']:            
+            
+            assert len (sample['data']) == self.sample_size * self.sample_size
+            
             self.training_data.append (sample['data'])
-            self.border.append (sample['border'])
+            self.labels.append ([0, 1] if sample['label'] else [1, 0])
             
     def size (self):
         return len (self.training_data)
     
     def get_batch (self, offset, size):
         return (self.training_data[offset:offset + size],
-                self.border[offset:offset + size])
+                self.labels[offset:offset + size])
+        
+    def get_data (self):
+        return (self.training_data, self.labels)
         
     
 
@@ -73,13 +79,15 @@ def train_simple (data):
     # Train
     count = 0
     while count < data.size ():
-        batch_xs, batch_ys = data.get_batch (100, 100)
+        batch_xs, batch_ys = data.get_batch (count, 100)
         session.run (train_step, feed_dict={x: batch_xs, y_: batch_ys})
+        count += 100
 
     # Test trained model
     correct_prediction = tf.equal (tf.argmax (y, 1), tf.argmax (y_, 1))
     accuracy = tf.reduce_mean (tf.cast (correct_prediction, tf.float32))
-    print (session.run (accuracy, feed_dict={x: mnist.test.images, y_: mnist.test.labels}))
+    all_data = data.get_data ()
+    print (session.run (accuracy, feed_dict={x: all_data[0], y_: all_data[1]}))
 
 
 

@@ -532,9 +532,11 @@ for _ in range (config.number_of_images):
         entry = {}
         entry['data'] = list (sample[0].getdata ())
         entry['image'] = sample[0].tobytes ();
-        entry['border'] = sample[1]
+        entry['label'] = sample[1]
         dict['samples'].append (entry)
     
 with open (config.file, 'wb') as file:
     pickle.dump (dict, file, protocol=pickle.HIGHEST_PROTOCOL)
     file.close ()
+
+
