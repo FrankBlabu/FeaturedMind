@@ -32,8 +32,8 @@ class Configuration:
                              help='Width of the generated images')
         parser.add_argument ('-y', '--height', type=int, default=480,
                              help='Height of the generated images')
-        parser.add_argument ('-n', '--number-of-images', type=int, default=5,
-                             help='Number of images generated')
+        parser.add_argument ('-n', '--number-of-samples', type=int, default=5000,
+                             help='Number of samples generated')
         parser.add_argument ('-s', '--sample-size', type=int, default=32,
                              help='Edge size of each sample in pixels')
 
@@ -44,10 +44,10 @@ class Configuration:
         if args.height > 4096:
             assert 'Training image height is too large.'
 
-        self.file             = args.file
-        self.size             = Vec2d (args.width, args.height)
-        self.number_of_images = args.number_of_images
-        self.sample_size      = args.sample_size
+        self.file              = args.file
+        self.size              = Vec2d (args.width, args.height)
+        self.number_of_samples = args.number_of_samples
+        self.sample_size       = args.sample_size
 
 
 
@@ -168,21 +168,6 @@ class TestImage:
     def to_native_rect (self, origin, size):
         return [origin.asTuple (), (origin + size - (1, 1)).asTuple ()]
     
-    #
-    # Create sample from main image
-    #
-    # This function returns a single sample of the generated image which can
-    # be used for training together with a boolean flag indicating if the
-    # sample contains some part of a feature
-    #
-    # @param config Generator configuration
-    # @param x      Horizontal offset in pixels
-    # @param y      Vertical offset in pixels
-    # @return (Sample image, feature flag)
-    #
-    def create_sample (self, config, x, y):
-        pass
-
 
 #--------------------------------------------------------------------------
 # Return the segment rect of an image rect
@@ -502,7 +487,7 @@ def generate_training_samples (config):
     image.samples.extend (negative_samples)
     
     random.shuffle (image.samples)
-                        
+    
     return image
     
 
@@ -525,16 +510,31 @@ dict['version'] = 1
 dict['sample_size'] = config.sample_size
 dict['samples'] = []
 
-for _ in range (config.number_of_images):
+count = 0
+
+print ("Generating samples...")
+
+while len (dict['samples']) < config.number_of_samples:
     samples = generate_training_samples (config)
     
     for sample in samples.samples:
         entry = {}
-        entry['data'] = list (sample[0].getdata ())
-        entry['image'] = sample[0].tobytes ();
+        
+        data = list (sample[0].getdata ())
+        
+        for i in range (len (data)):
+            data[i] = float (data[i]) / 255
+        
+        entry['data'] = data
         entry['label'] = sample[1]
         dict['samples'].append (entry)
+        
+        if len (dict['samples']) == config.number_of_samples:
+            break
+
+    print (len (samples.samples), len (dict['samples']))
     
+        
 with open (config.file, 'wb') as file:
     pickle.dump (dict, file, protocol=pickle.HIGHEST_PROTOCOL)
     file.close ()
