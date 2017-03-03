@@ -9,6 +9,7 @@ import argparse
 import math
 import pickle
 import random
+import h5py
 
 from common import Vec2d
 
@@ -32,7 +33,7 @@ class Configuration:
                              help='Width of the generated images')
         parser.add_argument ('-y', '--height', type=int, default=480,
                              help='Height of the generated images')
-        parser.add_argument ('-n', '--number-of-samples', type=int, default=5000,
+        parser.add_argument ('-n', '--number-of-samples', type=int, default=1000,
                              help='Number of samples generated')
         parser.add_argument ('-s', '--sample-size', type=int, default=32,
                              help='Edge size of each sample in pixels')
@@ -514,29 +515,36 @@ count = 0
 
 print ("Generating samples...")
 
-while len (dict['samples']) < config.number_of_samples:
-    samples = generate_training_samples (config)
+with h5py.File (config.file, 'w') as file:
     
-    for sample in samples.samples:
-        entry = {}
+    data = file.create_dataset ('data', (config.number_of_samples, config.sample_size * config.sample_size), dtype='f')
+    labels = file.create_dataset ('labels', (config.number_of_samples, 2), dtype='f')
+    
+    data.attrs['version'] = 1
+    data.attrs['sample_size'] = config.sample_size
+    data.attrs['image_size'] = (config.size.x, config.size.y)
+    data.attrs['number_of_samples'] = config.number_of_samples
+    
+    count = 0
+    while count < config.number_of_samples:
         
-        data = list (sample[0].getdata ())
+        samples = generate_training_samples (config)
         
-        for i in range (len (data)):
-            data[i] = float (data[i]) / 255
-        
-        entry['data'] = data
-        entry['label'] = sample[1]
-        dict['samples'].append (entry)
-        
-        if len (dict['samples']) == config.number_of_samples:
-            break
+        for sample in samples.samples:
 
-    print (len (samples.samples), len (dict['samples']))
+            sample_data = sample[0].getdata ()
+            
+            for i in range (len (sample_data)):
+                data[count][i] = float (sample_data[i]) / 255
+            
+            labels[count][0] = 0 if sample[1] else 1
+            labels[count][1] = 1 if sample[1] else 0
+            
+            count += 1
+            if count == config.number_of_samples:
+                break
     
-        
-with open (config.file, 'wb') as file:
-    pickle.dump (dict, file, protocol=pickle.HIGHEST_PROTOCOL)
+        print (len (samples.samples), count)
+    
     file.close ()
-
 

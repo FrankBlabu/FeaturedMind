@@ -9,7 +9,8 @@
 import argparse
 import pickle
 import sys
-import PIL.Image
+import h5py
+
 import tensorflow as tf
 import numpy as np
 
@@ -24,39 +25,29 @@ FLAGS = None
 #
 class TrainingData:
     
-    def __init__ (self, data):
-        self.sample_size = data['sample_size']
-        self.training_data = np.zeros (shape=(len (data['samples']), self.sample_size * self.sample_size))
-        self.labels = np.zeros (shape=(len (data['samples']), 2))
+    def __init__ (self, file):
+        self.data = file['data']
+        self.labels = file['labels']
         self.offset = 0
-        
-        count = 0
-        for sample in data['samples']:
-            
-            assert len (sample['data']) == self.sample_size * self.sample_size
-            
-            self.training_data[count] = sample['data']
-            self.labels[count] = [0, 1] if sample['label'] else [1, 0]
-            
-            count += 1
+        self.sample_size = self.data.attrs['sample_size']
             
     def size (self):
-        return len (self.training_data)
+        return len (self.data['data'])
     
     def get_next_batch (self, size):
         data = []
         labels = []
         
         for i in range (self.offset, self.offset + size):
-            data.append (self.training_data[i % len (self.training_data)])
+            data.append (self.data[i % len (self.training_data)])
             labels.append (self.labels[i % len (self.labels)])
-        
-        self.offset = (self.offset + size) % len (self.training_data)
+            
+        self.offset = (self.offset + size) % len (self.data)
         
         return (data, labels)
     
     def get_data (self):
-        return (self.training_data, self.labels)
+        return (self.data, self.labels)
         
     
 
@@ -148,8 +139,8 @@ args = parser.parse_args ()
 #
 training_data = None
 
-with open (args.file, 'rb') as file:
-    training_data = TrainingData (pickle.load (file))
+with h5py.File (args.file, 'r') as file:
+    training_data = TrainingData (file)
     
 train_simple (training_data)
 #train_estimator (training_data)
