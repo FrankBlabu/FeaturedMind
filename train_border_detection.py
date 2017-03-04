@@ -26,10 +26,13 @@ FLAGS = None
 class TrainingData:
     
     def __init__ (self, file):
+        self.sample_size = file.attrs['sample_size']
+
         self.data = file['data']
         self.labels = file['labels']
+        
         self.offset = 0
-        self.sample_size = self.data.attrs['sample_size']
+        
             
     def size (self):
         return len (self.data['data'])
@@ -39,7 +42,7 @@ class TrainingData:
         labels = []
         
         for i in range (self.offset, self.offset + size):
-            data.append (self.data[i % len (self.training_data)])
+            data.append (self.data[i % len (self.data)])
             labels.append (self.labels[i % len (self.labels)])
             
         self.offset = (self.offset + size) % len (self.data)
@@ -78,7 +81,7 @@ def train_simple (data):
     tf.global_variables_initializer ().run ()
 
     # Train
-    for step in range (20000):
+    for step in range (2000):
         if step > 0 and step % 100 == 0:
             print ("  Step", step)
             
@@ -139,9 +142,11 @@ args = parser.parse_args ()
 #
 training_data = None
 
-with h5py.File (args.file, 'r') as file:
-    training_data = TrainingData (file)
+file = h5py.File (args.file, 'r')
+training_data = TrainingData (file)
     
 train_simple (training_data)
 #train_estimator (training_data)
+
+file.close ()
 

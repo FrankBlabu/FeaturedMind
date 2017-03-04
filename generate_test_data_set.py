@@ -33,7 +33,7 @@ class Configuration:
                              help='Width of the generated images')
         parser.add_argument ('-y', '--height', type=int, default=480,
                              help='Height of the generated images')
-        parser.add_argument ('-n', '--number-of-samples', type=int, default=1000,
+        parser.add_argument ('-n', '--number-of-samples', type=int, default=2000,
                              help='Number of samples generated')
         parser.add_argument ('-s', '--sample-size', type=int, default=32,
                              help='Edge size of each sample in pixels')
@@ -515,36 +515,36 @@ count = 0
 
 print ("Generating samples...")
 
-with h5py.File (config.file, 'w') as file:
-    
-    data = file.create_dataset ('data', (config.number_of_samples, config.sample_size * config.sample_size), dtype='f')
-    labels = file.create_dataset ('labels', (config.number_of_samples, 2), dtype='f')
-    
-    data.attrs['version'] = 1
-    data.attrs['sample_size'] = config.sample_size
-    data.attrs['image_size'] = (config.size.x, config.size.y)
-    data.attrs['number_of_samples'] = config.number_of_samples
-    
-    count = 0
-    while count < config.number_of_samples:
-        
-        samples = generate_training_samples (config)
-        
-        for sample in samples.samples:
+file = h5py.File (config.file, 'w')
 
-            sample_data = sample[0].getdata ()
-            
-            for i in range (len (sample_data)):
-                data[count][i] = float (sample_data[i]) / 255
-            
-            labels[count][0] = 0 if sample[1] else 1
-            labels[count][1] = 1 if sample[1] else 0
-            
-            count += 1
-            if count == config.number_of_samples:
-                break
-    
-        print (len (samples.samples), count)
-    
-    file.close ()
+file.attrs['version']           = 1
+file.attrs['sample_size']       = config.sample_size
+file.attrs['image_size']        = (config.size.x, config.size.y)
+file.attrs['number_of_samples'] = config.number_of_samples
+file.attrs['HDF5_Version']      = h5py.version.hdf5_version
+file.attrs['h5py_version']      = h5py.version.version
 
+data = file.create_dataset ('data', (config.number_of_samples, config.sample_size * config.sample_size), 
+                            dtype='f', compression='lzf')
+labels = file.create_dataset ('labels', (config.number_of_samples, 2), dtype='f', compression='lzf')
+
+count = 0
+while count < config.number_of_samples:
+    
+    samples = generate_training_samples (config)
+    
+    for sample in samples.samples:
+
+        data[count] = [float (d) / 255 for d in sample[0].getdata ()]
+        labels[count] = [0 if sample[1] else 1, 1 if sample[1] else 0]
+
+        count += 1
+        if count == config.number_of_samples:
+            break
+
+    print (len (samples.samples), count)
+
+file.flush ()
+file.close ()
+
+print ("Done")
