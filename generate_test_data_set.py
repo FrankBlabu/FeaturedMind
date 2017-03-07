@@ -25,15 +25,11 @@ random.seed ()
 #
 parser = argparse.ArgumentParser ()
 
-parser.add_argument ('file', type=str, help='Output file name')
-parser.add_argument ('-x', '--width', type=int, default=640,
-                     help='Width of the generated images')
-parser.add_argument ('-y', '--height', type=int, default=480,
-                     help='Height of the generated images')
-parser.add_argument ('-n', '--number-of-samples', type=int, default=1000,
-                     help='Number of samples to generate')
-parser.add_argument ('-s', '--sample-size', type=int, default=32,
-                     help='Edge size of each sample in pixels')
+parser.add_argument ('file',                      type=str,               help='Output file name')
+parser.add_argument ('-x', '--width',             type=int, default=640,  help='Width of the generated images')
+parser.add_argument ('-y', '--height',            type=int, default=480,  help='Height of the generated images')
+parser.add_argument ('-n', '--number-of-samples', type=int, default=1000, help='Number of samples to generate')
+parser.add_argument ('-s', '--sample-size',       type=int, default=32,   help='Edge size of each sample in pixels')
 
 args = parser.parse_args ()
 

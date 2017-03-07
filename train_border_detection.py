@@ -35,7 +35,10 @@ class TrainingData:
         
             
     def size (self):
-        return len (self.data['data'])
+        return len (self.data)
+    
+    def reset (self):
+        self.offset = 0
     
     def get_next_batch (self, size):
         data = []
@@ -55,80 +58,9 @@ class TrainingData:
     
 
 #--------------------------------------------------------------------------
-# Train border detection with simple linear model
-#
-def train_softmax_regression (data):
-
-    data_size = data.sample_size * data.sample_size
-    all_data = data.get_data ()
-
-    print ("Training model...")
-    print ("  Number of samples: ", len (all_data[0]))
-
-    # Create the model
-    x = tf.placeholder (tf.float32, [None, data_size])
-    W = tf.Variable (tf.zeros ([data_size, 2]))
-    b = tf.Variable (tf.zeros ([2]))
-    y = tf.matmul (x, W) + b
-
-    # Define loss and optimizer
-    y_ = tf.placeholder (tf.float32, [None, 2])
-
-    cross_entropy = tf.reduce_mean (tf.nn.softmax_cross_entropy_with_logits (labels=y_, logits=y))
-    train_step = tf.train.GradientDescentOptimizer (0.5).minimize (cross_entropy)
-
-    session = tf.Session ()
-    tf.global_variables_initializer ().run ()
-
-    # Train
-    for step in range (2000):
-        if step > 0 and step % 100 == 0:
-            print ("  Step", step)
-            
-        batch_xs, batch_ys = data.get_next_batch (100)
-        session.run (train_step, feed_dict={x: batch_xs, y_: batch_ys})
-
-    # Test trained model
-    correct_prediction = tf.equal (tf.argmax (y, 1), tf.argmax (y_, 1))
-    accuracy = tf.reduce_mean (tf.cast (correct_prediction, tf.float32))
-        
-    print ("  Accuracy:", session.run (accuracy, feed_dict={x: all_data[0], y_: all_data[1]}))
-
-#--------------------------------------------------------------------------
-# Train border detection with higher level TensorFlow estimator objects
-#
-def train_estimators (data):
-
-    features = [tf.contrib.layers.real_valued_column ("x", dimension=1)]
-    
-    # An estimator is the front end to invoke training (fitting) and evaluation
-    # (inference). There are many predefined types like linear regression,
-    # logistic regression, linear classification, logistic classification, and
-    # many neural network classifiers and regressors. The following code
-    # provides an estimator that does linear regression.
-    estimator = tf.contrib.learn.LinearRegressor(feature_columns=features)
-    
-    # TensorFlow provides many helper methods to read and set up data sets.
-    # Here we use `numpy_input_fn`. We have to tell the function how many batches
-    # of data (num_epochs) we want and how big each batch should be.
-    x = np.array([1., 2., 3., 4.])
-    y = np.array([0., -1., -2., -3.])
-    input_fn = tf.contrib.learn.io.numpy_input_fn({"x":x}, y, batch_size=4,
-                                                  num_epochs=1000)
-    
-    # We can invoke 1000 training steps by invoking the `fit` method and passing the
-    # training data set.
-    estimator.fit(input_fn=input_fn, steps=1000)
-    
-    # Here we evaluate how well our model did. In a real example, we would want
-    # to use a separate validation and testing data set to avoid overfitting.
-    estimator.evaluate(input_fn=input_fn)
-
-
-#--------------------------------------------------------------------------
 # Train border detection with a multilayer convolutional network
 #
-def train_multilayer_convolution (data):
+def train (config, data):
     
     #
     # Generate variable with given shape and a truncated normal distribution
@@ -159,16 +91,12 @@ def train_multilayer_convolution (data):
             tf.summary.scalar ('max', tf.reduce_max (var))
             tf.summary.scalar ('min', tf.reduce_min (var))
             tf.summary.histogram ('histogram', var)
-      
-    data_size = data.sample_size * data.sample_size
-    all_data = data.get_data ()
 
-    print ("Training model...")
-    print ("  Number of samples: ", len (all_data[0]))
-
+    #
     # Create the model
+    #
     with tf.name_scope ('input'):
-        x = tf.placeholder (tf.float32, [None, data_size])
+        x = tf.placeholder (tf.float32, [None, data.sample_size * data.sample_size])
         y_ = tf.placeholder (tf.float32, [None, 2])
       
     W_conv1 = create_weight_variable ([5, 5, 1, 32])
@@ -224,23 +152,36 @@ def train_multilayer_convolution (data):
     session = tf.InteractiveSession ()
     
     merged_summary = tf.summary.merge_all ()
-    train_writer = tf.summary.FileWriter ('log', session.graph) 
+    
+    if args.log != None:
+        train_writer = tf.summary.FileWriter (args.log, session.graph)
+     
     session.run (tf.global_variables_initializer ())
     
-    for i in range (300):
-        batch = data.get_next_batch (50)
+    for i in range (args.steps):
+        batch = data.get_next_batch (args.batchsize)
         
         if i % 100 == 0:
             train_accuracy = accuracy.eval (feed_dict={x:batch[0], y_:batch[1], keep_prob:1.0})
             print("step %d, training accuracy %g" % (i, train_accuracy))
-    
-        summary, _ = session.run ([merged_summary, train_step], feed_dict={x:batch[0], y_:batch[1], keep_prob:0.5})
-        train_writer.add_summary (summary, i)
-        
-    
+
+        if args.log != None:    
+            summary, _ = session.run ([merged_summary, train_step], feed_dict={x:batch[0], y_:batch[1], keep_prob:0.5})
+            train_writer.add_summary (summary, i)
+        else:
+            session.run (train_step, feed_dict={x:batch[0], y_:batch[1], keep_prob:0.5})
+            
     #print("test accuracy %g" % accuracy.eval (feed_dict={x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
     
-    train_writer.close ()
+    if args.log != None:
+        train_writer.close ()
+    
+    #
+    # Save model if configured
+    #
+    if args.output != None:
+        saver = tf.train.Saver ()
+        saver.save (session, args.output)
 
 
 #--------------------------------------------------------------------------
@@ -252,9 +193,15 @@ def train_multilayer_convolution (data):
 #
 parser = argparse.ArgumentParser ()
 
-parser.add_argument ('file', type=str, help='Output file name')
+parser.add_argument ('file',              type=str,               help='Test dataset file name')
+parser.add_argument ('-s', '--steps',     type=int, default=1000, help='Number of steps')
+parser.add_argument ('-l', '--log',       type=str, default=None, help='Log file directory')
+parser.add_argument ('-o', '--output',    type=str, default=None, help='Model output file name')
+parser.add_argument ('-b', '--batchsize', type=int, default=50,   help='Number of samples per training batch')
 
 args = parser.parse_args ()
+
+assert args.steps >= 100
 
 #
 # Load sample data
@@ -262,9 +209,12 @@ args = parser.parse_args ()
 file = h5py.File (args.file, 'r')
 data = TrainingData (file)
     
-#train_softmax_regression (data)
-#train_estimator (data)
-train_multilayer_convolution (data)
+print ("Training model...")
+print ("  Number of samples: ", data.size ())
+print ("  Sample size      : ", data.sample_size)
+
+    
+train (args, data)
 
 file.close ()
 
