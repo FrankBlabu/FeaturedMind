@@ -30,30 +30,44 @@ class TrainingData:
 
         self.data = file['data']
         self.labels = file['labels']
+
+        assert len (self.data) == len (self.labels)
         
-        self.offset = 0
+        self.batch_offset = 0
+        
+        self.training_set_offset = 0
+        self.training_set_size = int (len (self.data) * 0.9)
+        
+        self.test_set_offset = self.training_set_offset + self.training_set_size
+        self.test_set_size = len (self.data) - self.training_set_size
         
             
     def size (self):
         return len (self.data)
     
     def reset (self):
-        self.offset = 0
+        self.batch_offset = 0
+    
+    def get_training_data (self):
+        return (self.data[self.training_set_offset:self.training_set_offset + training.test_set_size], 
+                self.labels[self.training_set_offset:self.training_set_offset + self.training_set_size])
+    
+    def get_test_data (self):
+        return (self.data[self.test_set_offset:self.test_set_offset + self.test_set_size], 
+                self.labels[self.test_set_offset:self.test_set_offset + self.test_set_size])
     
     def get_next_batch (self, size):
+
         data = []
         labels = []
         
-        for i in range (self.offset, self.offset + size):
-            data.append (self.data[i % len (self.data)])
-            labels.append (self.labels[i % len (self.labels)])
+        for i in range (self.batch_offset, self.batch_offset + size):
+            data.append (self.data[self.training_set_offset + i % self.training_set_size])
+            labels.append (self.labels[self.training_set_offset + i % self.training_set_size])
             
-        self.offset = (self.offset + size) % len (self.data)
+        self.batch_offset = (self.batch_offset + size) % self.training_set_size
         
         return (data, labels)
-    
-    def get_data (self):
-        return (self.data, self.labels)
         
     
 
@@ -162,16 +176,18 @@ def train (config, data):
         batch = data.get_next_batch (args.batchsize)
         
         if i % 100 == 0:
-            train_accuracy = accuracy.eval (feed_dict={x:batch[0], y_:batch[1], keep_prob:1.0})
-            print("step %d, training accuracy %g" % (i, train_accuracy))
+            train_accuracy = accuracy.eval (feed_dict={x: batch[0], y_: batch[1], keep_prob: 1.0})
+            print ("    Step {0}, training accuracy {1:.2f}".format (i, train_accuracy))
 
         if args.log != None:    
-            summary, _ = session.run ([merged_summary, train_step], feed_dict={x:batch[0], y_:batch[1], keep_prob:0.5})
+            summary, _ = session.run ([merged_summary, train_step], feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
             train_writer.add_summary (summary, i)
         else:
             session.run (train_step, feed_dict={x:batch[0], y_:batch[1], keep_prob:0.5})
             
-    #print("test accuracy %g" % accuracy.eval (feed_dict={x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
+    test_data = data.get_test_data ()
+    test_data_accuracy = accuracy.eval (feed_dict={x: test_data[0], y_: test_data[1], keep_prob: 1.0})
+    print ("  Test set accuracy: {0:.2f}".format (test_data_accuracy))
     
     if args.log != None:
         train_writer.close ()
