@@ -7,8 +7,6 @@
 #
 
 import argparse
-import pickle
-import sys
 import h5py
 
 import tensorflow as tf
@@ -16,8 +14,6 @@ import numpy as np
 
 from common import Vec2d
     
-FLAGS = None
-
 #--------------------------------------------------------------------------
 # CLASS TrainingData
 #
@@ -110,8 +106,8 @@ def train (config, data):
     # Create the model
     #
     with tf.name_scope ('input'):
-        x = tf.placeholder (tf.float32, [None, data.sample_size * data.sample_size])
-        y_ = tf.placeholder (tf.float32, [None, 2])
+        x = tf.placeholder (tf.float32, [None, data.sample_size * data.sample_size], name='x')
+        y_ = tf.placeholder (tf.float32, [None, 2], name='y_')
       
     W_conv1 = create_weight_variable ([5, 5, 1, 32])
     b_conv1 = create_bias_variable ([32])
@@ -141,7 +137,7 @@ def train (config, data):
     h_fc1 = tf.nn.relu (tf.matmul (h_pool2_flat, W_fc1) + b_fc1)
     
     with tf.name_scope ('dropout'):
-        keep_prob = tf.placeholder (tf.float32)
+        keep_prob = tf.placeholder (tf.float32, name='keep_prob')
         h_fc1_drop = tf.nn.dropout (h_fc1, keep_prob)
         
         tf.summary.scalar ('dropout_keep_probability', keep_prob)
@@ -149,16 +145,14 @@ def train (config, data):
     W_fc2 = create_weight_variable ([1024, 2])
     b_fc2 = create_bias_variable ([2])
     
-    with tf.name_scope ('y_conv'):
-        y_conv = tf.matmul (h_fc1_drop, W_fc2) + b_fc2
-        
-        add_variable_summary (y_conv)
+    y_conv = tf.add (tf.matmul (h_fc1_drop, W_fc2), b_fc2, name='y_conv')        
+    add_variable_summary (y_conv)
     
     with tf.name_scope ('cross_entropy'):
         cross_entropy = tf.reduce_mean (tf.nn.softmax_cross_entropy_with_logits (labels=y_, logits=y_conv))
         train_step = tf.train.AdamOptimizer (1e-4).minimize (cross_entropy)
         correct_prediction = tf.equal (tf.argmax (y_conv, 1), tf.argmax (y_, 1))
-        accuracy = tf.reduce_mean (tf.cast (correct_prediction, tf.float32))
+        accuracy = tf.reduce_mean (tf.cast (correct_prediction, tf.float32), name='accuracy')
         
     tf.summary.scalar ('cross_entropy', cross_entropy)
     tf.summary.scalar ('accuracy', accuracy)
@@ -177,7 +171,7 @@ def train (config, data):
         
         if i % 100 == 0:
             train_accuracy = accuracy.eval (feed_dict={x: batch[0], y_: batch[1], keep_prob: 1.0})
-            print ("    Step {0}, training accuracy {1:.2f}".format (i, train_accuracy))
+            print ("    Step {0}, training accuracy {1:.4f}".format (i, train_accuracy))
 
         if args.log != None:    
             summary, _ = session.run ([merged_summary, train_step], feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
@@ -187,7 +181,7 @@ def train (config, data):
             
     test_data = data.get_test_data ()
     test_data_accuracy = accuracy.eval (feed_dict={x: test_data[0], y_: test_data[1], keep_prob: 1.0})
-    print ("  Test set accuracy: {0:.2f}".format (test_data_accuracy))
+    print ("  Test set accuracy: {0:.4f}".format (test_data_accuracy))
     
     if args.log != None:
         train_writer.close ()

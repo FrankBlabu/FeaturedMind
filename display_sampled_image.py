@@ -10,7 +10,6 @@ import argparse
 import io
 import math
 import numpy as np
-import random
 
 from test_image_generator import TestImage
 
