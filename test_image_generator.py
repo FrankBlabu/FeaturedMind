@@ -356,6 +356,8 @@ class TestImage:
     #--------------------------------------------------------------------------
     # Return sample area from image
     #
+    # The image data is normalized in the interval [0...1]
+    #
     # @param x    Sample x offset in pixels
     # @param y    Sample y offset in pixels
     # @param size Sample edge size in pixels
