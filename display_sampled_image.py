@@ -48,7 +48,7 @@ def create_result_image (test_image, sample_size, border_flags):
             if generated_flag:
                 draw.rectangle (r, fill=(0x00, 0xff, 0x00, 0x20), outline=(0x00, 0xff, 0x00))
             
-            if border_flags != None and border_flags[y][x]:
+            if border_flags is not None and not border_flags[y][x]:
                 draw.rectangle (r, fill=None, outline=(0xff, 0x00, 0x00))
                 
             

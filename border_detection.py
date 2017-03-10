@@ -75,32 +75,18 @@ accuracy_node = tf.get_default_graph ().get_tensor_by_name ('cross_entropy/accur
 
 if args.show_image:
     if args.runs > 1:
-        print ("Warning: Multiple runs option ignored when displaying the result as an image")
+        print ("Warning: '-r' ignored when displaying the result as an image")
 
-        y_conv, accuracy = session.run ([y_conv_node, accuracy_node], feed_dict={'input/x:0': x, 'input/y_:0': y, 'dropout/keep_prob:0': 1.0})
-        print ('Accuracy: ', accuracy)
-        
-        flags = np.zeros ((samples_y, samples_x))
-        
-        print (y_conv.shape)
-        print (y_conv[0], y[0])
-        print (y_conv[1], y[1])
-        
-        for ys in range (0, samples_y):
-            for xs in range (0, samples_x):
+    y_conv, accuracy = session.run ([y_conv_node, accuracy_node], feed_dict={'input/x:0': x, 'input/y_:0': y, 'dropout/keep_prob:0': 1.0})
+    print ('Accuracy: ', accuracy)
+   
+    assert y.shape == y_conv.shape
+    
+    flags = (y[:,0] > y[:,1]) == (y_conv[:,0] > y_conv[:,1])
+    flags = flags.reshape ((samples_y, samples_x))
                 
-                index = ys * samples_y + xs
-                
-                f0 = y_conv[index][0] 
-                f1 = y_conv[index][1]
-                
-                flags[ys][xs] = True if f0 < f1 else False
-                print (f0, f1, y[index][0], y[index][1], flags) 
-                
-                count += 1
-                
-        image = create_result_image (test_image, args.sample_size, flags[ys][xs])
-        image.show ()
+    image = create_result_image (test_image, args.sample_size, flags)
+    image.show ()
 
 else:
     start_time = time.process_time ()
