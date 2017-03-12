@@ -71,7 +71,7 @@ for ys in range (0, samples_y):
 # Run border detection network
 #
 y_conv_node = tf.get_default_graph ().get_tensor_by_name ('y_conv:0')
-accuracy_node = tf.get_default_graph ().get_tensor_by_name ('cross_entropy/accuracy:0')
+accuracy_node = tf.get_default_graph ().get_tensor_by_name ('training/accuracy:0')
 
 if args.show_image:
     if args.runs > 1:

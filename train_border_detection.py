@@ -103,52 +103,103 @@ def train (config, data):
             tf.summary.histogram ('histogram', var)
 
     #
-    # Create the model
+    # Input layer, 'None' stand for any size (batch size, in this case)
     #
     with tf.name_scope ('input'):
         x = tf.placeholder (tf.float32, [None, data.sample_size * data.sample_size], name='x')
         y_ = tf.placeholder (tf.float32, [None, 2], name='y_')
       
+    #
+    # Generate 2D image from the continuous input data
+    #
+    # Size: [Batch size, image width, image height, image depth]
+    #
+    # If one component is -1 (here: the batch size) it is computed automatically so that
+    # the data matches the target shape. 
+    #
+    x_image = tf.reshape (x, [-1, data.sample_size, data.sample_size, 1], name='image')
+    tf.summary.image ('input image', x_image, 10)
+    
+    #
+    # Convolution layer 1 (plus ReLu)
+    #
+    # Input size : [Batch size, image width, image height, output channels]    
+    # Filter size: [Conv. area width, conv. area height, input channels (image channels), output channels (32)]
+    # Output size: [Batch size, image width, image height, depth (32)] 
+    #
+    # So the input image is scanned in 5x5 samples and 32 features are extracted from
+    # each sample 
+    #    
     W_conv1 = create_weight_variable ([5, 5, 1, 32])
     b_conv1 = create_bias_variable ([32])
+    h_conv1 = tf.nn.conv2d (x_image, W_conv1, strides=[1, 1, 1, 1], padding='SAME')
+    h_relu1 = tf.nn.relu (h_conv1 + b_conv1)
     
-    with tf.name_scope ('image'):
-        x_image = tf.reshape (x, [-1, data.sample_size, data.sample_size, 1])
-        tf.summary.image ('input', x_image, 10)
+    #
+    # Max pooling layer 1
+    #
+    # The window size is [1, 2, 2, 1], so each batch entry and output channel is used, but
+    # 2x2 samples of the convoluted image of the last step are max pooled together.
+    #
+    # Output size: [batch size, image width / 2, image height / 2, depth (32)]
+    #
+    h_pool1 = tf.nn.max_pool (h_relu1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+                        
+    #
+    # Convolutional layer 2 (plus ReLu)
+    #
+    # Input size:  [batch size, image width / 2, image height / 2, input depth (32)]
+    # Filter size: [Conv. area width, conv area height, input channels, output depth (64)]
+    # Output size: [batch size, image width / 2, image height / 2, output depth (64)]
+    #                        
+    W_conv2 = create_weight_variable ([5, 5, 32, 64])
+    b_conv2 = create_bias_variable ([64])
+    h_conv2 = tf.nn.conv2d (h_pool1, W_conv2, strides=[1, 1, 1, 1], padding='SAME')
+    h_relu2 = tf.nn.relu (h_conv2 + b_conv2)
     
-    with tf.name_scope ('pooling'):
-        h_conv1 = tf.nn.conv2d (x_image, W_conv1, strides=[1, 1, 1, 1], padding='SAME')
-        h_relu1 = tf.nn.relu (h_conv1 + b_conv1)
-        h_pool1 = tf.nn.max_pool (h_relu1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-            
-    with tf.name_scope ('convolution'):
-        W_conv2 = create_weight_variable ([5, 5, 32, 64])
-        b_conv2 = create_bias_variable ([64])
-            
-    with tf.name_scope ('convolution_pooling'):
-        h_conv2 = tf.nn.conv2d (h_pool1, W_conv2, strides=[1, 1, 1, 1], padding='SAME')
-        h_relu2 = tf.nn.relu (h_conv2 + b_conv2)
-        h_pool2 = tf.nn.max_pool (h_relu2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-            
+    #
+    # Max pooling layer 2
+    #
+    # Output size: [batch size, image width / 4, image height / 4, output depth (64)]
+    #
+    h_pool2 = tf.nn.max_pool (h_relu2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+
+    #
+    # Full connected layer (plus ReLu)
+    #
+    # Input size: [batch size, image width / 4, image height / 4, input depth (64)]
+    # Ouput size: [batch size, output depth (1024)]
+    #            
     W_fc1 = create_weight_variable ([8 * 8 * 64, 1024])
     b_fc1 = create_bias_variable ([1024])
     
     h_pool2_flat = tf.reshape (h_pool2, [-1, 8 * 8 * 64])
     h_fc1 = tf.nn.relu (tf.matmul (h_pool2_flat, W_fc1) + b_fc1)
-    
+
+    #
+    # Dropout of the fully connected layer
+    #    
     with tf.name_scope ('dropout'):
         keep_prob = tf.placeholder (tf.float32, name='keep_prob')
         h_fc1_drop = tf.nn.dropout (h_fc1, keep_prob)
         
         tf.summary.scalar ('dropout_keep_probability', keep_prob)
     
+    #
+    # Output layer
+    #
+    # Reduce to expected classes (has no border/ has a border)
+    #
     W_fc2 = create_weight_variable ([1024, 2])
     b_fc2 = create_bias_variable ([2])
     
     y_conv = tf.add (tf.matmul (h_fc1_drop, W_fc2), b_fc2, name='y_conv')        
     add_variable_summary (y_conv)
     
-    with tf.name_scope ('cross_entropy'):
+    #
+    # Training layers
+    #
+    with tf.name_scope ('training'):
         cross_entropy = tf.reduce_mean (tf.nn.softmax_cross_entropy_with_logits (labels=y_, logits=y_conv))
         train_step = tf.train.AdamOptimizer (1e-4).minimize (cross_entropy)
         correct_prediction = tf.equal (tf.argmax (y_conv, 1), tf.argmax (y_, 1))
