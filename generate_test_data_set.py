@@ -54,7 +54,7 @@ file.attrs['h5py_version']      = h5py.version.version
 
 data = file.create_dataset ('data', (args.number_of_samples, args.sample_size * args.sample_size), 
                             dtype='f', compression='lzf')
-labels = file.create_dataset ('labels', (args.number_of_samples, 2), dtype='f', compression='lzf')
+labels = file.create_dataset ('labels', (args.number_of_samples,), dtype='i', compression='lzf')
 
 count = 0
 while count < args.number_of_samples:
@@ -85,7 +85,7 @@ while count < args.number_of_samples:
     for sample in samples:
 
         data[count] = sample[0]
-        labels[count] = [0 if sample[1] else 1, 1 if sample[1] else 0]
+        labels[count] = 1 if sample[1] else 0
 
         count += 1
         if count == args.number_of_samples:
