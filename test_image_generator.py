@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 #
 # TestImage.py - Randomly generated test data image
 #
@@ -76,6 +77,14 @@ class TestImage:
         size = (width, height)
 
         #
+        # Colors used for line direction markers in the mask
+        #
+        self.COLOR_HORIZONTAL = 0xff0000
+        self.COLOR_VERTICAL   = 0x00ff00
+        self.COLOR_UP         = 0x0000ff
+        self.COLOR_DOWN       = 0x00ffff
+
+        #
         # The complete test image
         #
         self.image = self.add_background_noise (PIL.Image.new ('L', size))
@@ -83,7 +92,7 @@ class TestImage:
         #
         # Mask marking the feature and border relevant pixels for detection of edges
         #
-        self.mask  = PIL.Image.new ('1', size)
+        self.mask  = PIL.Image.new ('L', size)
             
         #
         # Compute area used for the specimen border
@@ -265,15 +274,15 @@ class TestImage:
 
         border_image = border_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))
 
-        border_mask = PIL.Image.new ('1', self.image.size)
+        border_mask = PIL.Image.new ('L', self.image.size)
 
         draw = PIL.ImageDraw.Draw (border_mask)
-        draw.polygon (border, fill=0x01, outline=0x01)
+        draw.polygon (border, fill=0xff, outline=0xff)
 
         self.image.paste (border_image, mask=border_mask)
 
         draw = PIL.ImageDraw.Draw (self.mask)
-        draw.polygon (border, fill=None, outline=0x01)
+        draw.polygon (border, fill=None, outline=0xff)
 
     #--------------------------------------------------------------------------
     # Draw rectangular feature
@@ -288,7 +297,7 @@ class TestImage:
         self.image.paste (feature_image, box=offset.asTuple ())
         
         draw = PIL.ImageDraw.Draw (self.mask)
-        draw.rectangle (to_native_rect (offset, size), fill=None, outline=0x01)
+        draw.rectangle (to_native_rect (offset, size), fill=None, outline=0xff)
             
     #--------------------------------------------------------------------------
     # Draw circular feature
@@ -300,14 +309,14 @@ class TestImage:
         draw.ellipse (to_native_rect (Vec2d (0, 0), size), fill=None, outline=0xff)
         feature_image = feature_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))
 
-        mask_image = PIL.Image.new ('1', size.asTuple ())
+        mask_image = PIL.Image.new ('L', size.asTuple ())
         draw = PIL.ImageDraw.Draw (mask_image)
-        draw.ellipse (to_native_rect (Vec2d (0, 0), size), fill=0x01, outline=0x01)
+        draw.ellipse (to_native_rect (Vec2d (0, 0), size), fill=0xff, outline=0xff)
 
         self.image.paste (feature_image, box=offset.asTuple (), mask=mask_image)
         
         draw = PIL.ImageDraw.Draw (self.mask)
-        draw.ellipse (to_native_rect (offset, size), fill=None, outline=0x01)
+        draw.ellipse (to_native_rect (offset, size), fill=None, outline=0xff)
 
     #--------------------------------------------------------------------------
     # Generate random feature
@@ -434,5 +443,6 @@ class TestImage:
 #
 if __name__ == '__main__':
     image = TestImage (640, 480)
-    image.image.show ()
+    image.image.show (title='Generated image')
+    image.mask.show (title='Pixel mask')
     
