@@ -33,15 +33,14 @@ parser.add_argument ('-s', '--sample-size',       type=int, default=32,   help='
 
 args = parser.parse_args ()
 
-if args.width > 2048:
-    assert 'Training image width is too large.'
-if args.height > 2048:
-    assert 'Training image height is too large.'
+assert args.width <= 2048 and 'Training image width is too large.'
+assert args.height <= 2048 and 'Training image height is too large.'
+assert args.sample_size <= 64 and 'Sample size is unusual large.'
 
 #
 # Create test data sets
 #
-print ("Generating samples...")
+print ("Generating {0} samples of size {1}x{1}...".format (args.number_of_samples, args.sample_size))
 
 file = h5py.File (args.file, 'w')
 
@@ -66,12 +65,12 @@ while count < args.number_of_samples:
      
     for y in range (0, int (math.floor (args.height / args.sample_size))):
         for x in range (0, int (math.floor (args.width / args.sample_size))):
-            sample, flag = image.get_sample (x * args.sample_size, y * args.sample_size, args.sample_size)
+            sample, direction = image.get_sample (x * args.sample_size, y * args.sample_size, args.sample_size)
             
-            if flag:
-                positive_samples.append ((sample, True))
+            if direction > 0:
+                positive_samples.append ((sample, direction))
             else:
-                negative_samples.append ((sample, False))
+                negative_samples.append ((sample, direction))
             
     random.shuffle (positive_samples)
     random.shuffle (negative_samples)
@@ -85,7 +84,7 @@ while count < args.number_of_samples:
     for sample in samples:
 
         data[count] = sample[0]
-        labels[count] = 1 if sample[1] else 0
+        labels[count] = sample[1]
 
         count += 1
         if count == args.number_of_samples:
