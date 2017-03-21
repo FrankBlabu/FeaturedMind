@@ -5,6 +5,7 @@
 # Frank Blankenburg, Mar. 2017
 #
 
+import math
 import random
 import unittest
 
@@ -77,12 +78,15 @@ class TestImage:
         size = (width, height)
 
         #
-        # Colors used for line direction markers in the mask
+        # Number of segments used for line direction marking and the
+        # matching colors
         #
-        self.COLOR_HORIZONTAL = 0xff0000
-        self.COLOR_VERTICAL   = 0x00ff00
-        self.COLOR_UP         = 0x0000ff
-        self.COLOR_DOWN       = 0x00ffff
+        self.ARC_SEGMENTS = 8
+        self.ARC_COLORS = [ 0xff0000, 0x00ff00, 0x0000ff, 0xffff00,
+                            0x00ffff, 0xff00ff, 0x880000, 0x008800,
+                            0x000088, 0x888800, 0x008888, 0x880088 ]
+        
+        assert len (self.ARC_COLORS) >= self.ARC_SEGMENTS
 
         #
         # The complete test image
@@ -92,7 +96,7 @@ class TestImage:
         #
         # Mask marking the feature and border relevant pixels for detection of edges
         #
-        self.mask  = PIL.Image.new ('L', size)
+        self.mask  = PIL.Image.new ('RGB', size)
             
         #
         # Compute area used for the specimen border
@@ -266,6 +270,9 @@ class TestImage:
 
         draw = PIL.ImageDraw.Draw (border_image)
         
+        #
+        # Draw specimen background (with some noise)
+        #
         for y in range (border_image.size[1]):
             for x in range (border_image.size[0]):
                 draw.point ((x, y), fill=random.randint (100, 120))
@@ -273,8 +280,8 @@ class TestImage:
         draw.polygon (border, fill=None, outline=0xff)
 
         border_image = border_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))
-
-        border_mask = PIL.Image.new ('L', self.image.size)
+        
+        border_mask = PIL.Image.new ('1', self.image.size)
 
         draw = PIL.ImageDraw.Draw (border_mask)
         draw.polygon (border, fill=0xff, outline=0xff)
@@ -282,8 +289,31 @@ class TestImage:
         self.image.paste (border_image, mask=border_mask)
 
         draw = PIL.ImageDraw.Draw (self.mask)
-        draw.polygon (border, fill=None, outline=0xff)
+        
+        last_point = None
+        
+        for point in border:
+            if last_point:
+                self.draw_line (draw, last_point, point)
+            last_point = point
+            
+        if len (border) > 1:
+            self.draw_line (draw, last_point, border[0])
+        
 
+    #--------------------------------------------------------------------------
+    # Draw single line
+    #
+    # The line is drawn with an appropriate direction color
+    #
+    # @param draw Drawing handle
+    # @param p1   Starting point of the line
+    # @param p2   Target point of the line
+    #
+    def draw_line (self, draw, p1, p2):
+        draw.line ([p1, p2], fill=self.get_color_for_direction (p1, p2))
+        
+    
     #--------------------------------------------------------------------------
     # Draw rectangular feature
     #
@@ -297,7 +327,13 @@ class TestImage:
         self.image.paste (feature_image, box=offset.asTuple ())
         
         draw = PIL.ImageDraw.Draw (self.mask)
-        draw.rectangle (to_native_rect (offset, size), fill=None, outline=0xff)
+        
+        rect = [offset, offset + size]
+        self.draw_line (draw, get_rect_point (rect, 0).asTuple (), get_rect_point (rect, 1).asTuple ())
+        self.draw_line (draw, get_rect_point (rect, 1).asTuple (), get_rect_point (rect, 2).asTuple ())
+        self.draw_line (draw, get_rect_point (rect, 2).asTuple (), get_rect_point (rect, 3).asTuple ())
+        self.draw_line (draw, get_rect_point (rect, 3).asTuple (), get_rect_point (rect, 0).asTuple ())
+        
             
     #--------------------------------------------------------------------------
     # Draw circular feature
@@ -309,14 +345,14 @@ class TestImage:
         draw.ellipse (to_native_rect (Vec2d (0, 0), size), fill=None, outline=0xff)
         feature_image = feature_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))
 
-        mask_image = PIL.Image.new ('L', size.asTuple ())
+        mask_image = PIL.Image.new ('1', size.asTuple ())
         draw = PIL.ImageDraw.Draw (mask_image)
         draw.ellipse (to_native_rect (Vec2d (0, 0), size), fill=0xff, outline=0xff)
 
         self.image.paste (feature_image, box=offset.asTuple (), mask=mask_image)
         
         draw = PIL.ImageDraw.Draw (self.mask)
-        draw.ellipse (to_native_rect (offset, size), fill=None, outline=0xff)
+        draw.ellipse (to_native_rect (offset, size), fill=None, outline=self.ARC_COLORS[0])
 
     #--------------------------------------------------------------------------
     # Generate random feature
@@ -366,6 +402,20 @@ class TestImage:
             pass
 
     #--------------------------------------------------------------------------
+    # Compute color for a line segment indicating the direction
+    #
+    # @param p1 First point
+    # @param p2 Second point
+    # @return Color matching the direction
+    #
+    def get_color_for_direction (self, p1, p2):
+        
+        angle = (math.atan2 (p2[1] - p1[1], p2[0] - p1[0]) + math.pi) % math.pi
+        segment = round (self.ARC_SEGMENTS * angle / (2 * math.pi)) % self.ARC_SEGMENTS
+        return self.ARC_COLORS[segment]
+    
+
+    #--------------------------------------------------------------------------
     # Return sample area from image
     #
     # The image data is normalized in the interval [0...1]
@@ -384,7 +434,8 @@ class TestImage:
         
         stat = PIL.ImageStat.Stat (sample_mask)
         
-        return ([float (d) / 255 for d in sample.getdata ()], stat.extrema[0][1] > 0)
+        return ([float (d) / 255 for d in sample.getdata ()], 
+                max ([x[1] for x in stat.extrema]) > 0)
 
 
     #--------------------------------------------------------------------------
