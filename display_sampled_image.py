@@ -31,7 +31,7 @@ def create_result_image (test_image, sample_size, border_flags):
     
     for y in range (0, int (math.floor (test_image.height / sample_size))):
         for x in range (0, int (math.floor (test_image.width / sample_size))):
-            sample, generated_flag = test_image.get_sample (x * sample_size, y * sample_size, sample_size)
+            sample, direction = test_image.get_sample (x * sample_size, y * sample_size, sample_size)
     
             data = np.array ([int (round (d * 255)) for d in sample], np.uint8)
             sample_image = PIL.Image.frombuffer ('L', (sample_size, sample_size), data.tostring (), 'raw', 'L', 0, 1)
@@ -45,8 +45,10 @@ def create_result_image (test_image, sample_size, border_flags):
             #
             # Add overlay showing the generated 'border flag' status
             #
-            if generated_flag:
-                draw.rectangle (r, fill=(0x00, 0xff, 0x00, 0x20), outline=(0x00, 0xff, 0x00))
+            if direction > 0:
+                color = test_image.arc_colors[direction - 1]
+                
+                draw.rectangle (r, fill=(color[0], color[1], color[2], 0x20), outline=color)
             
             if border_flags is not None and not border_flags[y][x]:
                 draw.rectangle (r, fill=None, outline=(0xff, 0x00, 0x00))

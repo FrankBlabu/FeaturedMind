@@ -14,7 +14,8 @@ from common import Vec2d
 import PIL.Image
 import PIL.ImageDraw
 import PIL.ImageFilter
-import PIL.ImageStat
+
+import numpy as np
 
 
 #--------------------------------------------------------------------------
@@ -74,20 +75,28 @@ class TestImage:
 
         self.width = width
         self.height = height
+
+        self.direction_threshold = 0.7
         
         size = (width, height)
 
         #
         # Number of segments used for line direction marking and the
-        # matching colors
+        # matching colors (plus 1 for unclassified segments)
         #
-        self.ARC_SEGMENTS = 8
-        self.ARC_COLORS = [ 0xff0000, 0x00ff00, 0x0000ff, 0xffff00,
-                            0x00ffff, 0xff00ff, 0x880000, 0x008800,
-                            0x000088, 0x888800, 0x008888, 0x880088 ]
+        self.arc_segments = 4
+        self.arc_colors = [ (0xff, 0x00, 0x00),
+                            (0x00, 0xff, 0x00),
+                            (0x00, 0x00, 0xff),
+                            (0xff, 0xff, 0x00),
+                            (0x55, 0x55, 0x55) ]
         
-        assert len (self.ARC_COLORS) >= self.ARC_SEGMENTS
-
+        assert len (self.arc_colors) >= self.arc_segments
+        
+        self.arc_color_index = {}
+        for i in range (len (self.arc_colors)):
+            self.arc_color_index[self.arc_colors[i]] = i   
+            
         #
         # The complete test image
         #
@@ -424,9 +433,9 @@ class TestImage:
     def get_color_for_direction (self, p1, p2):        
         angle = (math.atan2 (p2[1] - p1[1], p2[0] - p1[0]) + math.pi) % math.pi
                 
-        segment = round (self.ARC_SEGMENTS * angle / (2 * math.pi)) % int (math.floor (self.ARC_SEGMENTS / 2))
+        segment = round (2 * self.arc_segments * angle / (2 * math.pi)) % self.arc_segments
                 
-        return self.ARC_COLORS[segment]
+        return self.arc_colors[segment]
     
 
     #--------------------------------------------------------------------------
@@ -446,10 +455,28 @@ class TestImage:
         sample = self.image.crop (sample_area)            
         sample_mask = self.mask.crop (sample_area)
         
-        stat = PIL.ImageStat.Stat (sample_mask)
+        #
+        # Classify segment content
+        #
+        distribution = np.zeros ((len (self.arc_colors)))
         
-        return ([float (d) / 255 for d in sample.getdata ()], 
-                max ([x[1] for x in stat.extrema]) > 0)
+        for y in range (sample_mask.height):
+            for x in range (sample_mask.width):
+                color = sample_mask.getpixel ((x, y))
+                if color in self.arc_color_index:
+                    distribution[self.arc_color_index[color]] += 1        
+
+        index = 0
+
+        if distribution.sum () > 0:
+            distribution /= distribution.sum ()
+            segment = np.argmax (distribution)
+            if distribution[segment] > self.direction_threshold:
+                index = segment + 1
+            else:
+                index = self.arc_segments + 1
+        
+        return ([float (d) / 255 for d in sample.getdata ()], index) 
 
 
     #--------------------------------------------------------------------------
