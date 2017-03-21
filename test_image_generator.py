@@ -351,8 +351,21 @@ class TestImage:
 
         self.image.paste (feature_image, box=offset.asTuple (), mask=mask_image)
         
+        rect = to_native_rect (offset, size)
+        color = 0xffffff
+        
         draw = PIL.ImageDraw.Draw (self.mask)
-        draw.ellipse (to_native_rect (offset, size), fill=None, outline=self.ARC_COLORS[0])
+        draw.ellipse (rect, fill=None, outline=color)
+            
+        center = (int (round (rect[0][0] + (rect[1][0] - rect[0][0]) / 2)),
+                  int (round (rect[0][1] + (rect[1][1] - rect[0][1]) / 2)))
+            
+        for y in range (rect[0][1], rect[1][1] + 1):
+            for x in range (rect[0][0], rect[1][0] + 1):
+                r, g, b = self.mask.getpixel ((x, y))
+                if r > 0 or g > 0 or b > 0:
+                    color = self.get_color_for_direction ((0, 0), (-y + center[1], x - center[0]))
+                    self.mask.putpixel ((x, y), color)
 
     #--------------------------------------------------------------------------
     # Generate random feature
@@ -408,10 +421,11 @@ class TestImage:
     # @param p2 Second point
     # @return Color matching the direction
     #
-    def get_color_for_direction (self, p1, p2):
-        
+    def get_color_for_direction (self, p1, p2):        
         angle = (math.atan2 (p2[1] - p1[1], p2[0] - p1[0]) + math.pi) % math.pi
-        segment = round (self.ARC_SEGMENTS * angle / (2 * math.pi)) % self.ARC_SEGMENTS
+                
+        segment = round (self.ARC_SEGMENTS * angle / (2 * math.pi)) % int (math.floor (self.ARC_SEGMENTS / 2))
+                
         return self.ARC_COLORS[segment]
     
 
