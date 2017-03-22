@@ -43,6 +43,8 @@ class TrainingData:
         self.test_set_offset = self.training_set_offset + self.training_set_size
         self.test_set_size = len (self.data) - self.training_set_size
         
+        self.segments = file.attrs['segments']
+        
             
     def size (self):
         return len (self.data)
@@ -116,7 +118,7 @@ def train_manual (config, data):
         x = tf.placeholder (tf.float32, [None, data.sample_size * data.sample_size], name='x')
         y_ = tf.placeholder (tf.float32, [None], name='y_')
 
-    onehot_y_ = tf.one_hot (indices=tf.cast (y_, tf.int32), depth=2)
+    onehot_y_ = tf.one_hot (indices=tf.cast (y_, tf.int32), depth=data.segments + 2)
       
     #
     # Generate 2D image from the continuous input data
@@ -199,12 +201,13 @@ def train_manual (config, data):
     #
     # Reduce to expected classes (has no border/ has a border)
     #
-    W_fc2 = create_weight_variable ([1024, 2])
-    b_fc2 = create_bias_variable ([2])
+    W_fc2 = create_weight_variable ([1024, data.segments + 2])
+    b_fc2 = create_bias_variable ([data.segments + 2])
     
     y_conv = tf.add (tf.matmul (h_fc1_drop, W_fc2), b_fc2, name='y_conv')        
     add_variable_summary (y_conv)
     
+    result = tf.argmax (y_conv, 1, name='result')
 
     #
     # Training layers
@@ -212,7 +215,7 @@ def train_manual (config, data):
     with tf.name_scope ('training'):
         cross_entropy = tf.reduce_mean (tf.nn.softmax_cross_entropy_with_logits (labels=onehot_y_, logits=y_conv))
         train_step = tf.train.AdamOptimizer (1e-4).minimize (cross_entropy)
-        correct_prediction = tf.equal (tf.argmax (y_conv, 1), tf.argmax (onehot_y_, 1))
+        correct_prediction = tf.equal (result, tf.cast (y_, tf.int64))
         accuracy = tf.reduce_mean (tf.cast (correct_prediction, tf.float32), name='accuracy')
         
     tf.summary.scalar ('cross_entropy', cross_entropy)

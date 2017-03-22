@@ -55,48 +55,47 @@ samples_y = int (math.floor (args.height / args.sample_size))
 sample_size = args.sample_size
 
 x = np.zeros ((samples_x * samples_y, sample_size * sample_size))
-y = np.zeros ((samples_x * samples_y, 2))
+y = np.zeros ((samples_x * samples_y))
 
 count = 0
 for ys in range (0, samples_y):
     for xs in range (0, samples_x):
-        sample, flag = test_image.get_sample (xs * sample_size, ys * sample_size, sample_size)
+        sample, label = test_image.get_sample (xs * sample_size, ys * sample_size, sample_size)
 
         x[count] = sample
-        y[count] = [0 if flag else 1, 1 if flag else 0]
+        y[count] = label
         
         count += 1
         
 #
 # Run border detection network
 #
-y_conv_node = tf.get_default_graph ().get_tensor_by_name ('y_conv:0')
+result_node = tf.get_default_graph ().get_tensor_by_name ('result:0')
 accuracy_node = tf.get_default_graph ().get_tensor_by_name ('training/accuracy:0')
 
 if args.show_image:
     if args.runs > 1:
         print ("Warning: '-r' ignored when displaying the result as an image")
 
-    y_conv, accuracy = session.run ([y_conv_node, accuracy_node], feed_dict={'input/x:0': x, 'input/y_:0': y, 'dropout/keep_prob:0': 1.0})
+    result, accuracy = session.run ([result_node, accuracy_node], feed_dict={'input/x:0': x, 'input/y_:0': y, 'dropout/keep_prob:0': 1.0})
     print ('Accuracy: ', accuracy)
    
-    assert y.shape == y_conv.shape
+    assert y.shape == result.shape
     
-    flags = (y[:,0] > y[:,1]) == (y_conv[:,0] > y_conv[:,1])
-    flags = flags.reshape ((samples_y, samples_x))
+    segments = y == result
+    segments = segments.reshape ((samples_y, samples_x))
                 
-    image = create_result_image (test_image, args.sample_size, flags)
+    image = create_result_image (test_image, args.sample_size, segments)
     image.show ()
 
 else:
     start_time = time.process_time ()
     
     for _ in range (args.runs):
-        y_conv, accuracy = session.run ([y_conv_node, accuracy_node], feed_dict={'input/x:0': x, 'input/y_:0': y, 'dropout/keep_prob:0': 1.0})
+        result, accuracy = session.run ([result_node, accuracy_node], feed_dict={'input/x:0': x, 'input/y_:0': y, 'dropout/keep_prob:0': 1.0})
         print ('Accuracy: ', accuracy)
     
     elapsed_time = time.process_time () - start_time
     
     print ('Duration ({0} runs): {1:.2f} s'.format (args.runs, elapsed_time))
-
 

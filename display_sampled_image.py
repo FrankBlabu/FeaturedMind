@@ -20,7 +20,7 @@ import PIL.Image
 #----------------------------------------------------------------------------
 # Display test image together with border detection flag overlay
 #
-def create_result_image (test_image, sample_size, border_flags):
+def create_result_image (test_image, sample_size, segments):
 
     #
     # Paste samples into displayable image
@@ -45,16 +45,21 @@ def create_result_image (test_image, sample_size, border_flags):
             #
             # Add overlay showing the generated 'border flag' status
             #
-            if direction > 0:
-                color = test_image.arc_colors[direction - 1]
+            if segments is not None:
                 
+                segment = segments[y][x]
+                
+                if segment > 0:
+                    color = test_image.arc_colors[segment - 1]                
+                    draw.rectangle (r, fill=(color[0], color[1], color[2], 0x20), outline=color)
+                if segment != direction:
+                    draw.line ((r[0], r[1], r[2], r[3]), fill=(0xff, 0x00, 0x00))
+                    draw.line ((r[2], r[1], r[0], r[3]), fill=(0xff, 0x00, 0x00))
+                    
+            elif direction > 0:
+                color = test_image.arc_colors[direction - 1]                
                 draw.rectangle (r, fill=(color[0], color[1], color[2], 0x20), outline=color)
             
-            if border_flags is not None and not border_flags[y][x]:
-                draw.rectangle (r, fill=None, outline=(0xff, 0x00, 0x00))
-                
-            
-                
     return image
 
 

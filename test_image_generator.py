@@ -66,6 +66,17 @@ def to_native_rect (origin, size):
 #
 class TestImage:
     
+    #
+    # Number of segments used for line direction marking and the
+    # matching colors (plus 1 for unclassified segments)
+    #
+    arc_segments = 4
+    arc_colors = [ (0xff, 0x00, 0x00),
+                   (0x00, 0xff, 0x00),
+                   (0x00, 0x00, 0xff),
+                   (0xff, 0xff, 0x00),
+                   (0x55, 0x55, 0x55) ]
+    
     #--------------------------------------------------------------------------
     # Constructor
     #
@@ -80,22 +91,12 @@ class TestImage:
         
         size = (width, height)
 
-        #
-        # Number of segments used for line direction marking and the
-        # matching colors (plus 1 for unclassified segments)
-        #
-        self.arc_segments = 4
-        self.arc_colors = [ (0xff, 0x00, 0x00),
-                            (0x00, 0xff, 0x00),
-                            (0x00, 0x00, 0xff),
-                            (0xff, 0xff, 0x00),
-                            (0x55, 0x55, 0x55) ]
         
-        assert len (self.arc_colors) >= self.arc_segments
+        assert len (TestImage.arc_colors) >= TestImage.arc_segments
         
         self.arc_color_index = {}
-        for i in range (len (self.arc_colors)):
-            self.arc_color_index[self.arc_colors[i]] = i   
+        for i in range (len (TestImage.arc_colors)):
+            self.arc_color_index[TestImage.arc_colors[i]] = i   
             
         #
         # The complete test image
@@ -433,9 +434,9 @@ class TestImage:
     def get_color_for_direction (self, p1, p2):        
         angle = (math.atan2 (p2[1] - p1[1], p2[0] - p1[0]) + math.pi) % math.pi
                 
-        segment = round (2 * self.arc_segments * angle / (2 * math.pi)) % self.arc_segments
+        segment = round (2 * TestImage.arc_segments * angle / (2 * math.pi)) % TestImage.arc_segments
                 
-        return self.arc_colors[segment]
+        return TestImage.arc_colors[segment]
     
 
     #--------------------------------------------------------------------------
@@ -458,7 +459,7 @@ class TestImage:
         #
         # Classify segment content
         #
-        distribution = np.zeros ((len (self.arc_colors)))
+        distribution = np.zeros ((len (TestImage.arc_colors)))
         
         for y in range (sample_mask.height):
             for x in range (sample_mask.width):
@@ -468,13 +469,17 @@ class TestImage:
 
         index = 0
 
+        #
+        # The label column will contain '0' for an empty segment,
+        # '1..n' for the n segment types and 'n+1' for an unclassified segment
+        # 
         if distribution.sum () > 0:
             distribution /= distribution.sum ()
             segment = np.argmax (distribution)
             if distribution[segment] > self.direction_threshold:
                 index = segment + 1
             else:
-                index = self.arc_segments + 1
+                index = TestImage.arc_segments + 1
         
         return ([float (d) / 255 for d in sample.getdata ()], index) 
 

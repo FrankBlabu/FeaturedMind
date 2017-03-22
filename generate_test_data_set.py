@@ -50,6 +50,7 @@ file.attrs['image_size']        = (args.width, args.height)
 file.attrs['number_of_samples'] = args.number_of_samples
 file.attrs['HDF5_Version']      = h5py.version.hdf5_version
 file.attrs['h5py_version']      = h5py.version.version
+file.attrs['segments']          = TestImage.arc_segments
 
 data = file.create_dataset ('data', (args.number_of_samples, args.sample_size * args.sample_size), 
                             dtype='f', compression='lzf')
