@@ -265,7 +265,9 @@ def train_manual (config, data):
     #
     if args.output != None:
         saver = tf.train.Saver ()
-        saver.save (session, args.output)
+        saver.save (session, os.path.abspath (args.output))
+
+    return session
 
 
 #--------------------------------------------------------------------------
