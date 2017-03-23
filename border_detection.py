@@ -14,6 +14,8 @@ import time
 import tensorflow as tf
 import numpy as np
 
+from training.training_data import TrainingData
+
 from test_image_generator import TestImage
 from display_sampled_image import create_result_image
 
