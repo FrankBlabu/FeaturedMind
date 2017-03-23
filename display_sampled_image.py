@@ -57,8 +57,9 @@ def create_result_image (test_image, sample_size, result):
                 result_direction = result[y][x]
                 
                 if result_direction != direction:
-                    draw.line ((r[0], r[1], r[2], r[3]), fill=(0xff, 0x00, 0x00))
-                    draw.line ((r[2], r[1], r[0], r[3]), fill=(0xff, 0x00, 0x00))
+                    color = test_image.arc_colors[result_direction - 1]
+                    draw.line ((r[0], r[1], r[2], r[3]), fill=color)
+                    draw.line ((r[2], r[1], r[0], r[3]), fill=color)
                     
             
     return image
