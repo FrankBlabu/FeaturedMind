@@ -80,12 +80,7 @@ if args.show_image:
     result, accuracy = session.run ([result_node, accuracy_node], feed_dict={'input/x:0': x, 'input/y_:0': y, 'dropout/keep_prob:0': 1.0})
     print ('Accuracy: ', accuracy)
    
-    assert y.shape == result.shape
-    
-    segments = y == result
-    segments = segments.reshape ((samples_y, samples_x))
-                
-    image = create_result_image (test_image, args.sample_size, segments)
+    image = create_result_image (test_image, args.sample_size, result.reshape ((samples_y, samples_x)))
     image.show ()
 
 else:

@@ -20,7 +20,7 @@ import PIL.Image
 #----------------------------------------------------------------------------
 # Display test image together with border detection flag overlay
 #
-def create_result_image (test_image, sample_size, segments):
+def create_result_image (test_image, sample_size, result):
 
     #
     # Paste samples into displayable image
@@ -41,24 +41,25 @@ def create_result_image (test_image, sample_size, segments):
             r = (rect[0], rect[1], rect[2] - 1, rect[3] - 1)
             
             image.paste (sample_image, rect)
-            
+
             #
-            # Add overlay showing the generated 'border flag' status
+            # Add overlay showing the direction 
             #
-            if segments is not None:
+            if direction > 0:
+                color = test_image.arc_colors[direction - 1]                
+                draw.rectangle (r, fill=(color[0], color[1], color[2], 0x20), outline=color)
                 
-                segment = segments[y][x]
+            #
+            # Add overlay showing if the result matches
+            #
+            if result is not None:
                 
-                if segment > 0:
-                    color = test_image.arc_colors[segment - 1]                
-                    draw.rectangle (r, fill=(color[0], color[1], color[2], 0x20), outline=color)
-                if segment != direction:
+                result_direction = result[y][x]
+                
+                if result_direction != direction:
                     draw.line ((r[0], r[1], r[2], r[3]), fill=(0xff, 0x00, 0x00))
                     draw.line ((r[2], r[1], r[0], r[3]), fill=(0xff, 0x00, 0x00))
                     
-            elif direction > 0:
-                color = test_image.arc_colors[direction - 1]                
-                draw.rectangle (r, fill=(color[0], color[1], color[2], 0x20), outline=color)
             
     return image
 
@@ -94,4 +95,3 @@ if __name__ == '__main__':
 
     image = create_result_image (test_image, args.sample_size, None)
     image.show ()
-    
