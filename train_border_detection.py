@@ -16,6 +16,7 @@ import tensorflow as tf
 
 import models.cnn_manual
 import models.cnn_tf_learn
+import models.cnn_keras
 
 from models.training_data import TrainingData
 
@@ -33,7 +34,7 @@ parser.add_argument ('file',                type=str,               help='Test d
 parser.add_argument ('-s', '--steps',       type=int, default=1000, help='Number of steps')
 parser.add_argument ('-l', '--log',         type=str, default=None, help='Log file directory')
 parser.add_argument ('-o', '--output',      type=str, default=None, help='Model output file name')
-parser.add_argument ('-b', '--batchsize',   type=int, default=50,   help='Number of samples per training batch')
+parser.add_argument ('-b', '--batchsize',   type=int, default=128,  help='Number of samples per training batch')
 parser.add_argument ('-t', '--tensorboard', action='store_true', default=False, help='Open log in tensorboard')
 
 args = parser.parse_args ()
@@ -61,8 +62,9 @@ print ("  Number of samples: ", data.size ())
 print ("  Sample size      : ", data.sample_size)
 
     
-models.cnn_manual.train (args, data)
-#train_tf_learn (args, data)
+#models.cnn_manual.train (args, data)
+#models.cnn_tf_learn.train (args, data)
+models.cnn_keras.train (args, data)
 
 #
 # Display result in tensorboard / browser
