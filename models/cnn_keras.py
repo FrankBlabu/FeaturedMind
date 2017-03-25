@@ -97,7 +97,7 @@ def train (args, data):
                    metrics=['accuracy', precision, recall])
     
     model.fit (x_train, y_train, batch_size=args.batchsize, epochs=epochs,
-              verbose=1, validation_data=(x_test, y_test))
+              verbose=1, validation_split=0.2)
     
     score = model.evaluate (x_test, y_test, verbose=0)
     
