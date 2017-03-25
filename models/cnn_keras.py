@@ -8,12 +8,43 @@
 import os
 import keras
 
-from keras.models import Sequential
+from keras.models import Sequential, Model
 from keras.layers import Dense, Dropout, Flatten
-from keras.layers import Conv2D, MaxPooling2D
+from keras.layers import Conv2D, MaxPooling2D, Input
 from keras import backend as K
 
 from models.training_data import TrainingData
+
+
+#--------------------------------------------------------------------------
+# Compute precision metrics
+#
+# Precision := True positives / All positives guesses
+#
+# Meaning: When we found a feature, how many times was is really aa feature ?
+#
+def precision (y_true, y_pred):
+    """Precision metric.
+    Only computes a batch-wise average of precision.
+    Computes the precision, a metric for multi-label classification of
+    how many selected items are relevant.
+    """
+    true_positives = K.sum (K.round (K.clip (y_true * y_pred, 0, 1)))
+    predicted_positives = K.sum (K.round (K.clip (y_pred, 0, 1)))
+    return true_positives / (predicted_positives + K.epsilon ())
+
+
+#--------------------------------------------------------------------------
+# Compute recall metrics
+#
+# Recall := True positives / All positives in dataset
+#
+# Meaning: How many of the actual present features did we find ?
+#
+def recall (y_true, y_pred):
+    true_positives = K.sum (K.round (K.clip (y_true * y_pred, 0, 1)))
+    all_positives = K.sum (K.round (K.clip (y_true, 0, 1)))
+    return true_positives / (all_positives + K.epsilon ())
 
 
 #--------------------------------------------------------------------------
@@ -49,25 +80,25 @@ def train (args, data):
     
     y_train = keras.utils.to_categorical (y_train, num_classes)
     y_test = keras.utils.to_categorical (y_test, num_classes)
-    
+                
     model = Sequential ()
     model.add (Conv2D (32, kernel_size=(5, 5),
                        activation='relu',
                        input_shape=input_shape))
-    #model.add (Conv2D (64, (3, 3), activation='relu'))
     model.add (MaxPooling2D (pool_size=(2, 2)))
     model.add (Dropout (0.25))
     model.add (Flatten ())
     model.add (Dense (1024, activation='relu'))
     model.add (Dropout (0.5))
     model.add (Dense (num_classes, activation='softmax'))
-    
+            
     model.compile (loss=keras.losses.categorical_crossentropy,
                    optimizer=keras.optimizers.Adadelta (),
-                   metrics=['accuracy'])
+                   metrics=['accuracy', precision, recall])
     
     model.fit (x_train, y_train, batch_size=args.batchsize, epochs=epochs,
               verbose=1, validation_data=(x_test, y_test))
+    
     score = model.evaluate (x_test, y_test, verbose=0)
     
     print('Test loss:', score[0])
