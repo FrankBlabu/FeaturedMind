@@ -7,15 +7,21 @@
 #
 
 import argparse
+import gc
 import h5py
+import keras
 import math
 import time
 
 import tensorflow as tf
 import numpy as np
 
-from training.training_data import TrainingData
+import models.metrics
 
+from keras.models import load_model
+from keras import backend as K
+
+from models.training_data import TrainingData
 from test_image_generator import TestImage
 from display_sampled_image import create_result_image
 
@@ -28,12 +34,11 @@ from display_sampled_image import create_result_image
 #
 parser = argparse.ArgumentParser ()
 
-parser.add_argument ('model',               type=str,                           help='Trained model data (meta data file)')
-parser.add_argument ('-x', '--width',       type=int,            default=640,   help='Width of generated image in pixels')
-parser.add_argument ('-y', '--height',      type=int,            default=480,   help='Height of generated image in pixels')
-parser.add_argument ('-s', '--sample-size', type=int,            default=32,    help='Edge size of each sample')
-parser.add_argument ('-r', '--runs',        type=int,            default=1,     help='Number of runs')
-parser.add_argument ('-i', '--show-image',  action='store_true', default=False, help='Show results as image')
+parser.add_argument ('model',               type=str,              help='Trained model data (meta data file)')
+parser.add_argument ('-x', '--width',       type=int, default=640, help='Width of generated image in pixels')
+parser.add_argument ('-y', '--height',      type=int, default=480, help='Height of generated image in pixels')
+parser.add_argument ('-s', '--sample-size', type=int, default=32,  help='Edge size of each sample')
+parser.add_argument ('-p', '--performance', type=int, default=0,   help='Number of runs for performance measurement')       
 
 args = parser.parse_args ()
 
@@ -43,9 +48,8 @@ assert args.height < 4096
 #
 # Load and construct model
 #
-session = tf.Session ()
-loader = tf.train.import_meta_graph (args.model)
-loader.restore (session, tf.train.latest_checkpoint ('./'))
+model = load_model (args.model, custom_objects={'precision': models.metrics.precision, 'recall': models.metrics.recall})
+
 
 #
 # Create test image and setup input tensors
@@ -68,31 +72,41 @@ for ys in range (0, samples_y):
         y[count] = label
         
         count += 1
+  
+if K.image_data_format () == 'channels_first':
+    x = x.reshape (x.shape[0], 1, args.sample_size, args.sample_size)
+else:
+    x = x.reshape (x.shape[0], args.sample_size, args.sample_size, 1)
+    
+x = x.astype ('float32')
+y = keras.utils.to_categorical (y, TestImage.arc_segments + 2)
+
         
 #
 # Run border detection network
 #
-result_node = tf.get_default_graph ().get_tensor_by_name ('result:0')
-accuracy_node = tf.get_default_graph ().get_tensor_by_name ('training/accuracy:0')
+score = model.evaluate (x, y, verbose=0)
+result = model.predict (x).astype ('int32')
+result = np.argmax (result, axis=1).reshape ((samples_y, samples_x))
 
-if args.show_image:
-    if args.runs > 1:
-        print ("Warning: '-r' ignored when displaying the result as an image")
+print ('Test loss:', score[0])
+print ('Test accuracy:', score[1])
 
-    result, accuracy = session.run ([result_node, accuracy_node], feed_dict={'input/x:0': x, 'input/y_:0': y, 'dropout/keep_prob:0': 1.0})
-    print ('Accuracy: ', accuracy)
-   
-    image = create_result_image (test_image, args.sample_size, result.reshape ((samples_y, samples_x)))
-    image.show ()
-
-else:
+if args.performance > 0:
     start_time = time.process_time ()
     
-    for _ in range (args.runs):
-        result, accuracy = session.run ([result_node, accuracy_node], feed_dict={'input/x:0': x, 'input/y_:0': y, 'dropout/keep_prob:0': 1.0})
-        print ('Accuracy: ', accuracy)
+    for _ in range (args.performance):
+        score = model.evaluate (x, y, verbose=0)
     
     elapsed_time = time.process_time () - start_time
     
-    print ('Duration ({0} runs): {1:.2f} s'.format (args.runs, elapsed_time))
+    print ('Duration ({0} runs): {1:.2f} s'.format (args.performance, elapsed_time))
+    
+image = create_result_image (test_image, args.sample_size, result)
+image.show ()
+
+#
+# Tensorflow termination bug workaround
+#
+gc.collect ()
 

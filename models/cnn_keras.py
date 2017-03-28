@@ -14,38 +14,8 @@ from keras.layers import Conv2D, MaxPooling2D, Input
 from keras.callbacks import TensorBoard
 from keras import backend as K
 
+import models.metrics
 from models.training_data import TrainingData
-
-
-#--------------------------------------------------------------------------
-# Compute precision metrics
-#
-# Precision := True positives / All positives guesses
-#
-# Meaning: When we found a feature, how many times was is really aa feature ?
-#
-def precision (y_true, y_pred):
-    """Precision metric.
-    Only computes a batch-wise average of precision.
-    Computes the precision, a metric for multi-label classification of
-    how many selected items are relevant.
-    """
-    true_positives = K.sum (K.round (K.clip (y_true * y_pred, 0, 1)))
-    predicted_positives = K.sum (K.round (K.clip (y_pred, 0, 1)))
-    return true_positives / (predicted_positives + K.epsilon ())
-
-
-#--------------------------------------------------------------------------
-# Compute recall metrics
-#
-# Recall := True positives / All positives in dataset
-#
-# Meaning: How many of the actual present features did we find ?
-#
-def recall (y_true, y_pred):
-    true_positives = K.sum (K.round (K.clip (y_true * y_pred, 0, 1)))
-    all_positives = K.sum (K.round (K.clip (y_true, 0, 1)))
-    return true_positives / (all_positives + K.epsilon ())
 
 
 #--------------------------------------------------------------------------
@@ -74,10 +44,6 @@ def train (args, data):
     x_train = x_train.astype ('float32')
     x_test = x_test.astype ('float32')
 
-    print ('x_train shape:', x_train.shape)
-    print (x_train.shape[0], 'train samples')
-    print (x_test.shape[0], 'test samples')
-    
     y_train = keras.utils.to_categorical (y_train, num_classes)
     y_test = keras.utils.to_categorical (y_test, num_classes)
     
@@ -103,7 +69,7 @@ def train (args, data):
             
     model.compile (loss=keras.losses.categorical_crossentropy,
                    optimizer=keras.optimizers.Adadelta (),
-                   metrics=['accuracy', precision, recall])
+                   metrics=['accuracy', models.metrics.precision, models.metrics.recall])
     
     logger = []
     if args.log != None:
@@ -118,8 +84,8 @@ def train (args, data):
     
     score = model.evaluate (x_test, y_test, verbose=0)
 
-    print('Test loss:', score[0])
-    print('Test accuracy:', score[1])
+    print ('Test loss:', score[0])
+    print ('Test accuracy:', score[1])
 
     if args.output != None:
         model.save (os.path.abspath (args.output))
