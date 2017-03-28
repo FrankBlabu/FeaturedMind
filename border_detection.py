@@ -29,6 +29,8 @@ from display_sampled_image import create_result_image
 # MAIN
 #
 
+np.set_printoptions (threshold=np.nan)
+
 #
 # Parse command line arguments
 #
@@ -86,7 +88,8 @@ y = keras.utils.to_categorical (y, TestImage.arc_segments + 2)
 # Run border detection network
 #
 score = model.evaluate (x, y, verbose=0)
-result = model.predict (x).astype ('int32')
+
+result = model.predict (x)
 result = np.argmax (result, axis=1).reshape ((samples_y, samples_x))
 
 print ('Test loss:', score[0])
