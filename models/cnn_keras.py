@@ -54,7 +54,6 @@ def recall (y_true, y_pred):
 def train (args, data):
     
     num_classes = data.segments + 2
-    epochs = 10
     
     x_train = data.get_training_data ()[0]
     y_train = data.get_training_data ()[1]
@@ -80,13 +79,22 @@ def train (args, data):
     
     y_train = keras.utils.to_categorical (y_train, num_classes)
     y_test = keras.utils.to_categorical (y_test, num_classes)
-                
+    
     model = Sequential ()
+
     model.add (Conv2D (32, kernel_size=(5, 5),
                        activation='relu',
                        input_shape=input_shape))
     model.add (MaxPooling2D (pool_size=(2, 2)))
-    model.add (Dropout (0.25))
+
+    
+    model.add (Conv2D (64, kernel_size=(5, 5),
+                       activation='relu',
+                       input_shape=(int (data.sample_size / 2),
+                                    int (data.sample_size / 2),
+                                    1)))
+    model.add (MaxPooling2D (pool_size=(2, 2)))
+    
     model.add (Flatten ())
     model.add (Dense (1024, activation='relu'))
     model.add (Dropout (0.5))
@@ -96,10 +104,15 @@ def train (args, data):
                    optimizer=keras.optimizers.Adadelta (),
                    metrics=['accuracy', precision, recall])
     
-    model.fit (x_train, y_train, batch_size=args.batchsize, epochs=epochs,
-              verbose=1, validation_split=0.2)
+    model.fit (x_train, y_train, batch_size=args.batchsize, epochs=args.epochs, verbose=1,
+               validation_split=0.2)
     
     score = model.evaluate (x_test, y_test, verbose=0)
-    
+
     print('Test loss:', score[0])
     print('Test accuracy:', score[1])
+
+    if args.output != None:
+        model.save (os.path.abspath (args.output))
+
+    

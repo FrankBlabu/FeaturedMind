@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+                #!/usr/bin/python3
 #
 # TestImage.py - Randomly generated test data image
 #
