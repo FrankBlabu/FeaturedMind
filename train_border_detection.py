@@ -7,6 +7,7 @@
 #
 
 import argparse
+import gc
 import h5py
 import os
 import subprocess
@@ -69,7 +70,12 @@ models.cnn_keras.train (args, data)
 if args.tensorboard:
     process = subprocess.Popen (['tensorboard', '--logdir={0}'.format (args.log)])
     webbrowser.open ('http://localhost:6006', new=2)
-    process.wait ()
+    input ("Press [Enter] to continue...")
+    process.terminate ()
 
 file.close ()
 
+#
+# Tensorflow termination bug workaround
+#
+gc.collect ()

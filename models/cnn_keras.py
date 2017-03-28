@@ -11,6 +11,7 @@ import keras
 from keras.models import Sequential, Model
 from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D, Input
+from keras.callbacks import TensorBoard
 from keras import backend as K
 
 from models.training_data import TrainingData
@@ -104,8 +105,16 @@ def train (args, data):
                    optimizer=keras.optimizers.Adadelta (),
                    metrics=['accuracy', precision, recall])
     
-    model.fit (x_train, y_train, batch_size=args.batchsize, epochs=args.epochs, verbose=1,
-               validation_split=0.2)
+    logger = []
+    if args.log != None:
+        logger.append (TensorBoard (os.path.abspath (args.log), histogram_freq=1, write_graph=True, write_images=False))
+    
+    model.fit (x_train, y_train, 
+               batch_size=args.batchsize, 
+               epochs=args.epochs, 
+               verbose=1,
+               validation_split=0.2,
+               callbacks=logger)
     
     score = model.evaluate (x_test, y_test, verbose=0)
 
