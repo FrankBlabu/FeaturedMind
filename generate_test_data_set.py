@@ -1,4 +1,4 @@
-            #!/usr/bin/python3
+#!/usr/bin/python3
 #
 # generate_test_data_set.py - Generate test data set
 #
@@ -52,9 +52,9 @@ file.attrs['HDF5_Version']      = h5py.version.hdf5_version
 file.attrs['h5py_version']      = h5py.version.version
 file.attrs['segments']          = TestImage.arc_segments
 
-data = file.create_dataset ('data', (args.number_of_samples, args.sample_size * args.sample_size), 
-                            dtype='f', compression='lzf')
-labels = file.create_dataset ('labels', (args.number_of_samples,), dtype='i', compression='lzf')
+data     = file.create_dataset ('data',     (args.number_of_samples, args.sample_size * args.sample_size), dtype='f', compression='lzf')
+labels   = file.create_dataset ('labels',   (args.number_of_samples,), dtype='i', compression='lzf')
+clusters = file.create_dataset ('clusters', (args.number_of_samples,), dtype='i', compression='lzf')
 
 count = 0
 while count < args.number_of_samples:
@@ -66,12 +66,12 @@ while count < args.number_of_samples:
      
     for y in range (0, int (math.floor (args.height / args.sample_size))):
         for x in range (0, int (math.floor (args.width / args.sample_size))):
-            sample, direction = image.get_sample (x * args.sample_size, y * args.sample_size, args.sample_size)
+            sample = image.get_sample (x * args.sample_size, y * args.sample_size, args.sample_size)
             
-            if direction > 0:
-                positive_samples.append ((sample, direction))
+            if sample[1] > 0:
+                positive_samples.append (sample)
             else:
-                negative_samples.append ((sample, direction))
+                negative_samples.append (sample)
             
     random.shuffle (positive_samples)
     random.shuffle (negative_samples)
@@ -84,8 +84,9 @@ while count < args.number_of_samples:
     
     for sample in samples:
 
-        data[count] = sample[0]
-        labels[count] = sample[1]
+        data[count]     = sample[0]
+        labels[count]   = sample[1]
+        clusters[count] = sample[2]
 
         count += 1
         if count == args.number_of_samples:

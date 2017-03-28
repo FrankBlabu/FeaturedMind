@@ -1,4 +1,4 @@
-                #!/usr/bin/python3
+#!/usr/bin/python3
 #
 # TestImage.py - Randomly generated test data image
 #
@@ -14,6 +14,7 @@ from common import Vec2d
 import PIL.Image
 import PIL.ImageDraw
 import PIL.ImageFilter
+import PIL.ImageEnhance
 
 import numpy as np
 
@@ -106,7 +107,12 @@ class TestImage:
         #
         # Mask marking the feature and border relevant pixels for detection of edges
         #
-        self.mask  = PIL.Image.new ('RGB', size)
+        self.direction_mask  = PIL.Image.new ('RGB', size)
+        
+        #
+        # Mask used for sample clustering
+        #
+        self.cluster_mask = PIL.Image.new ('L', size)
             
         #
         # Compute area used for the specimen border
@@ -248,11 +254,14 @@ class TestImage:
                 border.append (get_rect_point (segment, 1))
             border.append (get_rect_point (segment, 0))
     
-        self.draw_border ([point.asTuple () for point in border])
+        feature_id = 1
+        
+        self.draw_border ([point.asTuple () for point in border], feature_id)
+        feature_id += 1
         
         #
         # Add some features to the available areas
-        #
+        #        
         for y in range (0, 3):
             for x in range (0, 3):
                 if available[x][y] and random.randint (0, 9) < 7:
@@ -267,15 +276,17 @@ class TestImage:
                         area = self.expand_segment (area, self.get_segment (border_rect, (x, y+1)))
                         available[x][y+1] = False
                 
-                    self.create_feature (area)
+                    self.create_feature (area, feature_id)                    
+                    feature_id += 1
     
     
     #--------------------------------------------------------------------------
     # Draw specimen border into image
     #
     # @param border Polygon defining the specimen border
+    # @param id     Unique feature id
     #
-    def draw_border (self, border):
+    def draw_border (self, border, id):
         border_image = PIL.Image.new ('L', self.image.size)
 
         draw = PIL.ImageDraw.Draw (border_image)
@@ -289,8 +300,7 @@ class TestImage:
         
         draw.polygon (border, fill=None, outline=0xff)
 
-        border_image = border_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))
-        
+        border_image = border_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))        
         border_mask = PIL.Image.new ('1', self.image.size)
 
         draw = PIL.ImageDraw.Draw (border_mask)
@@ -298,7 +308,10 @@ class TestImage:
 
         self.image.paste (border_image, mask=border_mask)
 
-        draw = PIL.ImageDraw.Draw (self.mask)
+        draw = PIL.ImageDraw.Draw (self.cluster_mask)
+        draw.polygon (border, fill=None, outline=id)
+
+        draw = PIL.ImageDraw.Draw (self.direction_mask)
         
         last_point = None
         
@@ -316,18 +329,26 @@ class TestImage:
     #
     # The line is drawn with an appropriate direction color
     #
-    # @param draw Drawing handle
-    # @param p1   Starting point of the line
-    # @param p2   Target point of the line
+    # @param draw  Drawing handle
+    # @param p1    Starting point of the line
+    # @param p2    Target point of the line
+    # @param color Line color. If 'none', the direction colors is used instead.
     #
-    def draw_line (self, draw, p1, p2):
-        draw.line ([p1, p2], fill=self.get_color_for_direction (p1, p2))
+    def draw_line (self, draw, p1, p2, color=None):
+        draw.line ([p1, p2], fill=color if color != None else self.get_color_for_direction (p1, p2))
         
     
     #--------------------------------------------------------------------------
     # Draw rectangular feature
     #
-    def draw_rectangular_feature (self, offset, size):
+    # @param offset Rectangle offset (top left point)
+    # @param size   Rectangle size
+    # @param id     Unique feature id
+    #
+    def draw_rectangular_feature (self, offset, size, id):
+        
+        assert id > 0x00 and id <= 0xff
+        
         feature_image = self.add_background_noise (PIL.Image.new ('L', size.asTuple ()))
         
         draw = PIL.ImageDraw.Draw (feature_image)
@@ -336,7 +357,10 @@ class TestImage:
         
         self.image.paste (feature_image, box=offset.asTuple ())
         
-        draw = PIL.ImageDraw.Draw (self.mask)
+        draw  = PIL.ImageDraw.Draw (self.cluster_mask)
+        draw.rectangle (to_native_rect (offset, size), fill=None, outline=id)
+        
+        draw = PIL.ImageDraw.Draw (self.direction_mask)
         
         rect = [offset, offset + size]
         self.draw_line (draw, get_rect_point (rect, 0).asTuple (), get_rect_point (rect, 1).asTuple ())
@@ -344,11 +368,19 @@ class TestImage:
         self.draw_line (draw, get_rect_point (rect, 2).asTuple (), get_rect_point (rect, 3).asTuple ())
         self.draw_line (draw, get_rect_point (rect, 3).asTuple (), get_rect_point (rect, 0).asTuple ())
         
+        
             
     #--------------------------------------------------------------------------
     # Draw circular feature
     #
-    def draw_circular_feature (self, offset, size):
+    # @param offset Rectangle offset (top left point)
+    # @param size   Rectangle size
+    # @param id     Unique feature id
+    #
+    def draw_circular_feature (self, offset, size, id):
+
+        assert id > 0x00 and id <= 0xff
+        
         feature_image = self.add_background_noise (PIL.Image.new ('L', size.asTuple ()))
 
         draw = PIL.ImageDraw.Draw (feature_image)
@@ -361,10 +393,13 @@ class TestImage:
 
         self.image.paste (feature_image, box=offset.asTuple (), mask=mask_image)
         
+        draw = PIL.ImageDraw.Draw (self.cluster_mask)
+        draw.ellipse (to_native_rect (offset, size), fill=None, outline=id)
+        
         rect = to_native_rect (offset, size)
         color = 0xffffff
         
-        draw = PIL.ImageDraw.Draw (self.mask)
+        draw = PIL.ImageDraw.Draw (self.direction_mask)
         draw.ellipse (rect, fill=None, outline=color)
             
         center = (int (round (rect[0][0] + (rect[1][0] - rect[0][0]) / 2)),
@@ -372,18 +407,19 @@ class TestImage:
             
         for y in range (rect[0][1], rect[1][1] + 1):
             for x in range (rect[0][0], rect[1][0] + 1):
-                r, g, b = self.mask.getpixel ((x, y))
+                r, g, b = self.direction_mask.getpixel ((x, y))
                 if r > 0 or g > 0 or b > 0:
                     color = self.get_color_for_direction ((0, 0), (-y + center[1], x - center[0]))
-                    self.mask.putpixel ((x, y), color)
+                    self.direction_mask.putpixel ((x, y), color)
 
     #--------------------------------------------------------------------------
     # Generate random feature
     #
     # @param image Image to draw into
     # @param area  Area the feature may occupy
+    # @param id    Unique feature id
     #
-    def create_feature (self, area):
+    def create_feature (self, area, id):
         area_size = get_rect_size (area)
         
         inner_offset = 0.05 * area_size
@@ -403,7 +439,7 @@ class TestImage:
         # Feature type 1: Rectangle
         #
         if feature_type == 0:
-            self.draw_rectangular_feature (area[0] + feature_offset, feature_size)
+            self.draw_rectangular_feature (area[0] + feature_offset, feature_size, id)
             
         #
         # Feature type 2: Circle
@@ -416,7 +452,7 @@ class TestImage:
                 feature_offset = feature_offset + (0, (feature_size.y - feature_size.x) / 2)
                 feature_size = Vec2d (feature_size.x, feature_size.x)
     
-            self.draw_circular_feature (area[0] + feature_offset, feature_size)
+            self.draw_circular_feature (area[0] + feature_offset, feature_size, id)
         
         #
         # Feature type 3: Slotted hole
@@ -447,41 +483,59 @@ class TestImage:
     # @param x    Sample x offset in pixels
     # @param y    Sample y offset in pixels
     # @param size Sample edge size in pixels
-    # @return Tuple with sample in float array format / flag for border presence 
+    # @return Tuple with sample in float array format / direction / cluster id 
     #
     def get_sample (self, x, y, size):
 
         sample_area = [x, y, x + size, y + size]
 
         sample = self.image.crop (sample_area)            
-        sample_mask = self.mask.crop (sample_area)
+        direction_mask = self.direction_mask.crop (sample_area)
+        cluster_mask = self.cluster_mask.crop (sample_area)
         
         #
         # Classify segment content
         #
-        distribution = np.zeros ((len (TestImage.arc_colors)))
+        direction_distribution = np.zeros ((len (TestImage.arc_colors)))
+        cluster_distribution = np.zeros (0xff)
         
-        for y in range (sample_mask.height):
-            for x in range (sample_mask.width):
-                color = sample_mask.getpixel ((x, y))
-                if color in self.arc_color_index:
-                    distribution[self.arc_color_index[color]] += 1        
-
-        index = 0
+        assert direction_mask.width == cluster_mask.width
+        assert direction_mask.height == cluster_mask.height
+        
+        for y in range (direction_mask.height):
+            for x in range (direction_mask.width):
+                
+                direction_color = direction_mask.getpixel ((x, y))
+                if direction_color in self.arc_color_index:
+                    direction_distribution[self.arc_color_index[direction_color]] += 1
+                    
+                cluster_color = cluster_mask.getpixel ((x, y))
+                assert cluster_color >= 0 and cluster_color <= 0xff
+                
+                if cluster_color > 0:
+                    cluster_distribution[cluster_color] += 1                                            
 
         #
         # The label column will contain '0' for an empty segment,
         # '1..n' for the n segment types and 'n+1' for an unclassified segment
         # 
-        if distribution.sum () > 0:
-            distribution /= distribution.sum ()
-            segment = np.argmax (distribution)
-            if distribution[segment] > self.direction_threshold:
-                index = segment + 1
-            else:
-                index = TestImage.arc_segments + 1
+        direction = 0
         
-        return ([float (d) / 255 for d in sample.getdata ()], index) 
+        if direction_distribution.sum () > 0:
+            direction_distribution /= direction_distribution.sum ()
+            segment = np.argmax (direction_distribution)
+            if direction_distribution[segment] > self.direction_threshold:
+                direction = segment + 1
+            else:
+                direction = TestImage.arc_segments + 1
+        
+        cluster = 0
+        
+        if cluster_distribution.sum () > 0:
+            cluster_distribution /= cluster_distribution.sum ()
+            cluster = np.argmax (cluster_distribution)
+                
+        return ([float (d) / 255 for d in sample.getdata ()], direction, cluster) 
 
 
     #--------------------------------------------------------------------------
@@ -541,5 +595,8 @@ class TestImage:
 if __name__ == '__main__':
     image = TestImage (640, 480)
     image.image.show (title='Generated image')
-    image.mask.show (title='Pixel mask')
+    image.direction_mask.show (title='Direction mask')
+    
+    enhancer = PIL.ImageEnhance.Sharpness (image.cluster_mask)
+    enhancer.enhance (100.0).show (title='Cluster mask')
     

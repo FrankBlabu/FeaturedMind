@@ -66,7 +66,7 @@ y = np.zeros ((samples_x * samples_y))
 count = 0
 for ys in range (0, samples_y):
     for xs in range (0, samples_x):
-        sample, label = test_image.get_sample (xs * sample_size, ys * sample_size, sample_size)
+        sample, label, cluster = test_image.get_sample (xs * sample_size, ys * sample_size, sample_size)
 
         x[count] = sample
         y[count] = label

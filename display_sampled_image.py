@@ -29,9 +29,12 @@ def create_result_image (test_image, sample_size, result):
     
     draw = PIL.ImageDraw.Draw (image, 'RGBA')
     
-    for y in range (0, int (math.floor (test_image.height / sample_size))):
-        for x in range (0, int (math.floor (test_image.width / sample_size))):
-            sample, direction = test_image.get_sample (x * sample_size, y * sample_size, sample_size)
+    x_steps = int (math.floor (test_image.width / sample_size))
+    y_steps = int (math.floor (test_image.height / sample_size))
+    
+    for y in range (0, y_steps):
+        for x in range (0, x_steps):
+            sample, direction, cluster = test_image.get_sample (x * sample_size, y * sample_size, sample_size)
     
             data = np.array ([int (round (d * 255)) for d in sample], np.uint8)
             sample_image = PIL.Image.frombuffer ('L', (sample_size, sample_size), data.tostring (), 'raw', 'L', 0, 1)
@@ -60,8 +63,13 @@ def create_result_image (test_image, sample_size, result):
                     color = test_image.arc_colors[result_direction - 1]
                     draw.line ((r[0], r[1], r[2], r[3]), fill=color)
                     draw.line ((r[2], r[1], r[0], r[3]), fill=color)
-                    
             
+            #
+            # Add overlay with the cluster id
+            #    
+            if cluster > 0:    
+                draw.text ((rect[0], rect[1]), str (cluster))
+                    
     return image
 
 
@@ -72,6 +80,7 @@ def create_result_image (test_image, sample_size, result):
 if __name__ == '__main__':
 
     random.seed ()
+    np.set_printoptions (threshold=np.nan)
     
     #
     # Parse command line arguments
