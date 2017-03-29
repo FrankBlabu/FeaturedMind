@@ -8,20 +8,16 @@
 
 import argparse
 import gc
-import h5py
 import keras
 import math
 import time
 
-import tensorflow as tf
 import numpy as np
-
 import models.metrics
 
 from keras.models import load_model
 from keras import backend as K
 
-from models.training_data import TrainingData
 from test_image_generator import TestImage
 from display_sampled_image import create_result_image
 
@@ -71,7 +67,7 @@ for ys in range (0, samples_y):
         sample, label, cluster = test_image.get_sample (xs * sample_size, ys * sample_size, sample_size)
 
         x[count] = sample
-        y[count] = label
+        y[count] = label.value
         
         count += 1
   
@@ -81,7 +77,7 @@ else:
     x = x.reshape (x.shape[0], args.sample_size, args.sample_size, 1)
     
 x = x.astype ('float32')
-y = keras.utils.to_categorical (y, TestImage.arc_segments + 2)
+y = keras.utils.to_categorical (y, len (TestImage.Direction))
 
         
 #

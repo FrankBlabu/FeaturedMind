@@ -5,9 +5,6 @@
 # Frank Blankenburg, Mar. 2017
 #
 
-import h5py
-import os
-
     
 #--------------------------------------------------------------------------
 # CLASS TrainingData
@@ -32,7 +29,7 @@ class TrainingData:
         self.test_set_offset = self.training_set_offset + self.training_set_size
         self.test_set_size = len (self.data) - self.training_set_size
         
-        self.segments = file.attrs['segments']
+        self.classes = file.attrs['classes']
         
             
     def size (self):

@@ -7,9 +7,9 @@
 
 import math
 import random
-import unittest
 
 from common import Vec2d
+from enum import Enum
 
 import PIL.Image
 import PIL.ImageDraw
@@ -67,16 +67,13 @@ def to_native_rect (origin, size):
 #
 class TestImage:
     
-    #
-    # Number of segments used for line direction marking and the
-    # matching colors (plus 1 for unclassified segments)
-    #
-    arc_segments = 4
-    arc_colors = [ (0xff, 0x00, 0x00),
-                   (0x00, 0xff, 0x00),
-                   (0x00, 0x00, 0xff),
-                   (0xff, 0xff, 0x00),
-                   (0x55, 0x55, 0x55) ]
+    class Direction (Enum):
+        NONE    = 0
+        UP      = 1
+        DOWN    = 2
+        LEFT    = 3
+        RIGHT   = 4
+        UNKNOWN = 5
     
     #--------------------------------------------------------------------------
     # Constructor
@@ -92,13 +89,23 @@ class TestImage:
         
         size = (width, height)
 
+        #
+        # Mask colors matching the directions
+        #
+        self.direction_colors = [ (0x00, 0x00, 0x00),
+                                 (0xff, 0x00, 0x00),
+                                 (0x00, 0xff, 0x00),
+                                 (0x00, 0x00, 0xff),
+                                 (0xff, 0xff, 0x00),
+                                 (0x55, 0x55, 0x55) ]
+    
+        self.direction_color_index = {}
+        for i in range (len (self.direction_colors)):
+            self.direction_color_index[self.direction_colors[i]] = i
+    
         
-        assert len (TestImage.arc_colors) >= TestImage.arc_segments
+        assert len (self.direction_colors) == len (TestImage.Direction)
         
-        self.arc_color_index = {}
-        for i in range (len (TestImage.arc_colors)):
-            self.arc_color_index[TestImage.arc_colors[i]] = i   
-            
         #
         # The complete test image
         #
@@ -335,7 +342,7 @@ class TestImage:
     # @param color Line color. If 'none', the direction colors is used instead.
     #
     def draw_line (self, draw, p1, p2, color=None):
-        draw.line ([p1, p2], fill=color if color != None else self.get_color_for_direction (p1, p2))
+        draw.line ([p1, p2], fill=color if color != None else self.get_color_for_line (p1, p2))
         
     
     #--------------------------------------------------------------------------
@@ -409,7 +416,7 @@ class TestImage:
             for x in range (rect[0][0], rect[1][0] + 1):
                 r, g, b = self.direction_mask.getpixel ((x, y))
                 if r > 0 or g > 0 or b > 0:
-                    color = self.get_color_for_direction ((0, 0), (-y + center[1], x - center[0]))
+                    color = self.get_color_for_line ((0, 0), (-y + center[1], x - center[0]))
                     self.direction_mask.putpixel ((x, y), color)
 
     #--------------------------------------------------------------------------
@@ -467,13 +474,23 @@ class TestImage:
     # @param p2 Second point
     # @return Color matching the direction
     #
-    def get_color_for_direction (self, p1, p2):        
+    def get_color_for_line (self, p1, p2):        
         angle = (math.atan2 (p2[1] - p1[1], p2[0] - p1[0]) + math.pi) % math.pi
                 
-        segment = round (2 * TestImage.arc_segments * angle / (2 * math.pi)) % TestImage.arc_segments
+        n = len (TestImage.Direction) - 2
+        segment = round (2 * n * angle / (2 * math.pi)) % n
                 
-        return TestImage.arc_colors[segment]
-    
+        return self.direction_colors[segment + 1]
+
+    #--------------------------------------------------------------------------
+    # Return color matching the given direction
+    #
+    # @param direction Direction (enum value)
+    # @return Color matching the direction
+    #
+    def get_color_for_direction (self, direction):        
+        return self.direction_colors[direction.value]
+        
 
     #--------------------------------------------------------------------------
     # Return sample area from image
@@ -496,7 +513,7 @@ class TestImage:
         #
         # Classify segment content
         #
-        direction_distribution = np.zeros ((len (TestImage.arc_colors)))
+        direction_distribution = np.zeros ((len (TestImage.Direction)))
         cluster_distribution = np.zeros (0xff)
         
         assert direction_mask.width == cluster_mask.width
@@ -506,28 +523,30 @@ class TestImage:
             for x in range (direction_mask.width):
                 
                 direction_color = direction_mask.getpixel ((x, y))
-                if direction_color in self.arc_color_index:
-                    direction_distribution[self.arc_color_index[direction_color]] += 1
+                if direction_color in self.direction_color_index:
+                    direction_distribution[self.direction_color_index[direction_color]] += 1
                     
                 cluster_color = cluster_mask.getpixel ((x, y))
                 assert cluster_color >= 0 and cluster_color <= 0xff
                 
                 if cluster_color > 0:
-                    cluster_distribution[cluster_color] += 1                                            
+                    cluster_distribution[cluster_color] += 1
+
+        direction_distribution[TestImage.Direction.NONE.value] = 0
 
         #
         # The label column will contain '0' for an empty segment,
         # '1..n' for the n segment types and 'n+1' for an unclassified segment
         # 
-        direction = 0
+        direction = TestImage.Direction.NONE
         
         if direction_distribution.sum () > 0:
             direction_distribution /= direction_distribution.sum ()
-            segment = np.argmax (direction_distribution)
-            if direction_distribution[segment] > self.direction_threshold:
-                direction = segment + 1
+            index = np.argmax (direction_distribution)
+            if direction_distribution[index] > self.direction_threshold:
+                direction = TestImage.Direction (index)
             else:
-                direction = TestImage.arc_segments + 1
+                direction = TestImage.Direction.UNKNOWN
         
         cluster = 0
         

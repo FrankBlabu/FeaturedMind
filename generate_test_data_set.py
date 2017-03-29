@@ -12,8 +12,6 @@ import h5py
 
 from test_image_generator import TestImage
 
-import PIL.Image
-
 #--------------------------------------------------------------------------
 # MAIN
 #
@@ -50,7 +48,7 @@ file.attrs['image_size']        = (args.width, args.height)
 file.attrs['number_of_samples'] = args.number_of_samples
 file.attrs['HDF5_Version']      = h5py.version.hdf5_version
 file.attrs['h5py_version']      = h5py.version.version
-file.attrs['segments']          = TestImage.arc_segments
+file.attrs['classes']           = len (TestImage.Direction)
 
 data     = file.create_dataset ('data',     (args.number_of_samples, args.sample_size * args.sample_size), dtype='f', compression='lzf')
 labels   = file.create_dataset ('labels',   (args.number_of_samples,), dtype='i', compression='lzf')
@@ -68,7 +66,7 @@ while count < args.number_of_samples:
         for x in range (0, int (math.floor (args.width / args.sample_size))):
             sample = image.get_sample (x * args.sample_size, y * args.sample_size, args.sample_size)
             
-            if sample[1] > 0:
+            if sample[1] != TestImage.Direction.NONE:
                 positive_samples.append (sample)
             else:
                 negative_samples.append (sample)
@@ -85,7 +83,7 @@ while count < args.number_of_samples:
     for sample in samples:
 
         data[count]     = sample[0]
-        labels[count]   = sample[1]
+        labels[count]   = sample[1].value
         clusters[count] = sample[2]
 
         count += 1

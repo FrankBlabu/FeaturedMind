@@ -7,7 +7,6 @@
 #
 
 import argparse
-import io
 import math
 import numpy as np
 import random
@@ -48,8 +47,8 @@ def create_result_image (test_image, sample_size, result):
             #
             # Add overlay showing the direction 
             #
-            if direction > 0:
-                color = test_image.arc_colors[direction - 1]                
+            if direction != TestImage.Direction.NONE:
+                color = test_image.get_color_for_direction (direction)                
                 draw.rectangle (r, fill=(color[0], color[1], color[2], 0x20), outline=color)
                 
             #
@@ -57,10 +56,10 @@ def create_result_image (test_image, sample_size, result):
             #
             if result is not None:
                 
-                result_direction = result[y][x]
+                result_direction = TestImage.Direction (result[y][x])
                 
                 if result_direction != direction:
-                    color = test_image.arc_colors[result_direction - 1]
+                    color = test_image.get_color_for_direction (result_direction)
                     draw.line ((r[0], r[1], r[2], r[3]), fill=color)
                     draw.line ((r[2], r[1], r[0], r[3]), fill=color)
             

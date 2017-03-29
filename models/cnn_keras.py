@@ -8,14 +8,13 @@
 import os
 import keras
 
-from keras.models import Sequential, Model
+from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
-from keras.layers import Conv2D, MaxPooling2D, Input
+from keras.layers import Conv2D, MaxPooling2D
 from keras.callbacks import TensorBoard
 from keras import backend as K
 
 import models.metrics
-from models.training_data import TrainingData
 
 
 #--------------------------------------------------------------------------
@@ -23,9 +22,7 @@ from models.training_data import TrainingData
 # convolutional network
 #
 def train (args, data):
-    
-    num_classes = data.segments + 2
-    
+        
     x_train = data.get_training_data ()[0]
     y_train = data.get_training_data ()[1]
 
@@ -44,8 +41,8 @@ def train (args, data):
     x_train = x_train.astype ('float32')
     x_test = x_test.astype ('float32')
 
-    y_train = keras.utils.to_categorical (y_train, num_classes)
-    y_test = keras.utils.to_categorical (y_test, num_classes)
+    y_train = keras.utils.to_categorical (y_train, data.classes)
+    y_test = keras.utils.to_categorical (y_test, data.classes)
     
     model = Sequential ()
 
@@ -65,7 +62,7 @@ def train (args, data):
     model.add (Flatten ())
     model.add (Dense (1024, activation='relu'))
     model.add (Dropout (0.5))
-    model.add (Dense (num_classes, activation='softmax'))
+    model.add (Dense (data.classes, activation='softmax'))
             
     model.compile (loss=keras.losses.categorical_crossentropy,
                    optimizer=keras.optimizers.Adadelta (),
