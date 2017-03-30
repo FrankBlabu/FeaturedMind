@@ -1,6 +1,9 @@
 #!/usr/bin/python3
 #
-# TestImage.py - Randomly generated test data image
+# test_image_generator.py - Randomly generated test data image
+#
+# Class for generation of a single test image which can be later divided into
+# multiple rectangluar samples for training.
 #
 # Frank Blankenburg, Mar. 2017
 #
@@ -8,7 +11,7 @@
 import math
 import random
 
-from common import Vec2d
+from geometry import Point2d, Size2d, Rect2d
 from enum import Enum
 
 import PIL.Image
@@ -18,46 +21,6 @@ import PIL.ImageEnhance
 
 import numpy as np
 
-
-#--------------------------------------------------------------------------
-# Return corner point of rectangle
-#
-# @param rect Rectangle
-# @param n    Point number (from top left clockwise)
-# @return Point coordinates
-#
-def get_rect_point (rect, n):
-    if n == 0:
-        return rect[0]
-    elif n == 1:
-        return Vec2d (rect[1].x, rect[0].y)
-    elif n == 2:
-        return rect[1]
-    elif n == 3:
-        return Vec2d (rect[0].x, rect[1].y)
-
-    assert False and 'Illegal rectangle point index'
-
-
-#--------------------------------------------------------------------------
-# Return size of a rectangle
-#
-# @param rect Rectangle
-# @return Size of the rectangle
-#
-def get_rect_size (rect):
-    return Vec2d (rect[1].x - rect[0].x + 1, rect[1].y - rect[0].y + 1)
-
-
-#--------------------------------------------------------------------------
-# Convert a (origin, size) tuple into a rectangle representation
-# 
-# @param origin Origin of the rectangle
-# @param size   Size of the rectangle
-# @return Rectangle in [(x0, y0), (x1, y1]) representation
-#
-def to_native_rect (origin, size):
-    return [origin.asTuple (), (origin + size - (1, 1)).asTuple ()]
 
 
 #--------------------------------------------------------------------------
@@ -87,10 +50,13 @@ class TestImage:
 
         self.direction_threshold = 0.7
         
-        size = (width, height)
+        size = Size2d (width, height)
 
         #
         # Mask colors matching the directions
+        #
+        # Each color matches a direction and is used in the image mask to
+        # assign the right direction label to each sample area
         #
         self.direction_colors = [ (0x00, 0x00, 0x00),
                                  (0xff, 0x00, 0x00),
@@ -109,37 +75,37 @@ class TestImage:
         #
         # The complete test image
         #
-        self.image = self.add_background_noise (PIL.Image.new ('L', size))
+        self.image = self.add_background_noise (PIL.Image.new ('L', size.as_tuple ()))
         
         #
         # Mask marking the feature and border relevant pixels for detection of edges
         #
-        self.direction_mask  = PIL.Image.new ('RGB', size)
+        self.direction_mask  = PIL.Image.new ('RGB', size.as_tuple ())
         
         #
         # Mask used for sample clustering
         #
-        self.cluster_mask = PIL.Image.new ('L', size)
+        self.cluster_mask = PIL.Image.new ('L', size.as_tuple ())
             
         #
         # Compute area used for the specimen border
         #
-        outer_border_offset = Vec2d (size) * 5 / 100
-        outer_border_limit = [outer_border_offset, Vec2d (size) - outer_border_offset]
+        outer_border_offset = size * 5 / 100
+        outer_border_limit = [Point2d (outer_border_offset), Point2d (size - outer_border_offset)]
     
-        inner_border_offset = Vec2d (size) * 25 / 100
-        inner_border_limit = [inner_border_offset, Vec2d (size) - inner_border_offset]
+        inner_border_offset = Point2d (size) * 25 / 100
+        inner_border_limit = [inner_border_offset, Point2d (size - inner_border_offset)]
         
-        border_rect = [Vec2d (random.randint (outer_border_limit[0].x,
-                                              inner_border_limit[0].x),
-                              random.randint (outer_border_limit[0].y,
-                                              inner_border_limit[0].y)),
-                       Vec2d (random.randint (inner_border_limit[1].x,
-                                              outer_border_limit[1].x),
-                              random.randint (inner_border_limit[1].y,
-                                              outer_border_limit[1].y))]
+        border_rect = Rect2d (Point2d (random.randint (outer_border_limit[0].x,
+                                                       inner_border_limit[0].x),
+                                       random.randint (outer_border_limit[0].y,
+                                                       inner_border_limit[0].y)),
+                              Point2d (random.randint (inner_border_limit[1].x,
+                                                       outer_border_limit[1].x),
+                                       random.randint (inner_border_limit[1].y,
+                                                       outer_border_limit[1].y)))
     
-    
+
     
         #
         # Compute segments of the specimen used. There are 3x3 segments available.
@@ -158,33 +124,33 @@ class TestImage:
             available[0][2] = random.randint (0, 9) > 5
             available[2][2] = random.randint (0, 9) > 5
     
-            segment = self.get_segment (border_rect, (0, 0))
+            segment = self.get_segment_rect (border_rect, (0, 0))
             used = available[0][0]
             
-            border.append (get_rect_point (segment, 3))
-            border.append (get_rect_point (segment, 0 if used else 2))
-            border.append (get_rect_point (segment, 1))
+            border.append (segment.p3)
+            border.append (segment.p0 if used else segment.p2)
+            border.append (segment.p1)
     
-            segment = self.get_segment (border_rect, (2, 0))
+            segment = self.get_segment_rect (border_rect, (2, 0))
             used = available[2][0]
     
-            border.append (get_rect_point (segment, 0))
-            border.append (get_rect_point (segment, 1 if used else 3))
-            border.append (get_rect_point (segment, 2))
+            border.append (segment.p0)
+            border.append (segment.p1 if used else segment.p3)
+            border.append (segment.p2)
     
-            segment = self.get_segment (border_rect, (2, 2))
+            segment = self.get_segment_rect (border_rect, (2, 2))
             used = available[2][2]
     
-            border.append (get_rect_point (segment, 1))
-            border.append (get_rect_point (segment, 2 if used else 0))
-            border.append (get_rect_point (segment, 3))
+            border.append (segment.p1)
+            border.append (segment.p2 if used else segment.p0)
+            border.append (segment.p3)
     
-            segment = self.get_segment (border_rect, (0, 2))
+            segment = self.get_segment_rect (border_rect, (0, 2))
             used = available[0][2]
     
-            border.append (get_rect_point (segment, 2))
-            border.append (get_rect_point (segment, 3 if used else 1))
-            border.append (get_rect_point (segment, 0))
+            border.append (segment.p2)
+            border.append (segment.p3 if used else segment.p1)
+            border.append (segment.p0)
     
         #
         # Case 2: Top/down edge segments might be missing
@@ -193,35 +159,35 @@ class TestImage:
             available[1][0] = random.randint (0, 9) > 5
             available[1][2] = random.randint (0, 9) > 5
     
-            segment = self.get_segment (border_rect, (0, 0))
-            border.append (get_rect_point (segment, 0))
+            segment = self.get_segment_rect (border_rect, (0, 0))
+            border.append (segment.p0)
             
-            segment = self.get_segment (border_rect, (1, 0))
+            segment = self.get_segment_rect (border_rect, (1, 0))
             used = available[1][0]
             
-            border.append (get_rect_point (segment, 0))
+            border.append (segment.p0)
             if not used:
-                border.append (get_rect_point (segment, 3))
-                border.append (get_rect_point (segment, 2))
-            border.append (get_rect_point (segment, 1))
+                border.append (segment.p3)
+                border.append (segment.p2)
+            border.append (segment.p1)
     
-            segment = self.get_segment (border_rect, (2, 0))
-            border.append (get_rect_point (segment, 1))
+            segment = self.get_segment_rect (border_rect, (2, 0))
+            border.append (segment.p1)
             
-            segment = self.get_segment (border_rect, (2, 2))
-            border.append (get_rect_point (segment, 2))
+            segment = self.get_segment_rect (border_rect, (2, 2))
+            border.append (segment.p2)
     
-            segment = self.get_segment (border_rect, (1, 2))
+            segment = self.get_segment_rect (border_rect, (1, 2))
             used = available[1][2]
             
-            border.append (get_rect_point (segment, 2))
+            border.append (segment.p2)
             if not used:
-                border.append (get_rect_point (segment, 1))
-                border.append (get_rect_point (segment, 0))
-            border.append (get_rect_point (segment, 3))
+                border.append (segment.p1)
+                border.append (segment.p0)
+            border.append (segment.p3)
     
-            segment = self.get_segment (border_rect, (0, 2))
-            border.append (get_rect_point (segment, 3))
+            segment = self.get_segment_rect (border_rect, (0, 2))
+            border.append (segment.p3)
     
     
         #
@@ -231,39 +197,39 @@ class TestImage:
             available[0][1] = random.randint (0, 9) > 5
             available[2][1] = random.randint (0, 9) > 5
     
-            segment = self.get_segment (border_rect, (0, 0))
-            border.append (get_rect_point (segment, 0))
+            segment = self.get_segment_rect (border_rect, (0, 0))
+            border.append (segment.p0)
             
-            segment = self.get_segment (border_rect, (2, 0))
-            border.append (get_rect_point (segment, 1))
+            segment = self.get_segment_rect (border_rect, (2, 0))
+            border.append (segment.p1)
             
-            segment = self.get_segment (border_rect, (2, 1))
+            segment = self.get_segment_rect (border_rect, (2, 1))
             used = available[2][1]
     
-            border.append (get_rect_point (segment, 1))
+            border.append (segment.p1)
             if not used:        
-                border.append (get_rect_point (segment, 0))
-                border.append (get_rect_point (segment, 3))
-            border.append (get_rect_point (segment, 2))
+                border.append (segment.p0)
+                border.append (segment.p3)
+            border.append (segment.p2)
     
-            segment = self.get_segment (border_rect, (2, 2))
-            border.append (get_rect_point (segment, 2))
+            segment = self.get_segment_rect (border_rect, (2, 2))
+            border.append (segment.p2)
     
-            segment = self.get_segment (border_rect, (0, 2))
-            border.append (get_rect_point (segment, 3))
+            segment = self.get_segment_rect (border_rect, (0, 2))
+            border.append (segment.p3)
     
-            segment = self.get_segment (border_rect, (0, 1))
+            segment = self.get_segment_rect (border_rect, (0, 1))
             used = available[0][1]
             
-            border.append (get_rect_point (segment, 3))
+            border.append (segment.p3)
             if not used:
-                border.append (get_rect_point (segment, 2))
-                border.append (get_rect_point (segment, 1))
-            border.append (get_rect_point (segment, 0))
+                border.append (segment.p2)
+                border.append (segment.p1)
+            border.append (segment.p0)
     
         feature_id = 1
         
-        self.draw_border ([point.asTuple () for point in border], feature_id)
+        self.draw_border (border, feature_id)
         feature_id += 1
         
         #
@@ -272,15 +238,15 @@ class TestImage:
         for y in range (0, 3):
             for x in range (0, 3):
                 if available[x][y] and random.randint (0, 9) < 7:
-                    area = self.get_segment (border_rect, (x, y))
+                    area = self.get_segment_rect (border_rect, (x, y))
                     available[x][y] = False
                     
                     if x < 2 and available[x+1][y] and random.randint (0, 9) < 5:
-                        area = self.expand_segment (area, self.get_segment (border_rect, (x+1, y)))
+                        area = area.expanded (self.get_segment_rect (border_rect, (x+1, y)))
                         available[x+1][y] = False
     
                     elif y < 2 and available[x][y+1] and random.randint (0, 9) < 5:
-                        area = self.expand_segment (area, self.get_segment (border_rect, (x, y+1)))
+                        area = area.expanded (self.get_segment_rect (border_rect, (x, y+1)))
                         available[x][y+1] = False
                 
                     self.create_feature (area, feature_id)                    
@@ -305,18 +271,20 @@ class TestImage:
             for x in range (border_image.size[0]):
                 draw.point ((x, y), fill=random.randint (100, 120))
         
-        draw.polygon (border, fill=None, outline=0xff)
+        native_border = [point.as_tuple () for point in border]
+        
+        draw.polygon (native_border, fill=None, outline=0xff)
 
         border_image = border_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))        
         border_mask = PIL.Image.new ('1', self.image.size)
 
         draw = PIL.ImageDraw.Draw (border_mask)
-        draw.polygon (border, fill=0xff, outline=0xff)
+        draw.polygon (native_border, fill=0xff, outline=0xff)
 
         self.image.paste (border_image, mask=border_mask)
 
         draw = PIL.ImageDraw.Draw (self.cluster_mask)
-        draw.polygon (border, fill=None, outline=id)
+        draw.polygon (native_border, fill=None, outline=id)
 
         draw = PIL.ImageDraw.Draw (self.direction_mask)
         
@@ -342,82 +310,80 @@ class TestImage:
     # @param color Line color. If 'none', the direction colors is used instead.
     #
     def draw_line (self, draw, p1, p2, color=None):
-        draw.line ([p1, p2], fill=color if color != None else self.get_color_for_line (p1, p2))
+        draw.line ([p1.as_tuple (), p2.as_tuple ()], fill=color if color != None else self.get_color_for_line (p1, p2))
         
     
     #--------------------------------------------------------------------------
     # Draw rectangular feature
     #
-    # @param offset Rectangle offset (top left point)
-    # @param size   Rectangle size
-    # @param id     Unique feature id
+    # @param rect Rectangle used for the feature
+    # @param id   Unique feature id
     #
-    def draw_rectangular_feature (self, offset, size, id):
+    def draw_rectangular_feature (self, rect, id):
         
         assert id > 0x00 and id <= 0xff
         
-        feature_image = self.add_background_noise (PIL.Image.new ('L', size.asTuple ()))
+        feature_image = self.add_background_noise (PIL.Image.new ('L', rect.size ().as_tuple ()))
+
+        r = rect.move_to (Point2d (0, 0))
         
         draw = PIL.ImageDraw.Draw (feature_image)
-        draw.rectangle (to_native_rect (Vec2d (0, 0), size), fill=None, outline=0xff)
+        draw.rectangle (r.as_tuple (), fill=None, outline=0xff)
         feature_image = feature_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))
         
-        self.image.paste (feature_image, box=offset.asTuple ())
+        self.image.paste (feature_image, box=rect.p0.as_tuple ())
         
         draw  = PIL.ImageDraw.Draw (self.cluster_mask)
-        draw.rectangle (to_native_rect (offset, size), fill=None, outline=id)
+        draw.rectangle (rect.as_tuple (), fill=None, outline=id)
         
         draw = PIL.ImageDraw.Draw (self.direction_mask)
         
-        rect = [offset, offset + size]
-        self.draw_line (draw, get_rect_point (rect, 0).asTuple (), get_rect_point (rect, 1).asTuple ())
-        self.draw_line (draw, get_rect_point (rect, 1).asTuple (), get_rect_point (rect, 2).asTuple ())
-        self.draw_line (draw, get_rect_point (rect, 2).asTuple (), get_rect_point (rect, 3).asTuple ())
-        self.draw_line (draw, get_rect_point (rect, 3).asTuple (), get_rect_point (rect, 0).asTuple ())
+        self.draw_line (draw, rect.p0, rect.p1)
+        self.draw_line (draw, rect.p1, rect.p2)
+        self.draw_line (draw, rect.p2, rect.p3)
+        self.draw_line (draw, rect.p3, rect.p0)
         
         
             
     #--------------------------------------------------------------------------
     # Draw circular feature
     #
-    # @param offset Rectangle offset (top left point)
-    # @param size   Rectangle size
-    # @param id     Unique feature id
+    # @param rect Rectangle used for the circular feature
+    # @param id   Unique feature id
     #
-    def draw_circular_feature (self, offset, size, id):
+    def draw_circular_feature (self, rect, id):
 
         assert id > 0x00 and id <= 0xff
         
-        feature_image = self.add_background_noise (PIL.Image.new ('L', size.asTuple ()))
+        r = rect.move_to (Point2d (0, 0))
+        
+        feature_image = self.add_background_noise (PIL.Image.new ('L', rect.size ().as_tuple ()))
 
         draw = PIL.ImageDraw.Draw (feature_image)
-        draw.ellipse (to_native_rect (Vec2d (0, 0), size), fill=None, outline=0xff)
+        draw.ellipse (r.as_tuple (), fill=None, outline=0xff)
         feature_image = feature_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))
 
-        mask_image = PIL.Image.new ('1', size.asTuple ())
+        mask_image = PIL.Image.new ('1', rect.size ().as_tuple ())
         draw = PIL.ImageDraw.Draw (mask_image)
-        draw.ellipse (to_native_rect (Vec2d (0, 0), size), fill=0xff, outline=0xff)
+        draw.ellipse (r.as_tuple (), fill=0xff, outline=0xff)
 
-        self.image.paste (feature_image, box=offset.asTuple (), mask=mask_image)
+        self.image.paste (feature_image, box=rect.p0.as_tuple (), mask=mask_image)
         
         draw = PIL.ImageDraw.Draw (self.cluster_mask)
-        draw.ellipse (to_native_rect (offset, size), fill=None, outline=id)
+        draw.ellipse (rect.as_tuple (), fill=None, outline=id)
         
-        rect = to_native_rect (offset, size)
         color = 0xffffff
         
         draw = PIL.ImageDraw.Draw (self.direction_mask)
-        draw.ellipse (rect, fill=None, outline=color)
+        draw.ellipse (rect.as_tuple (), fill=None, outline=color)
             
-        center = (int (round (rect[0][0] + (rect[1][0] - rect[0][0]) / 2)),
-                  int (round (rect[0][1] + (rect[1][1] - rect[0][1]) / 2)))
-            
-        for y in range (rect[0][1], rect[1][1] + 1):
-            for x in range (rect[0][0], rect[1][0] + 1):
+        for y in range (int (rect.p0.y), int (rect.p2.y)):
+            for x in range (int (rect.p0.x), int (rect.p2.x)):
                 r, g, b = self.direction_mask.getpixel ((x, y))
                 if r > 0 or g > 0 or b > 0:
-                    color = self.get_color_for_line ((0, 0), (-y + center[1], x - center[0]))
+                    color = self.get_color_for_line (Point2d (0, 0), Point2d (-y + rect.center ().y, x -rect.center ().x))
                     self.direction_mask.putpixel ((x, y), color)
+
 
     #--------------------------------------------------------------------------
     # Generate random feature
@@ -427,18 +393,16 @@ class TestImage:
     # @param id    Unique feature id
     #
     def create_feature (self, area, id):
-        area_size = get_rect_size (area)
-        
-        inner_offset = 0.05 * area_size
-        inner_size = area_size - 2 * inner_offset
+        inner_offset = 0.05 * area.size ()
+        inner_size = area.size () - 2 * inner_offset
     
-        assert inner_size.x > 10 and inner_size.y > 10
+        assert inner_size.width > 10 and inner_size.height > 10
     
-        feature_size = Vec2d (random.randint (10, int (round (inner_size.x))),
-                              random.randint (10, int (round (inner_size.y))))
+        feature_size = Size2d (random.randint (10, int (round (inner_size.width))),
+                                random.randint (10, int (round (inner_size.height))))
         
-        feature_offset = Vec2d (inner_offset.x + random.randint (0, int (round (inner_size.x - feature_size.x))),
-                                inner_offset.y + random.randint (0, int (round (inner_size.y - feature_size.y))))
+        feature_offset = Point2d (inner_offset.width + random.randint (0, int (round (inner_size.width - feature_size.width))),
+                                  inner_offset.height + random.randint (0, int (round (inner_size.height - feature_size.height))))
     
         feature_type = random.randint (0, 1)
         
@@ -446,20 +410,20 @@ class TestImage:
         # Feature type 1: Rectangle
         #
         if feature_type == 0:
-            self.draw_rectangular_feature (area[0] + feature_offset, feature_size, id)
+            self.draw_rectangular_feature (Rect2d (area.p0 + feature_offset, feature_size), id)
             
         #
         # Feature type 2: Circle
         #
         elif feature_type == 1:
-            if feature_size.x > feature_size.y:
-                feature_offset = feature_offset + ((feature_size.x - feature_size.y) / 2, 0)
-                feature_size = Vec2d (feature_size.y, feature_size.y)
+            if feature_size.width > feature_size.height:
+                feature_offset = feature_offset + Point2d ((feature_size.width - feature_size.height) / 2, 0)
+                feature_size = Size2d (feature_size.height, feature_size.height)
             else:
-                feature_offset = feature_offset + (0, (feature_size.y - feature_size.x) / 2)
-                feature_size = Vec2d (feature_size.x, feature_size.x)
+                feature_offset = feature_offset + Point2d (0, (feature_size.height - feature_size.width) / 2)
+                feature_size = Size2d (feature_size.width, feature_size.width)
     
-            self.draw_circular_feature (area[0] + feature_offset, feature_size, id)
+            self.draw_circular_feature (Rect2d (area.p0 + feature_offset, feature_size), id)
         
         #
         # Feature type 3: Slotted hole
@@ -474,8 +438,8 @@ class TestImage:
     # @param p2 Second point
     # @return Color matching the direction
     #
-    def get_color_for_line (self, p1, p2):        
-        angle = (math.atan2 (p2[1] - p1[1], p2[0] - p1[0]) + math.pi) % math.pi
+    def get_color_for_line (self, p1, p2):
+        angle = (math.atan2 (p2.y - p1.y, p2.x - p1.x) + math.pi) % math.pi
                 
         n = len (TestImage.Direction) - 2
         segment = round (2 * n * angle / (2 * math.pi)) % n
@@ -575,37 +539,22 @@ class TestImage:
     #--------------------------------------------------------------------------
     # Return the segment rect of an image rect
     # 
-    # @param rect    Image rect [Vec2d (x0, y0), Vec2d (x1, y1)]
+    # @param rect    Image rect
     # @param segment Segment (x, y) identifier
-    # @return Rectangle of the segment [Vec2d (x0, y0), Vec2d (x1, y1)]
+    # @return Rectangle of the segment
     #
     @staticmethod
-    def get_segment (rect, segment):
+    def get_segment_rect (rect, segment):
         x = segment[0]
         y = segment[1]
         
         assert x >= 0 and x <= 2
         assert y >= 0 and y <= 2
     
-        size = Vec2d (rect[1].x - rect[0].x + 1, rect[1].y - rect[0].y + 1)
-        
-        return [Vec2d (rect[0].x + x * size.x / 3,
-                       rect[0].y + y * size.y / 3),
-                Vec2d (rect[0].x + (x + 1) * size.x / 3,
-                       rect[0].y + (y + 1) * size.y / 3)]
-        
-    
-    #--------------------------------------------------------------------------
-    # Expand the segment to the bounding box of two segments
-    #
-    # @param rect1 Segment rect 1 [Vec2d (x0, y0), Vec2d (x1, y1)]
-    # @param rect2 Segment rect 2 [Vec2d (x0, y0), Vec2d (x1, y1)]
-    # @return Resulting segment covering the bounding box
-    #
-    @staticmethod
-    def expand_segment (rect1, rect2):
-        return [Vec2d (min (rect1[0].x, rect2[0].x), min (rect1[0].y, rect2[0].y)),
-                Vec2d (max (rect1[1].x, rect2[1].x), max (rect1[1].y, rect2[1].y))]
+        return Rect2d (Point2d (rect.p0.x + x * rect.size ().width / 3,
+                                rect.p0.y + y * rect.size ().height / 3),
+                       Point2d (rect.p0.x + (x + 1) * rect.size ().width / 3,
+                                rect.p0.y + (y + 1) * rect.size ().height / 3))
         
 
 #
