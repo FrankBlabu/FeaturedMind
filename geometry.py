@@ -26,35 +26,35 @@ class Point2d:
             self.x = x
             self.y = y
         
-    def __add__ (a, b):
-        assert type (a) is Point2d
-        assert type (b) is Point2d or type (b) is Size2d
+    def __add__ (self, other):
+        assert type (self) is Point2d
+        assert type (other) is Point2d or type (other) is Size2d
         
-        return Point2d (a.x + b.x, a.y + b.y) if type (b) is Point2d else Point2d (a.x + (b.width - 1), a.y + (b.height - 1))
+        return Point2d (self.x + other.x, self.y + other.y) if type (other) is Point2d else Point2d (self.x + (other.width - 1), self.y + (other.height - 1))
             
-    def __sub__ (a, b):
-        assert type (a) == Point2d
-        assert type (b) is Point2d or type (b) is Size2d
+    def __sub__ (self, other):
+        assert type (self) == Point2d
+        assert type (other) is Point2d or type (other) is Size2d
         
-        return Point2d (a.x - b.x, a.y - b.y) if type (b) is Point2d else Point2d (a.x - (b.width - 1), a.y - (b.height - 1))
+        return Point2d (self.x - other.x, self.y - other.y) if type (other) is Point2d else Point2d (self.x - (other.width - 1), self.y - (other.height - 1))
     
-    def __mul__ (a, b):
-        assert type (a) == Point2d
-        assert type (b) == int or type (b) == float
+    def __mul__ (self, other):
+        assert type (self) == Point2d
+        assert type (other) == int or type (other) == float
         
-        return Point2d (a.x * b, a.y * b)
+        return Point2d (self.x * other, self.y * other)
         
-    def __rmul__ (a, b):
-        assert type (a) == Point2d
-        assert type (b) == int or type (b) == float
+    def __rmul__ (self, other):
+        assert type (self) == Point2d
+        assert type (other) == int or type (other) == float
         
-        return Point2d (a.x * b, a.y * b)
+        return Point2d (self.x * other, self.y * other)
 
-    def __truediv__ (a, b):
-        assert type (a) == Point2d
-        assert type (b) == int or type (b) == float
+    def __truediv__ (self, other):
+        assert type (self) == Point2d
+        assert type (other) == int or type (other) == float
         
-        return Point2d (a.x / b, a.y / b) 
+        return Point2d (self.x / other, self.y / other) 
 
     def __not__ (self):
         self.x = -self.x
@@ -86,35 +86,35 @@ class Size2d:
         self.width = width
         self.height = height
         
-    def __add__ (a, b):
-        assert type (a) == Size2d
-        assert type (b) == Size2d or type (b) == Point2d
+    def __add__ (self, other):
+        assert type (self) == Size2d
+        assert type (other) == Size2d or type (other) == Point2d
         
-        return Size2d (a.width + b.width, a.height + b.height) if type (b) == Size2d else Size2d (a.width + b.x, a.height + b.y) 
+        return Size2d (self.width + other.width, self.height + other.height) if type (other) == Size2d else Size2d (self.width + other.x, self.height + other.y) 
             
-    def __sub__ (a, b):
-        assert type (a) == Size2d
-        assert type (b) == Size2d or type (b) == Point2d
+    def __sub__ (self, other):
+        assert type (self) == Size2d
+        assert type (other) == Size2d or type (other) == Point2d
 
-        return Size2d (a.width - b.width, a.height - b.height) if type (b) == Size2d else Size2d (a.width - b.x, a.height - b.y) 
+        return Size2d (self.width - other.width, self.height - other.height) if type (other) == Size2d else Size2d (self.width - other.x, self.height - other.y) 
     
-    def __mul__ (a, b):
-        assert type (a) == Size2d
-        assert type (b) == int or type (b) == float
+    def __mul__ (self, other):
+        assert type (self) == Size2d
+        assert type (other) == int or type (other) == float
         
-        return Size2d (a.width * b, a.height * b)
+        return Size2d (self.width * other, self.height * other)
         
-    def __rmul__ (a, b):
-        assert type (a) == Size2d
-        assert type (b) == int or type (b) == float
+    def __rmul__ (self, other):
+        assert type (self) == Size2d
+        assert type (other) == int or type (other) == float
         
-        return Size2d (a.width * b, a.height * b)
+        return Size2d (self.width * other, self.height * other)
 
-    def __truediv__ (a, b):
-        assert type (a) == Size2d
-        assert type (b) == int or type (b) == float
+    def __truediv__ (self, other):
+        assert type (self) == Size2d
+        assert type (other) == int or type (other) == float
         
-        return Size2d (a.width / b, a.height / b) 
+        return Size2d (self.width / other, self.height / other) 
 
     def __repr__ (self):
         return 'Size2d ({0}, {1})'.format (self.width, self.height)

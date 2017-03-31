@@ -256,10 +256,13 @@ class TestImage:
     #--------------------------------------------------------------------------
     # Draw specimen border into image
     #
-    # @param border Polygon defining the specimen border
-    # @param id     Unique feature id
+    # @param border     Polygon defining the specimen border
+    # @param feature_id Unique feature id
     #
-    def draw_border (self, border, id):
+    def draw_border (self, border, feature_id):
+        
+        assert feature_id > 0x00 and feature_id <= 0xff
+        
         border_image = PIL.Image.new ('L', self.image.size)
 
         draw = PIL.ImageDraw.Draw (border_image)
@@ -284,7 +287,7 @@ class TestImage:
         self.image.paste (border_image, mask=border_mask)
 
         draw = PIL.ImageDraw.Draw (self.cluster_mask)
-        draw.polygon (native_border, fill=None, outline=id)
+        draw.polygon (native_border, fill=None, outline=feature_id)
 
         draw = PIL.ImageDraw.Draw (self.direction_mask)
         
@@ -316,12 +319,12 @@ class TestImage:
     #--------------------------------------------------------------------------
     # Draw rectangular feature
     #
-    # @param rect Rectangle used for the feature
-    # @param id   Unique feature id
+    # @param rect       Rectangle used for the feature
+    # @param feature_id Unique feature id
     #
-    def draw_rectangular_feature (self, rect, id):
+    def draw_rectangular_feature (self, rect, feature_id):
         
-        assert id > 0x00 and id <= 0xff
+        assert feature_id > 0x00 and feature_id <= 0xff
         
         feature_image = self.add_background_noise (PIL.Image.new ('L', rect.size ().as_tuple ()))
 
@@ -334,7 +337,7 @@ class TestImage:
         self.image.paste (feature_image, box=rect.p0.as_tuple ())
         
         draw  = PIL.ImageDraw.Draw (self.cluster_mask)
-        draw.rectangle (rect.as_tuple (), fill=None, outline=id)
+        draw.rectangle (rect.as_tuple (), fill=None, outline=feature_id)
         
         draw = PIL.ImageDraw.Draw (self.direction_mask)
         
@@ -348,12 +351,12 @@ class TestImage:
     #--------------------------------------------------------------------------
     # Draw circular feature
     #
-    # @param rect Rectangle used for the circular feature
-    # @param id   Unique feature id
+    # @param rect       Rectangle used for the circular feature
+    # @param feature_id Unique feature id
     #
-    def draw_circular_feature (self, rect, id):
+    def draw_circular_feature (self, rect, feature_id):
 
-        assert id > 0x00 and id <= 0xff
+        assert feature_id > 0x00 and feature_id <= 0xff
         
         r = rect.move_to (Point2d (0, 0))
         
@@ -370,7 +373,7 @@ class TestImage:
         self.image.paste (feature_image, box=rect.p0.as_tuple (), mask=mask_image)
         
         draw = PIL.ImageDraw.Draw (self.cluster_mask)
-        draw.ellipse (rect.as_tuple (), fill=None, outline=id)
+        draw.ellipse (rect.as_tuple (), fill=None, outline=feature_id)
         
         color = 0xffffff
         
@@ -388,11 +391,11 @@ class TestImage:
     #--------------------------------------------------------------------------
     # Generate random feature
     #
-    # @param image Image to draw into
-    # @param area  Area the feature may occupy
-    # @param id    Unique feature id
+    # @param image      Image to draw into
+    # @param area       Area the feature may occupy
+    # @param feature_id Unique feature id
     #
-    def create_feature (self, area, id):
+    def create_feature (self, area, feature_id):
         inner_offset = 0.05 * area.size ()
         inner_size = area.size () - 2 * inner_offset
     
@@ -410,7 +413,7 @@ class TestImage:
         # Feature type 1: Rectangle
         #
         if feature_type == 0:
-            self.draw_rectangular_feature (Rect2d (area.p0 + feature_offset, feature_size), id)
+            self.draw_rectangular_feature (Rect2d (area.p0 + feature_offset, feature_size), feature_id)
             
         #
         # Feature type 2: Circle
@@ -423,7 +426,7 @@ class TestImage:
                 feature_offset = feature_offset + Point2d (0, (feature_size.height - feature_size.width) / 2)
                 feature_size = Size2d (feature_size.width, feature_size.width)
     
-            self.draw_circular_feature (Rect2d (area.p0 + feature_offset, feature_size), id)
+            self.draw_circular_feature (Rect2d (area.p0 + feature_offset, feature_size), feature_id)
         
         #
         # Feature type 3: Slotted hole

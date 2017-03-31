@@ -13,10 +13,6 @@ import os
 import subprocess
 import webbrowser
 
-import tensorflow as tf
-
-import models.cnn_manual
-import models.cnn_tf_learn
 import models.cnn_keras
 
 from models.training_data import TrainingData
