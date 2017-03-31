@@ -52,7 +52,7 @@ model = load_model (args.model, custom_objects={'precision': common.metrics.prec
 #
 # Create test image and setup input tensors
 #
-test_image = TestImage (args.width, args.height)
+test_image = TestImage (args)
 
 samples_x = int (math.floor (args.width / args.sample_size))
 samples_y = int (math.floor (args.height / args.sample_size))

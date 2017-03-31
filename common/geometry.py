@@ -213,6 +213,16 @@ class Rect2d:
     def size (self):
         return Size2d (self.p2.x - self.p0.x + 1, self.p2.y - self.p0.y + 1)
         
+
+    #--------------------------------------------------------------------------
+    # Resize rectangle while keeping top left position
+    #
+    # @param size New rectangle size
+    # @return Resulting rectangle
+    #
+    def resized (self, size):
+        return Rect2d (self.p0, self.p0 + size - Size2d (1, 1))
+        
     #--------------------------------------------------------------------------
     # Compute the combined area of this and another rectangle
     #

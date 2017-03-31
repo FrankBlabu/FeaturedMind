@@ -8,6 +8,7 @@
 # Frank Blankenburg, Mar. 2017
 #
 
+import argparse
 import math
 import random
 
@@ -41,16 +42,17 @@ class TestImage:
     #--------------------------------------------------------------------------
     # Constructor
     #
-    # @param size Size of the image in pixels
+    # @param args Image parameters
     #
-    def __init__ (self, width, height):
+    def __init__ (self, args):
 
-        self.width = width
-        self.height = height
+        self.width = args.width
+        self.height = args.height
+        self.sample_size = Size2d (args.sample_size, args.sample_size)
 
-        self.direction_threshold = 0.7
+        self.direction_threshold = 0.75
         
-        size = Size2d (width, height)
+        size = Size2d (self.width, self.height)
 
         #
         # Mask colors matching the directions
@@ -394,43 +396,37 @@ class TestImage:
     # @param feature_id Unique feature id
     #
     def create_feature (self, area, feature_id):
-        inner_offset = 0.05 * area.size ()
-        inner_size = area.size () - 2 * inner_offset
+        inner_rect = Rect2d (area.p0 + self.sample_size + Size2d (2, 2),
+                             area.p2 - self.sample_size - Size2d (2, 2))
     
-        assert inner_size.width > 10 and inner_size.height > 10
+        if inner_rect.size ().width > self.sample_size.width and inner_rect.size ().height > self.sample_size.height:
     
-        feature_size = Size2d (random.randint (10, int (round (inner_size.width))),
-                                random.randint (10, int (round (inner_size.height))))
-        
-        feature_offset = Point2d (inner_offset.width + random.randint (0, int (round (inner_size.width - feature_size.width))),
-                                  inner_offset.height + random.randint (0, int (round (inner_size.height - feature_size.height))))
-    
-        feature_type = random.randint (0, 1)
-        
-        #
-        # Feature type 1: Rectangle
-        #
-        if feature_type == 0:
-            self.draw_rectangular_feature (Rect2d (area.p0 + feature_offset, feature_size), feature_id)
+            offset = Size2d (random.randint (0, int (inner_rect.size ().width - self.sample_size.width)),
+                             random.randint (0, int (inner_rect.size ().height - self.sample_size.height)))
             
-        #
-        # Feature type 2: Circle
-        #
-        elif feature_type == 1:
-            if feature_size.width > feature_size.height:
-                feature_offset = feature_offset + Point2d ((feature_size.width - feature_size.height) / 2, 0)
-                feature_size = Size2d (feature_size.height, feature_size.height)
-            else:
-                feature_offset = feature_offset + Point2d (0, (feature_size.height - feature_size.width) / 2)
-                feature_size = Size2d (feature_size.width, feature_size.width)
-    
-            self.draw_circular_feature (Rect2d (area.p0 + feature_offset, feature_size), feature_id)
-        
-        #
-        # Feature type 3: Slotted hole
-        #
-        elif feature_type == 2:
-            pass
+            feature_rect = Rect2d (inner_rect.p0 + offset / 2, inner_rect.p2 - offset / 2)
+            feature_type = random.randint (0, 1)
+            
+            #
+            # Feature type 1: Rectangle
+            #
+            if feature_type == 0:
+                self.draw_rectangular_feature (feature_rect, feature_id)
+                
+            #
+            # Feature type 2: Circle
+            #
+            elif feature_type == 1:
+                if feature_rect.size ().width < feature_rect.size ().height:
+                    feature_rect = feature_rect.resized (Size2d (feature_rect.size ().width, feature_rect.size ().width))             
+                else:
+                    feature_rect = feature_rect.resized (Size2d (feature_rect.size ().height, feature_rect.size ().height))             
+                    self.draw_circular_feature (feature_rect, feature_id)
+            #
+            # Feature type 3: Slotted hole
+            #
+            elif feature_type == 2:
+                pass
 
     #--------------------------------------------------------------------------
     # Compute color for a line segment indicating the direction
@@ -558,11 +554,25 @@ class TestImage:
                                 rect.p0.y + (y + 1) * rect.size ().height / 3))
         
 
-#
+#--------------------------------------------------------------------------
 # MAIN
 #
 if __name__ == '__main__':
-    image = TestImage (640, 480)
+
+    random.seed ()
+
+    #
+    # Parse command line arguments
+    #
+    parser = argparse.ArgumentParser ()
+    
+    parser.add_argument ('-x', '--width',             type=int, default=640,  help='Width of the generated images')
+    parser.add_argument ('-y', '--height',            type=int, default=480,  help='Height of the generated images')
+    parser.add_argument ('-s', '--sample-size',       type=int, default=32,   help='Edge size of each sample in pixels')
+
+    args = parser.parse_args ()
+
+    image = TestImage (args)
     image.image.show (title='Generated image')
     image.direction_mask.show (title='Direction mask')
     

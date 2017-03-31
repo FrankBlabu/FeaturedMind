@@ -100,7 +100,7 @@ if __name__ == '__main__':
     #
     # Create test data set
     #
-    test_image = TestImage (args.width, args.height)
+    test_image = TestImage (args)
 
     image = create_result_image (test_image, args.sample_size, None)
     image.show ()
