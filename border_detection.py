@@ -13,7 +13,7 @@ import math
 import time
 
 import numpy as np
-import models.metrics
+import common.metrics
 
 from keras.models import load_model
 from keras import backend as K
@@ -46,7 +46,7 @@ assert args.height < 4096
 #
 # Load and construct model
 #
-model = load_model (args.model, custom_objects={'precision': models.metrics.precision, 'recall': models.metrics.recall})
+model = load_model (args.model, custom_objects={'precision': common.metrics.precision, 'recall': common.metrics.recall})
 
 
 #

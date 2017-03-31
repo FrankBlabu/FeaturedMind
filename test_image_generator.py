@@ -11,7 +11,7 @@
 import math
 import random
 
-from geometry import Point2d, Size2d, Rect2d
+from common.geometry import Point2d, Size2d, Rect2d
 from enum import Enum
 
 import PIL.Image
