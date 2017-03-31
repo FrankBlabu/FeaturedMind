@@ -11,7 +11,7 @@
 import math
 import random
 
-from common.geometry import Point2d, Size2d, Rect2d
+from common.geometry import Point2d, Size2d, Line2d, Rect2d
 from enum import Enum
 
 import PIL.Image
@@ -295,11 +295,11 @@ class TestImage:
         
         for point in border:
             if last_point:
-                self.draw_line (draw, last_point, point)
+                self.draw_line (draw, Line2d (last_point, point))
             last_point = point
             
         if len (border) > 1:
-            self.draw_line (draw, last_point, border[0])
+            self.draw_line (draw, Line2d (last_point, border[0]))
         
 
     #--------------------------------------------------------------------------
@@ -308,12 +308,11 @@ class TestImage:
     # The line is drawn with an appropriate direction color
     #
     # @param draw  Drawing handle
-    # @param p1    Starting point of the line
-    # @param p2    Target point of the line
+    # @param line  Line to draw
     # @param color Line color. If 'none', the direction colors is used instead.
     #
-    def draw_line (self, draw, p1, p2, color=None):
-        draw.line ([p1.as_tuple (), p2.as_tuple ()], fill=color if color != None else self.get_color_for_line (p1, p2))
+    def draw_line (self, draw, line, color=None):
+        draw.line (line.as_tuple (), fill=color if color != None else self.get_color_for_line (line))
         
     
     #--------------------------------------------------------------------------
@@ -341,10 +340,10 @@ class TestImage:
         
         draw = PIL.ImageDraw.Draw (self.direction_mask)
         
-        self.draw_line (draw, rect.p0, rect.p1)
-        self.draw_line (draw, rect.p1, rect.p2)
-        self.draw_line (draw, rect.p2, rect.p3)
-        self.draw_line (draw, rect.p3, rect.p0)
+        self.draw_line (draw, Line2d (rect.p0, rect.p1))
+        self.draw_line (draw, Line2d (rect.p1, rect.p2))
+        self.draw_line (draw, Line2d (rect.p2, rect.p3))
+        self.draw_line (draw, Line2d (rect.p3, rect.p0))
         
         
             
@@ -380,11 +379,10 @@ class TestImage:
         draw = PIL.ImageDraw.Draw (self.direction_mask)
         draw.ellipse (rect.as_tuple (), fill=None, outline=color)
             
-        for y in range (int (rect.p0.y), int (rect.p2.y)):
-            for x in range (int (rect.p0.x), int (rect.p2.x)):
-                r, g, b = self.direction_mask.getpixel ((x, y))
-                if r > 0 or g > 0 or b > 0:
-                    color = self.get_color_for_line (Point2d (0, 0), Point2d (-y + rect.center ().y, x -rect.center ().x))
+        for y in range (int (rect.p0.y), int (rect.p2.y) + 2):
+            for x in range (int (rect.p0.x), int (rect.p2.x) + 2):
+                if sum (self.direction_mask.getpixel ((x, y))) > 0:
+                    color = self.get_color_for_line (Line2d (rect.center (), Point2d (x, y)).orthogonal ())
                     self.direction_mask.putpixel ((x, y), color)
 
 
@@ -437,14 +435,14 @@ class TestImage:
     #--------------------------------------------------------------------------
     # Compute color for a line segment indicating the direction
     #
-    # @param p1 First point
-    # @param p2 Second point
+    # @param line Line
     # @return Color matching the direction
     #
-    def get_color_for_line (self, p1, p2):
-        angle = (math.atan2 (p2.y - p1.y, p2.x - p1.x) + math.pi) % math.pi
+    def get_color_for_line (self, line):
+        angle = line.angle ()
                 
         n = len (TestImage.Direction) - 2
+                        
         segment = round (2 * n * angle / (2 * math.pi)) % n
                 
         return self.direction_colors[segment + 1]

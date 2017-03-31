@@ -5,6 +5,7 @@
 # Frank Blankenburg, Mar. 2017
 #
 
+import math
 import unittest
 
 
@@ -30,13 +31,13 @@ class Point2d:
         assert type (self) is Point2d
         assert type (other) is Point2d or type (other) is Size2d
         
-        return Point2d (self.x + other.x, self.y + other.y) if type (other) is Point2d else Point2d (self.x + (other.width - 1), self.y + (other.height - 1))
+        return Point2d (self.x + other.x, self.y + other.y) if type (other) is Point2d else Point2d (self.x + other.width, self.y + other.height)
             
     def __sub__ (self, other):
         assert type (self) == Point2d
         assert type (other) is Point2d or type (other) is Size2d
         
-        return Point2d (self.x - other.x, self.y - other.y) if type (other) is Point2d else Point2d (self.x - (other.width - 1), self.y - (other.height - 1))
+        return Point2d (self.x - other.x, self.y - other.y) if type (other) is Point2d else Point2d (self.x - other.width, self.y - other.height)
     
     def __mul__ (self, other):
         assert type (self) == Point2d
@@ -132,6 +133,62 @@ class Size2d:
 
 
 #--------------------------------------------------------------------------
+# CLASS Line2d
+# 
+# Two dimensional line
+#
+class Line2d:
+    
+    def __init__ (self, p0, p1):
+        assert type (p0) is Point2d
+        assert type (p1) is Point2d
+
+        self.p0 = p0
+        self.p1 = p1
+        
+    #--------------------------------------------------------------------------
+    # Return length of the line
+    #       
+    def length (self):
+        diff = self.p1 - self.p0 + Point2d (1, 1)
+        return math.sqrt (diff.x * diff.x + diff.y * diff.y)
+        
+    def __repr__ (self):
+        return 'Line2d ({0}, {1})'.format (self.p0, self.p1)
+
+    def __eq__ (self, other):
+        assert type (other) is Line2d
+        return self.p0 == other.p0 and self.p1 == other.p1
+    
+    def as_tuple (self):
+        return (self.p0.as_tuple (), self.p1.as_tuple ())
+
+    
+    #--------------------------------------------------------------------------
+    # Return othogonal variant of this line
+    #
+    # The line is rotated counter clockwise around self.p0
+    #
+    # @return Rotated line
+    #
+    def orthogonal (self):
+        direction = self.p1 - self.p0
+        direction = Point2d (-direction.y, direction.x)
+        return Line2d (self.p0, self.p0 + direction)
+    
+    #--------------------------------------------------------------------------
+    # Angle of the line relative to the x axis (counterclockwise)
+    #
+    # @return Angle relative to the x axis in [0:2*PI[
+    #
+    def angle (self):
+        angle = math.atan2 (self.p1.y - self.p0.y, self.p1.x - self.p0.x)
+        if angle < 0:
+            angle = 2 * math.pi + angle
+        return angle
+
+
+#--------------------------------------------------------------------------
 # CLASS Rect2d
 # 
 # Two dimensional rectangle
@@ -143,7 +200,7 @@ class Rect2d:
         assert type (bottom_right) is Point2d or type (bottom_right) is Size2d
 
         if type (bottom_right) is Size2d:
-            bottom_right = top_left + bottom_right        
+            bottom_right = top_left + bottom_right - Point2d (1, 1)        
 
         self.p0 = top_left
         self.p1 = Point2d (bottom_right.x, top_left.y)
@@ -180,7 +237,7 @@ class Rect2d:
     # Return center coordinate of rectangle
     #
     def center (self):
-        return Point2d ((self.p0.x + self.size ().width) / 2, (self.p0.y + self.size ().height) / 2)
+        return self.p0 + self.size () / 2
                 
     def __repr__ (self):
         return 'Rect2d ({0}, {1})'.format (self.p0, self.p2)
@@ -212,6 +269,18 @@ class TestGeometry (unittest.TestCase):
         self.assertEqual (Size2d (1, 2) * 4, Size2d (1 * 4, 2 * 4))
         self.assertEqual (Size2d (1, 2) / 4, Size2d (1 / 4, 2 / 4))
         self.assertEqual (Size2d (5, 6).as_tuple (), (5, 6))
+
+    def test_Line2d (self):
+        self.assertEqual (Line2d (Point2d (5, 5), Point2d (7, 10)).length (), math.sqrt ((3*3 + 6*6)))
+        self.assertEqual (Line2d (Point2d (0, 0), Point2d (5, 5)).orthogonal (), Line2d (Point2d (0, 0), Point2d (-5, 5)))
+        self.assertEqual (Line2d (Point2d (2, 3), Point2d (5, 5)).orthogonal (), Line2d (Point2d (2, 3), Point2d (2 + -2, 3 + 3)))
+        
+        self.assertEqual (Line2d (Point2d (1, 2), Point2d (6, 2)).angle () * 180.0 / math.pi, 0.0)
+        self.assertEqual (Line2d (Point2d (3, 4), Point2d (3, 9)).angle () * 180.0 / math.pi, 90.0)
+        self.assertAlmostEqual (Line2d (Point2d (0, 0), Point2d (-5, 1)).angle () * 180.0 / math.pi, 169.0, places=0)
+        self.assertAlmostEqual (Line2d (Point2d (0, 0), Point2d (-5, -1)).angle () * 180.0 / math.pi, 191.0, places=0)
+        self.assertAlmostEqual (Line2d (Point2d (0, 0), Point2d (5, 1)).angle () * 180.0 / math.pi, 11.0, places=0)
+        self.assertAlmostEqual (Line2d (Point2d (0, 0), Point2d (5, -1)).angle () * 180.0 / math.pi, 349.0, places=0)
         
     def test_Rect2d (self):
         r1 = Rect2d (Point2d (0, 0), Point2d (10, 10))
@@ -220,13 +289,16 @@ class TestGeometry (unittest.TestCase):
         self.assertEqual (r1.p1, Point2d (10, 0))
         self.assertEqual (r1.p2, Point2d (10, 10))
         self.assertEqual (r1.p3, Point2d (0, 10))        
+        
         self.assertEqual (r1.size (), Size2d (11, 11))
+        self.assertEqual (r1.center (), Point2d (5.5, 5.5))
 
-        r2 = Rect2d (Point2d (0, 0), Size2d (10, 10))
+        r2 = Rect2d (Point2d (1, 2), Size2d (10, 10))
 
-        self.assertEqual (r2.p2, Point2d (9, 9))
+        self.assertEqual (r2.p2, Point2d (10, 11))
         self.assertEqual (r2.size (), Size2d (10, 10))
-        self.assertEqual (r2.as_tuple (), ((0, 0), (9, 9)))
+        self.assertEqual (r2.center (), Point2d (6, 7))
+        self.assertEqual (r2.as_tuple (), ((1, 2), (10, 11)))
 
         r3 = Rect2d (Point2d (3, 5), Point2d (10, 12))
         r4 = Rect2d (Point2d (4, 2), Point2d (11, 13))
