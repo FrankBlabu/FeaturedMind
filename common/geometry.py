@@ -84,6 +84,10 @@ class Point2d:
 class Size2d:
     
     def __init__ (self, width, height):
+        
+        assert type (width) == float or type (width) == int
+        assert type (height) == float or type (height) == int
+        
         self.width = width
         self.height = height
         

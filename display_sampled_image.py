@@ -86,9 +86,9 @@ if __name__ == '__main__':
     #
     parser = argparse.ArgumentParser ()
     
-    parser.add_argument ('-x', '--width',       type=int, default=640,  help='Width of the generated images')
-    parser.add_argument ('-y', '--height',      type=int, default=480,  help='Height of the generated images')
-    parser.add_argument ('-s', '--sample-size', type=int, default=32,   help='Edge size of each sample in pixels')
+    parser.add_argument ('-x', '--width',       type=int, default=1024, help='Width of the generated images')
+    parser.add_argument ('-y', '--height',      type=int, default=768,  help='Height of the generated images')
+    parser.add_argument ('-s', '--sample-size', type=int, default=16,   help='Edge size of each sample in pixels')
     
     args = parser.parse_args ()
     

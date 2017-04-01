@@ -37,7 +37,8 @@ class TestImage:
         DOWN    = 2
         LEFT    = 3
         RIGHT   = 4
-        UNKNOWN = 5
+        EDGE    = 5
+        UNKNOWN = 6
     
     #--------------------------------------------------------------------------
     # Constructor
@@ -50,7 +51,8 @@ class TestImage:
         self.height = args.height
         self.sample_size = Size2d (args.sample_size, args.sample_size)
 
-        self.direction_threshold = 0.75
+        self.direction_threshold_straight = 0.75
+        self.direction_threshold_edge     = 0.5
         
         size = Size2d (self.width, self.height)
 
@@ -65,6 +67,7 @@ class TestImage:
                                  (0x00, 0xff, 0x00),
                                  (0x00, 0x00, 0xff),
                                  (0xff, 0xff, 0x00),
+                                 (0x00, 0xff, 0xff),
                                  (0x55, 0x55, 0x55) ]
     
         self.direction_color_index = {}
@@ -92,11 +95,13 @@ class TestImage:
         #
         # Compute area used for the specimen border
         #
-        outer_border_offset = size * 5 / 100
+        outer_border_offset = 2 * self.sample_size
         outer_border_limit = [Point2d (outer_border_offset), Point2d (size - outer_border_offset)]
     
-        inner_border_offset = Point2d (size) * 25 / 100
-        inner_border_limit = [inner_border_offset, Point2d (size - inner_border_offset)]
+        inner_border_offset = size * 25 / 100
+        
+        
+        inner_border_limit = [Point2d (inner_border_offset), Point2d (size - inner_border_offset)]
         
         border_rect = Rect2d (Point2d (random.randint (outer_border_limit[0].x,
                                                        inner_border_limit[0].x),
@@ -428,6 +433,7 @@ class TestImage:
             elif feature_type == 2:
                 pass
 
+
     #--------------------------------------------------------------------------
     # Compute color for a line segment indicating the direction
     #
@@ -474,6 +480,15 @@ class TestImage:
         #
         # Classify segment content
         #
+        # There are two classifications:
+        #
+        # direction - The direction of the lines in the segment. During drawing, the direction mask
+        #             is filled with different colors matching the directions ancountered during
+        #             the single drawing operations. The segments direction mask colors are statistically
+        #             evaluate for the classification.
+        # cluster   - The dominating cluster in the segment tagged during drawing with different colors
+        #             in the cluster mask
+        #
         direction_distribution = np.zeros ((len (TestImage.Direction)))
         cluster_distribution = np.zeros (0xff)
         
@@ -504,8 +519,10 @@ class TestImage:
         if direction_distribution.sum () > 0:
             direction_distribution /= direction_distribution.sum ()
             index = np.argmax (direction_distribution)
-            if direction_distribution[index] > self.direction_threshold:
+            if direction_distribution[index] > self.direction_threshold_straight:
                 direction = TestImage.Direction (index)
+            elif direction_distribution[index]> self.direction_threshold_edge:
+                direction = TestImage.Direction.EDGE
             else:
                 direction = TestImage.Direction.UNKNOWN
         
@@ -566,9 +583,9 @@ if __name__ == '__main__':
     #
     parser = argparse.ArgumentParser ()
     
-    parser.add_argument ('-x', '--width',             type=int, default=640,  help='Width of the generated images')
-    parser.add_argument ('-y', '--height',            type=int, default=480,  help='Height of the generated images')
-    parser.add_argument ('-s', '--sample-size',       type=int, default=32,   help='Edge size of each sample in pixels')
+    parser.add_argument ('-x', '--width',       type=int, default=1024, help='Width of the generated images')
+    parser.add_argument ('-y', '--height',      type=int, default=768,  help='Height of the generated images')
+    parser.add_argument ('-s', '--sample-size', type=int, default=16,   help='Edge size of each sample in pixels')
 
     args = parser.parse_args ()
 
