@@ -367,8 +367,10 @@ class TestImage:
 
         assert type (area) is Rect2d
 
-        sample = self.image.crop (area.as_tuple ())            
-        label_mask = self.label_mask.crop (area.as_tuple ())
+        crop_area = area + Size2d (1, 1)
+
+        sample = self.image.crop (crop_area.as_tuple ())            
+        label_mask = self.label_mask.crop (crop_area.as_tuple ())
 
         label_stat = PIL.ImageStat.Stat (label_mask)
         

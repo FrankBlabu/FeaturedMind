@@ -41,10 +41,11 @@ def create_result_image (test_image, sample_size, result):
             sample, label = test_image.get_sample (rect)
     
             data = np.array ([int (round (d * 255)) for d in sample], np.uint8)
+            
             sample_image = PIL.Image.frombuffer ('L', (sample_size.width, sample_size.height), data.tostring (), 'raw', 'L', 0, 1)
             sample_image = sample_image.convert ('RGBA')
             
-            image.paste (sample_image, rect.as_tuple ())
+            image.paste (sample_image, (rect + Size2d (1, 1)).as_tuple ())
 
             #
             # Add overlay showing the label 
@@ -64,13 +65,13 @@ def create_result_image (test_image, sample_size, result):
                         # Case 1.1: False positive
                         #
                         if result[y][x] > 0:
-                            draw.rectangle (rect.as_tuple (), fill=(0xff, 0x00, 0x00, 0x20), outline=(0xff, 0x00, 0x00))
+                            draw.rectangle (rect.as_tuple (), fill=(0x00, 0x00, 0xff, 0x20), outline=(0x00, 0x00, 0xff))
                             
                         #
                         # Case 1.2: False negative
                         #
                         else:
-                            draw.rectangle (rect.as_tuple (), fill=(0x00, 0x00, 0xff, 0x20), outline=(0x00, 0x00, 0xff))
+                            draw.rectangle (rect.as_tuple (), fill=(0xff, 0x00, 0x00, 0x20), outline=(0xff, 0x00, 0x00))
                         
                     #
                     # Case 2: Hit

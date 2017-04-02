@@ -211,6 +211,10 @@ class Rect2d:
         self.p2 = bottom_right
         self.p3 = Point2d (top_left.x, bottom_right.y)
 
+    def __add__ (self, offset):
+        assert type (offset) is Size2d
+        return Rect2d (self.p0, self.size () + offset)
+
     #
     # Return size of the rectangle
     #       
@@ -261,7 +265,7 @@ class Rect2d:
         return self.p0 == other.p0 and self.p2 == other.p2
     
     def as_tuple (self):        
-        return (self.p0.x, self.p0.y, self.p2.x + 1, self.p2.y + 1)
+        return (self.p0.x, self.p0.y, self.p2.x, self.p2.y)
 
 
 
