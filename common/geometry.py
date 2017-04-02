@@ -316,13 +316,18 @@ class TestGeometry (unittest.TestCase):
         self.assertEqual (r2.p2, Point2d (10, 11))
         self.assertEqual (r2.size (), Size2d (10, 10))
         self.assertEqual (r2.center (), Point2d (6, 7))
-        self.assertEqual (r2.as_tuple (), (1, 2, 11, 12))
+        self.assertEqual (r2.as_tuple (), (1, 2, 10, 11))
 
         r3 = Rect2d (Point2d (3, 5), Point2d (10, 12))
         r4 = Rect2d (Point2d (4, 2), Point2d (11, 13))
         
         self.assertEqual (r3.expanded (r4), Rect2d (Point2d (3, 2), Point2d (11, 13))) 
-        self.assertEqual (r4.expanded (r3), Rect2d (Point2d (3, 2), Point2d (11, 13))) 
+        self.assertEqual (r4.expanded (r3), Rect2d (Point2d (3, 2), Point2d (11, 13)))
+        
+        r5 = Rect2d (Point2d (0, 0), Point2d (9, 9))
+        
+        self.assertEqual (r5.size (), Size2d (10, 10))
+        self.assertEqual (r5 + Size2d (3, 5), Rect2d (Point2d (0, 0), Size2d (13, 15)))
 
         
 if __name__ == '__main__':
