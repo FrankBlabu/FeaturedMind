@@ -14,6 +14,7 @@ import subprocess
 import webbrowser
 
 import keras
+import numpy as np
 
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
@@ -31,11 +32,11 @@ from common.training_data import TrainingData
 #
 def train_cnn (args, data):
         
-    x_train = data.get_training_data ()[0]
-    y_train = data.get_training_data ()[1]
+    x_train = data.get_training_data (TrainingData.Field.DATA)
+    y_train = data.get_training_data (TrainingData.Field.LABELS)
 
-    x_test = data.get_test_data ()[0]
-    y_test = data.get_test_data ()[1]
+    x_test = data.get_test_data (TrainingData.Field.DATA)
+    y_test = data.get_test_data (TrainingData.Field.LABELS)
         
     if K.image_data_format () == 'channels_first':
         x_train = x_train.reshape (x_train.shape[0], 1, data.sample_size, data.sample_size)
@@ -49,8 +50,8 @@ def train_cnn (args, data):
     x_train = x_train.astype ('float32')
     x_test = x_test.astype ('float32')
 
-    y_train = keras.utils.to_categorical (y_train, data.classes)
-    y_test = keras.utils.to_categorical (y_test, data.classes)
+    y_train = keras.utils.to_categorical (y_train, 2)
+    y_test = keras.utils.to_categorical (y_test, 2)
     
     model = Sequential ()
 
@@ -70,7 +71,7 @@ def train_cnn (args, data):
     model.add (Flatten ())
     model.add (Dense (1024, activation='relu'))
     model.add (Dropout (0.5))
-    model.add (Dense (data.classes, activation='softmax'))
+    model.add (Dense (2, activation='softmax'))
             
     model.compile (loss=keras.losses.categorical_crossentropy,
                    optimizer=keras.optimizers.Adadelta (),

@@ -11,6 +11,7 @@ import math
 import numpy as np
 import random
 
+from common.geometry import Point2d, Size2d, Rect2d
 from test_image_generator import TestImage
 
 import PIL.Image
@@ -21,6 +22,8 @@ import PIL.Image
 #
 def create_result_image (test_image, sample_size, result):
 
+    assert type (sample_size) is Size2d
+
     #
     # Paste samples into displayable image
     #
@@ -28,46 +31,67 @@ def create_result_image (test_image, sample_size, result):
     
     draw = PIL.ImageDraw.Draw (image, 'RGBA')
     
-    x_steps = int (math.floor (test_image.width / sample_size))
-    y_steps = int (math.floor (test_image.height / sample_size))
+    x_steps = int (math.floor (test_image.width / sample_size.width))
+    y_steps = int (math.floor (test_image.height / sample_size.height))
     
     for y in range (0, y_steps):
         for x in range (0, x_steps):
-            sample, direction, cluster = test_image.get_sample (x * sample_size, y * sample_size, sample_size)
+            rect = Rect2d (Point2d (x * sample_size.width, y * sample_size.height), sample_size)
+            
+            sample, label = test_image.get_sample (rect)
     
             data = np.array ([int (round (d * 255)) for d in sample], np.uint8)
-            sample_image = PIL.Image.frombuffer ('L', (sample_size, sample_size), data.tostring (), 'raw', 'L', 0, 1)
+            sample_image = PIL.Image.frombuffer ('L', (sample_size.width, sample_size.height), data.tostring (), 'raw', 'L', 0, 1)
             sample_image = sample_image.convert ('RGBA')
             
-            rect = (x * sample_size, y * sample_size, (x + 1) * sample_size, (y + 1) * sample_size)
-            r = (rect[0], rect[1], rect[2] - 1, rect[3] - 1)
-            
-            image.paste (sample_image, rect)
+            image.paste (sample_image, rect.as_tuple ())
 
             #
-            # Add overlay showing the direction 
+            # Add overlay showing the label 
             #
-            if direction != TestImage.Direction.NONE:
-                color = test_image.get_color_for_direction (direction)                
-                draw.rectangle (r, fill=(color[0], color[1], color[2], 0x20), outline=color)
+            if label > 0:
+
+                #
+                # Add overlay showing if the result matches
+                #
+                if result is not None:
+                    
+                    #
+                    # Case 1: Miss
+                    #
+                    if (result[y][x] == 0) != (label == 0):
+                        #
+                        # Case 1.1: False positive
+                        #
+                        if result[y][x] > 0:
+                            draw.rectangle (rect.as_tuple (), fill=(0xff, 0x00, 0x00, 0x20), outline=(0xff, 0x00, 0x00))
+                            
+                        #
+                        # Case 1.2: False negative
+                        #
+                        else:
+                            draw.rectangle (rect.as_tuple (), fill=(0x00, 0x00, 0xff, 0x20), outline=(0x00, 0x00, 0xff))
+                        
+                    #
+                    # Case 2: Hit
+                    #
+                    else:
+                        draw.rectangle (rect.as_tuple (), fill=(0x00, 0xff, 0x00, 0x20), outline=(0x00, 0xff, 0x00))
+                        
                 
-            #
-            # Add overlay showing if the result matches
-            #
-            if result is not None:
-                
-                result_direction = TestImage.Direction (result[y][x])
-                
-                if result_direction != direction:
-                    color = test_image.get_color_for_direction (result_direction)
-                    draw.line ((r[0], r[1], r[2], r[3]), fill=color)
-                    draw.line ((r[2], r[1], r[0], r[3]), fill=color)
+                #
+                # Overlay just showing the samples
+                #
+                else:
+                    draw.rectangle (rect.as_tuple (), fill=(0x00, 0xff, 0x00, 0x20), outline=(0x00, 0xff, 0x00))
+                                    
+
             
             #
             # Add overlay with the cluster id
             #    
-            if cluster > 0:    
-                draw.text ((rect[0], rect[1]), str (cluster))
+            if label > 0:    
+                draw.text (rect.p0.as_tuple (), str (label))
                     
     return image
 
@@ -102,5 +126,5 @@ if __name__ == '__main__':
     #
     test_image = TestImage (args)
 
-    image = create_result_image (test_image, args.sample_size, None)
+    image = create_result_image (test_image, Size2d (args.sample_size, args.sample_size), None)
     image.show ()

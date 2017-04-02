@@ -5,6 +5,8 @@
 # Frank Blankenburg, Mar. 2017
 #
 
+from enum import Enum
+
     
 #--------------------------------------------------------------------------
 # CLASS TrainingData
@@ -13,50 +15,52 @@
 #
 class TrainingData:
     
+    class Field (Enum):
+        DATA    = 0
+        LABELS  = 1
+        CLASSES = 2
+    
     def __init__ (self, file):
+        
         self.sample_size = file.attrs['sample_size']
 
-        self.data = file['data']
-        self.labels = file['labels']
+        data    = file['data']
+        labels  = file['labels']
+        classes = file['classes']
 
-        assert len (self.data) == len (self.labels)
+        assert len (data) == len (labels)
+        assert len (data) == len (classes)
         
-        self.batch_offset = 0
+        training_set_offset = 0
+        training_set_size = int (len (data) * 0.9)
+                
+        self.training_data = {
+            TrainingData.Field.DATA    : data[training_set_offset:training_set_offset + training_set_size],
+            TrainingData.Field.LABELS  : labels[training_set_offset:training_set_offset + training_set_size],
+            TrainingData.Field.CLASSES : classes[training_set_offset:training_set_offset + training_set_size]
+            }
+
+        test_set_offset = training_set_offset + training_set_size
+        test_set_size = len (data) - training_set_size
         
-        self.training_set_offset = 0
-        self.training_set_size = int (len (self.data) * 0.9)
+        self.test_data = {
+            TrainingData.Field.DATA    : data[training_set_offset:training_set_offset + training_set_size],
+            TrainingData.Field.LABELS  : labels[training_set_offset:training_set_offset + training_set_size],
+            TrainingData.Field.CLASSES : classes[training_set_offset:training_set_offset + training_set_size]
+            }
         
-        self.test_set_offset = self.training_set_offset + self.training_set_size
-        self.test_set_size = len (self.data) - self.training_set_size
-        
-        self.classes = file.attrs['classes']
-        
-            
+        assert len (self.training_data) == len (TrainingData.Field)
+        assert len (self.test_data) == len (TrainingData.Field)
+                
     def size (self):
-        return len (self.data)
+        return len (self.training_data[TrainingData.Field.DATA]) + len (self.test_data[TrainingData.Field.DATA])
     
-    def reset (self):
-        self.batch_offset = 0
+    def get_training_data (self, field):
+        assert field in self.training_data
+        return self.training_data[field]
     
-    def get_training_data (self):
-        return (self.data[self.training_set_offset:self.training_set_offset + self.training_set_size], 
-                self.labels[self.training_set_offset:self.training_set_offset + self.training_set_size])
+    def get_test_data (self, field):
+        assert field in self.test_data
+        return self.test_data[field]
     
-    def get_test_data (self):
-        return (self.data[self.test_set_offset:self.test_set_offset + self.test_set_size], 
-                self.labels[self.test_set_offset:self.test_set_offset + self.test_set_size])
-    
-    def get_next_batch (self, size):
-
-        data = []
-        labels = []
-        
-        for i in range (self.batch_offset, self.batch_offset + size):
-            data.append (self.data[self.training_set_offset + i % self.training_set_size])
-            labels.append (self.labels[self.training_set_offset + i % self.training_set_size])
-            
-        self.batch_offset = (self.batch_offset + size) % self.training_set_size
-        
-        return (data, labels)
-        
     

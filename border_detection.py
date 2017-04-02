@@ -18,6 +18,7 @@ import common.metrics
 from keras.models import load_model
 from keras import backend as K
 
+from common.geometry import Point2d, Size2d, Rect2d
 from test_image_generator import TestImage
 from display_sampled_image import create_result_image
 
@@ -32,11 +33,11 @@ np.set_printoptions (threshold=np.nan)
 #
 parser = argparse.ArgumentParser ()
 
-parser.add_argument ('model',               type=str,              help='Trained model data (meta data file)')
-parser.add_argument ('-x', '--width',       type=int, default=640, help='Width of generated image in pixels')
-parser.add_argument ('-y', '--height',      type=int, default=480, help='Height of generated image in pixels')
-parser.add_argument ('-s', '--sample-size', type=int, default=32,  help='Edge size of each sample')
-parser.add_argument ('-p', '--performance', type=int, default=0,   help='Number of runs for performance measurement')       
+parser.add_argument ('model',               type=str,               help='Trained model data (meta data file)')
+parser.add_argument ('-x', '--width',       type=int, default=1024, help='Width of generated image in pixels')
+parser.add_argument ('-y', '--height',      type=int, default=768,  help='Height of generated image in pixels')
+parser.add_argument ('-s', '--sample-size', type=int, default=16,   help='Edge size of each sample')
+parser.add_argument ('-p', '--performance', type=int, default=0,    help='Number of runs for performance measurement')       
 
 args = parser.parse_args ()
 
@@ -56,18 +57,18 @@ test_image = TestImage (args)
 
 samples_x = int (math.floor (args.width / args.sample_size))
 samples_y = int (math.floor (args.height / args.sample_size))
-sample_size = args.sample_size
+sample_size = Size2d (args.sample_size, args.sample_size)
 
-x = np.zeros ((samples_x * samples_y, sample_size * sample_size))
-y = np.zeros ((samples_x * samples_y))
+x = np.zeros ((samples_x * samples_y, args.sample_size * args.sample_size))
+y = np.zeros (samples_x * samples_y)
 
 count = 0
 for ys in range (0, samples_y):
     for xs in range (0, samples_x):
-        sample, label, cluster = test_image.get_sample (xs * sample_size, ys * sample_size, sample_size)
+        sample, label = test_image.get_sample (Rect2d (Point2d (xs * args.sample_size, ys * args.sample_size), sample_size))
 
         x[count] = sample
-        y[count] = label.value
+        y[count] = 1 if label > 0 else 0
         
         count += 1
   
@@ -77,7 +78,7 @@ else:
     x = x.reshape (x.shape[0], args.sample_size, args.sample_size, 1)
     
 x = x.astype ('float32')
-y = keras.utils.to_categorical (y, len (TestImage.Direction))
+y = keras.utils.to_categorical (y, 2)
 
         
 #
@@ -101,7 +102,7 @@ if args.performance > 0:
     
     print ('Duration ({0} runs): {1:.2f} s'.format (args.performance, elapsed_time))
     
-image = create_result_image (test_image, args.sample_size, result)
+image = create_result_image (test_image, sample_size, result)
 image.show ()
 
 #

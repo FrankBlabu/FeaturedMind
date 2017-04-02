@@ -260,8 +260,8 @@ class Rect2d:
         assert type (other) is Rect2d
         return self.p0 == other.p0 and self.p2 == other.p2
     
-    def as_tuple (self):
-        return (self.p0.as_tuple (), self.p2.as_tuple ())
+    def as_tuple (self):        
+        return (self.p0.x, self.p0.y, self.p2.x + 1, self.p2.y + 1)
 
 
 
@@ -312,7 +312,7 @@ class TestGeometry (unittest.TestCase):
         self.assertEqual (r2.p2, Point2d (10, 11))
         self.assertEqual (r2.size (), Size2d (10, 10))
         self.assertEqual (r2.center (), Point2d (6, 7))
-        self.assertEqual (r2.as_tuple (), ((1, 2), (10, 11)))
+        self.assertEqual (r2.as_tuple (), (1, 2, 11, 12))
 
         r3 = Rect2d (Point2d (3, 5), Point2d (10, 12))
         r4 = Rect2d (Point2d (4, 2), Point2d (11, 13))

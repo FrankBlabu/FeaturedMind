@@ -10,6 +10,7 @@ import math
 import random
 import h5py
 
+from common.geometry import Point2d, Size2d, Rect2d
 from test_image_generator import TestImage
 
 #--------------------------------------------------------------------------
@@ -31,8 +32,8 @@ parser.add_argument ('-s', '--sample-size',       type=int, default=16,   help='
 
 args = parser.parse_args ()
 
-assert args.width <= 2048 and 'Training image width is too large.'
-assert args.height <= 2048 and 'Training image height is too large.'
+assert args.width <= 4096 and 'Training image width is too large.'
+assert args.height <= 4096 and 'Training image height is too large.'
 assert args.sample_size <= 64 and 'Sample size is unusual large.'
 
 #
@@ -48,28 +49,28 @@ file.attrs['image_size']        = (args.width, args.height)
 file.attrs['number_of_samples'] = args.number_of_samples
 file.attrs['HDF5_Version']      = h5py.version.hdf5_version
 file.attrs['h5py_version']      = h5py.version.version
-file.attrs['classes']           = len (TestImage.Direction)
 
-data     = file.create_dataset ('data',     (args.number_of_samples, args.sample_size * args.sample_size), dtype='f', compression='lzf')
-labels   = file.create_dataset ('labels',   (args.number_of_samples,), dtype='i', compression='lzf')
-clusters = file.create_dataset ('clusters', (args.number_of_samples,), dtype='i', compression='lzf')
+data    = file.create_dataset ('data',    (args.number_of_samples, args.sample_size * args.sample_size), dtype='f', compression='lzf')
+labels  = file.create_dataset ('labels',  (args.number_of_samples,), dtype='i', compression='lzf')
+classes = file.create_dataset ('classes', (args.number_of_samples,), dtype='i', compression='lzf')
 
 count = 0
 while count < args.number_of_samples:
     
-    image = TestImage (args.width, args.height)
+    image = TestImage (args)
 
     positive_samples = []
     negative_samples = []
      
     for y in range (0, int (math.floor (args.height / args.sample_size))):
         for x in range (0, int (math.floor (args.width / args.sample_size))):
-            sample = image.get_sample (x * args.sample_size, y * args.sample_size, args.sample_size)
+            sample, label = image.get_sample (Rect2d (Point2d (x * args.sample_size, y * args.sample_size), 
+                                               Size2d (args.sample_size, args.sample_size)))
             
-            if sample[1] != TestImage.Direction.NONE:
-                positive_samples.append (sample)
+            if label > 0:
+                positive_samples.append ((sample, label))
             else:
-                negative_samples.append (sample)
+                negative_samples.append ((sample, label))
             
     random.shuffle (positive_samples)
     random.shuffle (negative_samples)
@@ -82,9 +83,9 @@ while count < args.number_of_samples:
     
     for sample in samples:
 
-        data[count]     = sample[0]
-        labels[count]   = sample[1].value
-        clusters[count] = sample[2]
+        data[count]    = sample[0]
+        labels[count]  = 1 if sample[1] > 0 else 0 
+        classes[count] = sample[1]
 
         count += 1
         if count == args.number_of_samples:

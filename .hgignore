@@ -9,5 +9,9 @@ RemoteSystemTempFiles
 *.hdf5
 *.keras
 *.model
+*.pyc
+events.*
 setup.bat
 .project
+.directory
+

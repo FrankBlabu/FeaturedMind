@@ -19,6 +19,7 @@ import PIL.Image
 import PIL.ImageDraw
 import PIL.ImageFilter
 import PIL.ImageEnhance
+import PIL.ImageStat
 
 import numpy as np
 
@@ -31,15 +32,6 @@ import numpy as np
 #
 class TestImage:
     
-    class Direction (Enum):
-        NONE    = 0
-        UP      = 1
-        DOWN    = 2
-        LEFT    = 3
-        RIGHT   = 4
-        EDGE    = 5
-        UNKNOWN = 6
-    
     #--------------------------------------------------------------------------
     # Constructor
     #
@@ -51,32 +43,8 @@ class TestImage:
         self.height = args.height
         self.sample_size = Size2d (args.sample_size, args.sample_size)
 
-        self.direction_threshold_straight = 0.75
-        self.direction_threshold_edge     = 0.5
-        
         size = Size2d (self.width, self.height)
 
-        #
-        # Mask colors matching the directions
-        #
-        # Each color matches a direction and is used in the image mask to
-        # assign the right direction label to each sample area
-        #
-        self.direction_colors = [ (0x00, 0x00, 0x00),
-                                 (0xff, 0x00, 0x00),
-                                 (0x00, 0xff, 0x00),
-                                 (0x00, 0x00, 0xff),
-                                 (0xff, 0xff, 0x00),
-                                 (0x00, 0xff, 0xff),
-                                 (0x55, 0x55, 0x55) ]
-    
-        self.direction_color_index = {}
-        for i in range (len (self.direction_colors)):
-            self.direction_color_index[self.direction_colors[i]] = i
-    
-        
-        assert len (self.direction_colors) == len (TestImage.Direction)
-        
         #
         # The complete test image
         #
@@ -85,13 +53,8 @@ class TestImage:
         #
         # Mask marking the feature and border relevant pixels for detection of edges
         #
-        self.direction_mask  = PIL.Image.new ('RGB', size.as_tuple ())
+        self.label_mask  = PIL.Image.new ('L', size.as_tuple ())
         
-        #
-        # Mask used for sample clustering
-        #
-        self.cluster_mask = PIL.Image.new ('L', size.as_tuple ())
-            
         #
         # Compute area used for the specimen border
         #
@@ -270,58 +233,33 @@ class TestImage:
         
         assert feature_id > 0x00 and feature_id <= 0xff
         
-        border_image = PIL.Image.new ('L', self.image.size)
+        specimen_image = PIL.Image.new ('L', self.image.size)
 
-        draw = PIL.ImageDraw.Draw (border_image)
+        draw = PIL.ImageDraw.Draw (specimen_image)
         
         #
         # Draw specimen background (with some noise)
         #
-        for y in range (border_image.size[1]):
-            for x in range (border_image.size[0]):
+        for y in range (specimen_image.size[1]):
+            for x in range (specimen_image.size[0]):
                 draw.point ((x, y), fill=random.randint (100, 120))
         
         native_border = [point.as_tuple () for point in border]
         
         draw.polygon (native_border, fill=None, outline=0xff)
 
-        border_image = border_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))        
-        border_mask = PIL.Image.new ('1', self.image.size)
+        specimen_image = specimen_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))        
+        specimen_mask = PIL.Image.new ('1', self.image.size)
 
-        draw = PIL.ImageDraw.Draw (border_mask)
+        draw = PIL.ImageDraw.Draw (specimen_mask)
         draw.polygon (native_border, fill=0xff, outline=0xff)
 
-        self.image.paste (border_image, mask=border_mask)
+        self.image.paste (specimen_image, mask=specimen_mask)
 
-        draw = PIL.ImageDraw.Draw (self.cluster_mask)
+        draw = PIL.ImageDraw.Draw (self.label_mask)
         draw.polygon (native_border, fill=None, outline=feature_id)
-
-        draw = PIL.ImageDraw.Draw (self.direction_mask)
-        
-        last_point = None
-        
-        for point in border:
-            if last_point:
-                self.draw_line (draw, Line2d (last_point, point))
-            last_point = point
-            
-        if len (border) > 1:
-            self.draw_line (draw, Line2d (last_point, border[0]))
         
 
-    #--------------------------------------------------------------------------
-    # Draw single line
-    #
-    # The line is drawn with an appropriate direction color
-    #
-    # @param draw  Drawing handle
-    # @param line  Line to draw
-    # @param color Line color. If 'none', the direction colors is used instead.
-    #
-    def draw_line (self, draw, line, color=None):
-        draw.line (line.as_tuple (), fill=color if color != None else self.get_color_for_line (line))
-        
-    
     #--------------------------------------------------------------------------
     # Draw rectangular feature
     #
@@ -342,15 +280,8 @@ class TestImage:
         
         self.image.paste (feature_image, box=rect.p0.as_tuple ())
         
-        draw  = PIL.ImageDraw.Draw (self.cluster_mask)
+        draw  = PIL.ImageDraw.Draw (self.label_mask)
         draw.rectangle (rect.as_tuple (), fill=None, outline=feature_id)
-        
-        draw = PIL.ImageDraw.Draw (self.direction_mask)
-        
-        self.draw_line (draw, Line2d (rect.p0, rect.p1))
-        self.draw_line (draw, Line2d (rect.p1, rect.p2))
-        self.draw_line (draw, Line2d (rect.p2, rect.p3))
-        self.draw_line (draw, Line2d (rect.p3, rect.p0))
         
         
             
@@ -378,20 +309,9 @@ class TestImage:
 
         self.image.paste (feature_image, box=rect.p0.as_tuple (), mask=mask_image)
         
-        draw = PIL.ImageDraw.Draw (self.cluster_mask)
+        draw = PIL.ImageDraw.Draw (self.label_mask)
         draw.ellipse (rect.as_tuple (), fill=None, outline=feature_id)
         
-        color = 0xffffff
-        
-        draw = PIL.ImageDraw.Draw (self.direction_mask)
-        draw.ellipse (rect.as_tuple (), fill=None, outline=color)
-            
-        for y in range (int (rect.p0.y), int (rect.p2.y) + 2):
-            for x in range (int (rect.p0.x), int (rect.p2.x) + 2):
-                if sum (self.direction_mask.getpixel ((x, y))) > 0:
-                    color = self.get_color_for_line (Line2d (rect.center (), Point2d (x, y)).orthogonal ())
-                    self.direction_mask.putpixel ((x, y), color)
-
 
     #--------------------------------------------------------------------------
     # Generate random feature
@@ -435,104 +355,24 @@ class TestImage:
 
 
     #--------------------------------------------------------------------------
-    # Compute color for a line segment indicating the direction
-    #
-    # @param line Line
-    # @return Color matching the direction
-    #
-    def get_color_for_line (self, line):
-        angle = line.angle ()
-                
-        n = len (TestImage.Direction) - 2
-                        
-        segment = round (2 * n * angle / (2 * math.pi)) % n
-                
-        return self.direction_colors[segment + 1]
-
-    #--------------------------------------------------------------------------
-    # Return color matching the given direction
-    #
-    # @param direction Direction (enum value)
-    # @return Color matching the direction
-    #
-    def get_color_for_direction (self, direction):        
-        return self.direction_colors[direction.value]
-        
-
-    #--------------------------------------------------------------------------
     # Return sample area from image
     #
     # The image data is normalized in the interval [0...1]
+    # The label indicates the feature this sample belongs to (0 = no feature)
     #
-    # @param x    Sample x offset in pixels
-    # @param y    Sample y offset in pixels
-    # @param size Sample edge size in pixels
-    # @return Tuple with sample in float array format / direction / cluster id 
+    # @param area Area to sample
+    # @return Tuple with sample in (float array format / label) 
     #
-    def get_sample (self, x, y, size):
+    def get_sample (self, area):
 
-        sample_area = [x, y, x + size, y + size]
+        assert type (area) is Rect2d
 
-        sample = self.image.crop (sample_area)            
-        direction_mask = self.direction_mask.crop (sample_area)
-        cluster_mask = self.cluster_mask.crop (sample_area)
-        
-        #
-        # Classify segment content
-        #
-        # There are two classifications:
-        #
-        # direction - The direction of the lines in the segment. During drawing, the direction mask
-        #             is filled with different colors matching the directions ancountered during
-        #             the single drawing operations. The segments direction mask colors are statistically
-        #             evaluate for the classification.
-        # cluster   - The dominating cluster in the segment tagged during drawing with different colors
-        #             in the cluster mask
-        #
-        direction_distribution = np.zeros ((len (TestImage.Direction)))
-        cluster_distribution = np.zeros (0xff)
-        
-        assert direction_mask.width == cluster_mask.width
-        assert direction_mask.height == cluster_mask.height
-        
-        for y in range (direction_mask.height):
-            for x in range (direction_mask.width):
-                
-                direction_color = direction_mask.getpixel ((x, y))
-                if direction_color in self.direction_color_index:
-                    direction_distribution[self.direction_color_index[direction_color]] += 1
-                    
-                cluster_color = cluster_mask.getpixel ((x, y))
-                assert cluster_color >= 0 and cluster_color <= 0xff
-                
-                if cluster_color > 0:
-                    cluster_distribution[cluster_color] += 1
+        sample = self.image.crop (area.as_tuple ())            
+        label_mask = self.label_mask.crop (area.as_tuple ())
 
-        direction_distribution[TestImage.Direction.NONE.value] = 0
-
-        #
-        # The label column will contain '0' for an empty segment,
-        # '1..n' for the n segment types and 'n+1' for an unclassified segment
-        # 
-        direction = TestImage.Direction.NONE
+        label_stat = PIL.ImageStat.Stat (label_mask)
         
-        if direction_distribution.sum () > 0:
-            direction_distribution /= direction_distribution.sum ()
-            index = np.argmax (direction_distribution)
-            if direction_distribution[index] > self.direction_threshold_straight:
-                direction = TestImage.Direction (index)
-            elif direction_distribution[index]> self.direction_threshold_edge:
-                direction = TestImage.Direction.EDGE
-            else:
-                direction = TestImage.Direction.UNKNOWN
-        
-        cluster = 0
-        
-        if cluster_distribution.sum () > 0:
-            cluster_distribution /= cluster_distribution.sum ()
-            cluster = np.argmax (cluster_distribution)
-                
-        return ([float (d) / 255 for d in sample.getdata ()], direction, cluster) 
+        return ([float (d) / 255 for d in sample.getdata ()], label_stat.extrema[0][1]) 
 
 
     #--------------------------------------------------------------------------
@@ -591,8 +431,7 @@ if __name__ == '__main__':
 
     image = TestImage (args)
     image.image.show (title='Generated image')
-    image.direction_mask.show (title='Direction mask')
     
-    enhancer = PIL.ImageEnhance.Sharpness (image.cluster_mask)
-    enhancer.enhance (100.0).show (title='Cluster mask')
+    enhancer = PIL.ImageEnhance.Sharpness (image.label_mask)
+    enhancer.enhance (100.0).show (title='Label mask')
     
