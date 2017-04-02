@@ -79,8 +79,7 @@ else:
     
 x = x.astype ('float32')
 y = keras.utils.to_categorical (y, 2)
-
-        
+       
 #
 # Run border detection network
 #

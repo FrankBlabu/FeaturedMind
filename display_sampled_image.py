@@ -91,8 +91,8 @@ def create_result_image (test_image, sample_size, result):
             #
             # Add overlay with the cluster id
             #    
-            if label > 0:    
-                draw.text (rect.p0.as_tuple (), str (label))
+            if result[y][x] > 0:
+                draw.text (rect.p0.as_tuple (), str (result[y][x]))
                     
     return image
 
