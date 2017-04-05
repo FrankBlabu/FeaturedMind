@@ -6,6 +6,7 @@
 #
 
 import math
+import random
 import unittest
 
 
@@ -17,44 +18,26 @@ import unittest
 class Point2d:
     
     def __init__ (self, x, y=None):
-        if type (x) == Size2d and y == None:
+        if y is None:
             self.x = x.width
             self.y = x.height
         else:
-            assert type (x) == float or type (x) == int
-            assert type (y) == float or type (y) == int
-            
-            self.x = x
-            self.y = y
+            self.x = float (x)
+            self.y = float (y)
         
     def __add__ (self, other):
-        assert type (self) is Point2d
-        assert type (other) is Point2d or type (other) is Size2d
-        
         return Point2d (self.x + other.x, self.y + other.y) if type (other) is Point2d else Point2d (self.x + other.width, self.y + other.height)
             
     def __sub__ (self, other):
-        assert type (self) == Point2d
-        assert type (other) is Point2d or type (other) is Size2d
-        
         return Point2d (self.x - other.x, self.y - other.y) if type (other) is Point2d else Point2d (self.x - other.width, self.y - other.height)
     
     def __mul__ (self, other):
-        assert type (self) == Point2d
-        assert type (other) == int or type (other) == float
-        
         return Point2d (self.x * other, self.y * other)
         
     def __rmul__ (self, other):
-        assert type (self) == Point2d
-        assert type (other) == int or type (other) == float
-        
         return Point2d (self.x * other, self.y * other)
 
     def __truediv__ (self, other):
-        assert type (self) == Point2d
-        assert type (other) == int or type (other) == float
-        
         return Point2d (self.x / other, self.y / other) 
 
     def __not__ (self):
@@ -62,11 +45,9 @@ class Point2d:
         self.y = -self.y
             
     def __eq__ (self, other):
-        assert type (other) is Point2d
         return self.x == other.x and self.y == other.y
 
     def __lt__ (self, other):
-        assert type (other) is Point2d
         return self.y < other.y if self.x == other.x else self.x < other.x
             
     def __repr__ (self):
@@ -84,52 +65,31 @@ class Point2d:
 class Size2d:
     
     def __init__ (self, width, height):
-        
-        assert type (width) == float or type (width) == int
-        assert type (height) == float or type (height) == int
-        
-        self.width = width
-        self.height = height
+        self.width = float (width)
+        self.height = float (height)
         
     def __add__ (self, other):
-        assert type (self) == Size2d
-        assert type (other) == Size2d or type (other) == Point2d
-        
         return Size2d (self.width + other.width, self.height + other.height) if type (other) == Size2d else Size2d (self.width + other.x, self.height + other.y) 
             
     def __sub__ (self, other):
-        assert type (self) == Size2d
-        assert type (other) == Size2d or type (other) == Point2d
-
         return Size2d (self.width - other.width, self.height - other.height) if type (other) == Size2d else Size2d (self.width - other.x, self.height - other.y) 
     
     def __mul__ (self, other):
-        assert type (self) == Size2d
-        assert type (other) == int or type (other) == float
-        
         return Size2d (self.width * other, self.height * other)
         
     def __rmul__ (self, other):
-        assert type (self) == Size2d
-        assert type (other) == int or type (other) == float
-        
         return Size2d (self.width * other, self.height * other)
 
     def __truediv__ (self, other):
-        assert type (self) == Size2d
-        assert type (other) == int or type (other) == float
-        
         return Size2d (self.width / other, self.height / other) 
 
     def __repr__ (self):
         return 'Size2d ({0}, {1})'.format (self.width, self.height)
 
     def __eq__ (self, other):
-        assert type (other) is Size2d
         return self.width == other.width and self.height == other.height
 
     def __lt__ (self, other):
-        assert type (other) is Size2d
         return self.height < other.height if self.width == other.width else self.width < other.width
     
     def as_tuple (self):
@@ -144,9 +104,6 @@ class Size2d:
 class Line2d:
     
     def __init__ (self, p0, p1):
-        assert type (p0) is Point2d
-        assert type (p1) is Point2d
-
         self.p0 = p0
         self.p1 = p1
         
@@ -161,7 +118,6 @@ class Line2d:
         return 'Line2d ({0}, {1})'.format (self.p0, self.p1)
 
     def __eq__ (self, other):
-        assert type (other) is Line2d
         return self.p0 == other.p0 and self.p1 == other.p1
     
     def as_tuple (self):
@@ -200,9 +156,6 @@ class Line2d:
 class Rect2d:
     
     def __init__ (self, top_left, bottom_right):
-        assert type (top_left) is Point2d
-        assert type (bottom_right) is Point2d or type (bottom_right) is Size2d
-
         if type (bottom_right) is Size2d:
             bottom_right = top_left + bottom_right - Point2d (1, 1)        
 
@@ -212,7 +165,6 @@ class Rect2d:
         self.p3 = Point2d (top_left.x, bottom_right.y)
 
     def __add__ (self, offset):
-        assert type (offset) is Size2d
         return Rect2d (self.p0, self.size () + offset)
 
     #
@@ -255,17 +207,51 @@ class Rect2d:
     # Return center coordinate of rectangle
     #
     def center (self):
-        return self.p0 + self.size () / 2
+        return self.p0 + (self.size () - Size2d (1, 1)) / 2
                 
     def __repr__ (self):
         return 'Rect2d ({0}, {1})'.format (self.p0, self.p2)
 
     def __eq__ (self, other):
-        assert type (other) is Rect2d
         return self.p0 == other.p0 and self.p2 == other.p2
     
     def as_tuple (self):        
-        return (self.p0.x, self.p0.y, self.p2.x, self.p2.y)
+        return (int (self.p0.x), int (self.p0.y), int (self.p2.x), int (self.p2.y))
+
+
+
+#--------------------------------------------------------------------------
+# CLASS Ellipse2d
+# 
+# Two dimensional ellipse
+#
+class Ellipse2d:
+    
+    def __init__ (self, center, radius=None):
+        
+        if radius is None:
+            rect = center
+            self.center = rect.center ()
+            self.radius = Point2d (rect.size () - Size2d (1, 1)) / 2
+        else:        
+            self.center = center
+            self.radius = radius
+
+    #
+    # Return bounding rectangle
+    #       
+    def rect (self):
+        return Rect2d (self.center - Point2d (self.radius.x, self.radius.y),
+                       self.center + Point2d (self.radius.x, self.radius.y))
+        
+    def __repr__ (self):
+        return 'Ellipse2d (center={0}, radius=({1}, {2}))'.format (self.center, self.radius.x, self.radius.y)
+
+    def __eq__ (self, other):
+        return self.center == other.center and self.radius == other.radius
+    
+    def as_tuple (self):        
+        return self.rect ().as_tuple ()
 
 
 
@@ -309,13 +295,13 @@ class TestGeometry (unittest.TestCase):
         self.assertEqual (r1.p3, Point2d (0, 10))        
         
         self.assertEqual (r1.size (), Size2d (11, 11))
-        self.assertEqual (r1.center (), Point2d (5.5, 5.5))
+        self.assertEqual (r1.center (), Point2d (5, 5))
 
         r2 = Rect2d (Point2d (1, 2), Size2d (10, 10))
 
         self.assertEqual (r2.p2, Point2d (10, 11))
         self.assertEqual (r2.size (), Size2d (10, 10))
-        self.assertEqual (r2.center (), Point2d (6, 7))
+        self.assertEqual (r2.center (), Point2d (5.5, 6.5))
         self.assertEqual (r2.as_tuple (), (1, 2, 10, 11))
 
         r3 = Rect2d (Point2d (3, 5), Point2d (10, 12))
@@ -328,6 +314,36 @@ class TestGeometry (unittest.TestCase):
         
         self.assertEqual (r5.size (), Size2d (10, 10))
         self.assertEqual (r5 + Size2d (3, 5), Rect2d (Point2d (0, 0), Size2d (13, 15)))
+
+    def test_Ellipse2d (self):
+        e1 = Ellipse2d (Point2d (2, 2), Point2d (2, 2))
+        
+        self.assertEqual (e1.center, Point2d (2, 2))
+        self.assertEqual (e1.radius, Point2d (2, 2))
+        self.assertEqual (e1.rect (), Rect2d (Point2d (0, 0), Point2d (4, 4)))
+        
+        e2 = Ellipse2d (Point2d (5, 10), Point2d (2, 3))
+        
+        self.assertEqual (e2.center, Point2d (5, 10))
+        self.assertEqual (e2.radius, Point2d (2, 3))
+        self.assertEqual (e2.rect (), Rect2d (Point2d (3, 7), Point2d (7, 13)))
+        
+        r = Rect2d (Point2d (0, 0), Point2d (4, 4))
+        self.assertEqual (r.size (), Size2d (5, 5))
+        self.assertEqual (r.center (), Point2d (2, 2))
+        
+        e3 = Ellipse2d (r)
+        
+        self.assertEqual (e3.center, Point2d (2, 2))
+        self.assertEqual (e3.radius, Point2d (2, 2))
+        self.assertEqual (e3.rect (), r)
+
+        for _ in range (100):
+            r = Rect2d (Point2d (random.randint (0, 100), random.randint (0, 100)),
+                        Point2d (random.randint (10, 100), random.randint (10, 100)))
+            
+            e = Ellipse2d (r)
+            self.assertEqual (e.rect (), r)
 
         
 if __name__ == '__main__':

@@ -9,19 +9,15 @@
 #
 
 import argparse
-import math
 import random
 
-from common.geometry import Point2d, Size2d, Line2d, Rect2d
-from enum import Enum
+from common.geometry import Point2d, Size2d, Rect2d
 
 import PIL.Image
 import PIL.ImageDraw
 import PIL.ImageFilter
 import PIL.ImageEnhance
 import PIL.ImageStat
-
-import numpy as np
 
 
 
@@ -42,6 +38,7 @@ class TestImage:
         self.width = args.width
         self.height = args.height
         self.sample_size = Size2d (args.sample_size, args.sample_size)
+        self.objects = []
 
         size = Size2d (self.width, self.height)
 
@@ -258,7 +255,7 @@ class TestImage:
 
         draw = PIL.ImageDraw.Draw (self.label_mask)
         draw.polygon (native_border, fill=None, outline=feature_id)
-        
+                
 
     #--------------------------------------------------------------------------
     # Draw rectangular feature
@@ -282,6 +279,8 @@ class TestImage:
         
         draw  = PIL.ImageDraw.Draw (self.label_mask)
         draw.rectangle (rect.as_tuple (), fill=None, outline=feature_id)
+        
+        self.objects.append (rect)
         
         
             
@@ -311,6 +310,8 @@ class TestImage:
         
         draw = PIL.ImageDraw.Draw (self.label_mask)
         draw.ellipse (rect.as_tuple (), fill=None, outline=feature_id)
+        
+        self.objects.append (rect)
         
 
     #--------------------------------------------------------------------------
@@ -346,12 +347,8 @@ class TestImage:
                     feature_rect = feature_rect.resized (Size2d (feature_rect.size ().width, feature_rect.size ().width))             
                 else:
                     feature_rect = feature_rect.resized (Size2d (feature_rect.size ().height, feature_rect.size ().height))             
-                    self.draw_circular_feature (feature_rect, feature_id)
-            #
-            # Feature type 3: Slotted hole
-            #
-            elif feature_type == 2:
-                pass
+                    
+                self.draw_circular_feature (feature_rect, feature_id)
 
 
     #--------------------------------------------------------------------------
