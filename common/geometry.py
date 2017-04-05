@@ -247,8 +247,16 @@ class Ellipse2d:
     def __repr__ (self):
         return 'Ellipse2d (center={0}, radius=({1}, {2}))'.format (self.center, self.radius.x, self.radius.y)
 
+    #
+    # Generate circle with the lesser of the (x, y) radius of the ellipse and the same center
+    #
+    def to_circle (self):    
+        return Ellipse2d (self.center, Point2d (min (self.radius.x, self.radius.y), min (self.radius.x, self.radius.y)))  
+                                 
     def __eq__ (self, other):
         return self.center == other.center and self.radius == other.radius
+
+
     
     def as_tuple (self):        
         return self.rect ().as_tuple ()
@@ -344,6 +352,12 @@ class TestGeometry (unittest.TestCase):
             
             e = Ellipse2d (r)
             self.assertEqual (e.rect (), r)
+            
+        e4 = Ellipse2d (Point2d (5, 5), Point2d (2, 3))
+        self.assertEqual (e4.to_circle (), Ellipse2d (Point2d (5, 5), Point2d (2, 2)))
+
+        e5 = Ellipse2d (Point2d (5, 5), Point2d (5, 4))
+        self.assertEqual (e5.to_circle (), Ellipse2d (Point2d (5, 5), Point2d (4, 4)))
 
         
 if __name__ == '__main__':

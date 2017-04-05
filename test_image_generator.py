@@ -11,14 +11,13 @@
 import argparse
 import random
 
-from common.geometry import Point2d, Size2d, Rect2d
+from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d
 
 import PIL.Image
 import PIL.ImageDraw
 import PIL.ImageFilter
 import PIL.ImageEnhance
 import PIL.ImageStat
-
 
 
 #--------------------------------------------------------------------------
@@ -287,14 +286,15 @@ class TestImage:
     #--------------------------------------------------------------------------
     # Draw circular feature
     #
-    # @param rect       Rectangle used for the circular feature
+    # @param ellipse    Ellipse of the feature
     # @param feature_id Unique feature id
     #
-    def draw_circular_feature (self, rect, feature_id):
+    def draw_circular_feature (self, ellipse, feature_id):
 
         assert feature_id > 0x00 and feature_id <= 0xff
         
-        r = rect.move_to (Point2d (0, 0))
+        rect = ellipse.rect ()
+        r = ellipse.rect ().move_to (Point2d (0, 0))
         
         feature_image = self.add_background_noise (PIL.Image.new ('L', rect.size ().as_tuple ()))
 
@@ -343,13 +343,7 @@ class TestImage:
             # Feature type 2: Circle
             #
             elif feature_type == 1:
-                if feature_rect.size ().width < feature_rect.size ().height:
-                    feature_rect = feature_rect.resized (Size2d (feature_rect.size ().width, feature_rect.size ().width))             
-                else:
-                    feature_rect = feature_rect.resized (Size2d (feature_rect.size ().height, feature_rect.size ().height))             
-                    
-                self.draw_circular_feature (feature_rect, feature_id)
-
+                self.draw_circular_feature (Ellipse2d (feature_rect).to_circle (), feature_id)
 
     #--------------------------------------------------------------------------
     # Return sample area from image
