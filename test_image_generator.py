@@ -9,7 +9,10 @@
 #
 
 import argparse
+import math
 import random
+
+import numpy as np
 
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d
 
@@ -34,33 +37,30 @@ class TestImage:
     #
     def __init__ (self, args):
 
-        self.width = args.width
-        self.height = args.height
+        self.size = Size2d (args.width, args.height)
         self.sample_size = Size2d (args.sample_size, args.sample_size)
         self.objects = []
-
-        size = Size2d (self.width, self.height)
 
         #
         # The complete test image
         #
-        self.image = self.add_background_noise (PIL.Image.new ('L', size.as_tuple ()))
+        self.image = self.add_background_noise (PIL.Image.new ('L', self.size.as_tuple ()))
         
         #
         # Mask marking the feature and border relevant pixels for detection of edges
         #
-        self.label_mask  = PIL.Image.new ('L', size.as_tuple ())
+        self.label_mask  = PIL.Image.new ('L', self.size.as_tuple ())
         
         #
         # Compute area used for the specimen border
         #
         outer_border_offset = 2 * self.sample_size
-        outer_border_limit = [Point2d (outer_border_offset), Point2d (size - outer_border_offset)]
+        outer_border_limit = [Point2d (outer_border_offset), Point2d (self.size - outer_border_offset)]
     
-        inner_border_offset = size * 25 / 100
+        inner_border_offset = self.size * 25 / 100
         
         
-        inner_border_limit = [Point2d (inner_border_offset), Point2d (size - inner_border_offset)]
+        inner_border_limit = [Point2d (inner_border_offset), Point2d (self.size - inner_border_offset)]
         
         border_rect = Rect2d (Point2d (random.randint (outer_border_limit[0].x,
                                                        inner_border_limit[0].x),
@@ -220,6 +220,15 @@ class TestImage:
     
     
     #--------------------------------------------------------------------------
+    # Return number of samples in x and y direction with the configured 
+    # sample size
+    #
+    def number_of_samples (self):
+        return [int (math.floor (self.size.width / self.sample_size.width)),
+                int (math.floor (self.size.height / self.sample_size.height))]
+
+    
+    #--------------------------------------------------------------------------
     # Draw specimen border into image
     #
     # @param border     Polygon defining the specimen border
@@ -311,7 +320,7 @@ class TestImage:
         draw = PIL.ImageDraw.Draw (self.label_mask)
         draw.ellipse (rect.as_tuple (), fill=None, outline=feature_id)
         
-        self.objects.append (rect)
+        self.objects.append (ellipse)
         
 
     #--------------------------------------------------------------------------
@@ -367,6 +376,28 @@ class TestImage:
         
         return ([float (d) / 255 for d in sample.getdata ()], label_stat.extrema[0][1]) 
 
+    #--------------------------------------------------------------------------
+    # Return array of samples
+    #
+    def get_all_samples (self):
+        
+        x_steps = int (math.floor (self.size.width / self.sample_size.width))
+        y_steps = int (math.floor (self.size.height / self.sample_size.height))
+        
+        samples = np.array ((y_steps, x_steps, self.sample_size.width * self.sample_size.height))
+        labels = np.array ((y_steps, x_steps)) 
+                
+        for y in range (y_steps):
+            for x in range (x_steps):
+                rect = Rect2d (Point2d (x * self.sample_size.width, y * self.sample_size.height), self.sample_size)
+                
+                sample, label = self.get_sample (rect)
+                
+                samples[y][x] = sample
+                labels[y][x]= label
+                                
+        return samples, labels
+            
 
     #--------------------------------------------------------------------------
     # Add background noise to an image

@@ -7,7 +7,6 @@
 #
 
 import argparse
-import math
 import numpy as np
 import random
 
@@ -20,29 +19,27 @@ import PIL.Image
 #----------------------------------------------------------------------------
 # Display test image together with border detection flag overlay
 #
-def create_result_image (test_image, sample_size, result):
-
-    assert type (sample_size) is Size2d
+def create_result_image (test_image, result):
 
     #
     # Paste samples into displayable image
     #
-    image = PIL.Image.new ('RGB', (test_image.width, test_image.height))
+    image = PIL.Image.new ('RGB', (int (test_image.size.width), int (test_image.size.height)))
     
     draw = PIL.ImageDraw.Draw (image, 'RGBA')
+    samples, labels = test_image.get_all_samples ()
     
-    x_steps = int (math.floor (test_image.width / sample_size.width))
-    y_steps = int (math.floor (test_image.height / sample_size.height))
+    print (samples.shape, labels.shape)
     
-    for y in range (0, y_steps):
-        for x in range (0, x_steps):
-            rect = Rect2d (Point2d (x * sample_size.width, y * sample_size.height), sample_size)
+    for y in range (0, test_image.number_of_samples[1]):
+        for x in range (0, test_image.number_of_samples[0]):
+            rect = Rect2d (Point2d (x * test_image.sample_size.width, y * test_image.sample_size.height), test_image.sample_size)
             
             sample, label = test_image.get_sample (rect)
     
             data = np.array ([int (round (d * 255)) for d in sample], np.uint8)
             
-            sample_image = PIL.Image.frombuffer ('L', (sample_size.width, sample_size.height), data.tostring (), 'raw', 'L', 0, 1)
+            sample_image = PIL.Image.frombuffer ('L', (int (test_image.sample_size.width), int (test_image.sample_size.height)), data.tostring (), 'raw', 'L', 0, 1)
             sample_image = sample_image.convert ('RGBA')
             
             image.paste (sample_image, (rect + Size2d (1, 1)).as_tuple ())
@@ -127,5 +124,5 @@ if __name__ == '__main__':
     #
     test_image = TestImage (args)
 
-    image = create_result_image (test_image, Size2d (args.sample_size, args.sample_size), None)
+    image = create_result_image (test_image, None)
     image.show ()
