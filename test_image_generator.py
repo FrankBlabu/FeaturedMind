@@ -419,6 +419,76 @@ class TestImage:
                                 rect.p0.y + y * rect.size ().height / 3),
                        Point2d (rect.p0.x + (x + 1) * rect.size ().width / 3,
                                 rect.p0.y + (y + 1) * rect.size ().height / 3))
+
+    #----------------------------------------------------------------------------
+    # Create image displaying the samples
+    #
+    def to_rgb (self):
+    
+        #
+        # Paste samples into displayable image in RGB format
+        #
+        image = PIL.Image.new ('RGB', (int (self.size.width), int (self.size.height)))
+        draw = PIL.ImageDraw.Draw (image, 'RGB')
+        
+        for y in range (self.samples.shape[0]):
+            for x in range (self.samples.shape[1]):
+                data = np.array ([int (round (d * 255)) for d in self.samples[y][x]], np.uint8)
+                
+                sample_image = PIL.Image.frombuffer ('L', (int (self.sample_size.width), int (self.sample_size.height)), data.tostring (), 'raw', 'L', 0, 1)
+                sample_image = sample_image.convert ('RGB')
+                
+                rect = Rect2d (Point2d (x * self.sample_size.width, y * self.sample_size.height), self.sample_size)
+                image.paste (sample_image, (rect + Size2d (1, 1)).as_tuple ())
+                
+        return image
+
+    #----------------------------------------------------------------------------
+    # Create overlay displaying the generated / found samples
+    #
+    # @param labels Found labels with the same shape as self.labels
+    #
+    def create_result_overlay (self, labels):
+    
+        overlay = PIL.Image.new ('RGBA', (int (self.size.width), int (self.size.height)))        
+        draw = PIL.ImageDraw.Draw (overlay, 'RGBA')
+    
+        assert self.labels.shape == labels.shape
+        
+        for y in range (labels.shape[0]):
+            for x in range (labels.shape[1]):
+                rect = Rect2d (Point2d (x * self.sample_size.width, y * self.sample_size.height), self.sample_size)
+                
+                expected = self.labels[y][x]
+                found    = labels[y][x]
+    
+                #
+                # Case 1: Hit
+                #
+                if expected > 0 and found > 0:
+                    draw.rectangle (rect.as_tuple (), fill=(0x00, 0xff, 0x00, 0x20), outline=(0x00, 0xff, 0x00))
+                    
+                #
+                # Case 2: False positive
+                #
+                elif expected == 0 and found > 0:
+                    draw.rectangle (rect.as_tuple (), fill=(0x00, 0x00, 0xff, 0x20), outline=(0x00, 0x00, 0xff))
+                    
+                #
+                # Case 3: False negative
+                #
+                elif expected > 0 and found == 0:
+                    draw.rectangle (rect.as_tuple (), fill=(0xff, 0x00, 0x00, 0x20), outline=(0xff, 0x00, 0x00))
+                
+                #
+                # Add overlay with the cluster id
+                #    
+                if found > 0:
+                    draw.text (rect.p0.as_tuple (), str (int (found)))
+                        
+        return overlay
+
+
         
 
 #--------------------------------------------------------------------------

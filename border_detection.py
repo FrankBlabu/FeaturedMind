@@ -9,8 +9,6 @@
 import argparse
 import gc
 import keras
-import math
-import time
 
 import numpy as np
 import common.metrics
@@ -18,9 +16,7 @@ import common.metrics
 from keras.models import load_model
 from keras import backend as K
 
-from common.geometry import Point2d, Size2d, Rect2d
 from test_image_generator import TestImage
-from display_sampled_image import create_test_image, create_result_overlay
 
 
 #--------------------------------------------------------------------------
@@ -88,8 +84,8 @@ if args.performance > 0:
     
     print ('Duration ({0} runs): {1:.2f} s'.format (args.performance, elapsed_time))
     
-image = create_test_image (test_image)
-overlay = create_result_overlay (test_image, result)
+image = test_image.to_rgb ()
+overlay = test_image.create_result_overlay (result)
 image.paste (overlay, (0, 0), overlay)
 image.show ()
 
