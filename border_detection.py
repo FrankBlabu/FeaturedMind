@@ -20,7 +20,8 @@ from keras import backend as K
 
 from common.geometry import Point2d, Size2d, Rect2d
 from test_image_generator import TestImage
-from display_sampled_image import create_result_image
+from display_sampled_image import create_test_image, create_result_overlay
+
 
 #--------------------------------------------------------------------------
 # MAIN
@@ -55,23 +56,9 @@ model = load_model (args.model, custom_objects={'precision': common.metrics.prec
 #
 test_image = TestImage (args)
 
-samples_x = int (math.floor (args.width / args.sample_size))
-samples_y = int (math.floor (args.height / args.sample_size))
-sample_size = Size2d (args.sample_size, args.sample_size)
+x = test_image.samples.reshape ((-1, test_image.samples.shape[2]))
+y = np.clip (test_image.labels.reshape ((-1)), 0, 1)
 
-x = np.zeros ((samples_x * samples_y, args.sample_size * args.sample_size))
-y = np.zeros (samples_x * samples_y)
-
-count = 0
-for ys in range (0, samples_y):
-    for xs in range (0, samples_x):
-        sample, label = test_image.get_sample (Rect2d (Point2d (xs * args.sample_size, ys * args.sample_size), sample_size))
-
-        x[count] = sample
-        y[count] = 1 if label > 0 else 0
-        
-        count += 1
-  
 if K.image_data_format () == 'channels_first':
     x = x.reshape (x.shape[0], 1, args.sample_size, args.sample_size)
 else:
@@ -86,7 +73,7 @@ y = keras.utils.to_categorical (y, 2)
 score = model.evaluate (x, y, verbose=0)
 
 result = model.predict (x)
-result = np.argmax (result, axis=1).reshape ((samples_y, samples_x))
+result = np.argmax (result, axis=1).reshape ((test_image.samples.shape[0], test_image.samples.shape[1]))
 
 print ('Test loss:', score[0])
 print ('Test accuracy:', score[1])
@@ -101,7 +88,9 @@ if args.performance > 0:
     
     print ('Duration ({0} runs): {1:.2f} s'.format (args.performance, elapsed_time))
     
-image = create_result_image (test_image, sample_size, result)
+image = create_test_image (test_image)
+overlay = create_result_overlay (test_image, result)
+image.paste (overlay, (0, 0), overlay)
 image.show ()
 
 #

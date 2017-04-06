@@ -62,10 +62,11 @@ while count < args.number_of_samples:
     positive_samples = []
     negative_samples = []
      
-    for y in range (0, int (math.floor (args.height / args.sample_size))):
-        for x in range (0, int (math.floor (args.width / args.sample_size))):
-            sample, label = image.get_sample (Rect2d (Point2d (x * args.sample_size, y * args.sample_size), 
-                                               Size2d (args.sample_size, args.sample_size)))
+    for y in range (image.samples.shape[0]):
+        for x in range (image.samples.shape[1]):
+            
+            sample = image.samples[y][x]
+            label = image.labels[y][x]
             
             if label > 0:
                 positive_samples.append ((sample, label))

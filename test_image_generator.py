@@ -217,16 +217,22 @@ class TestImage:
                 
                     self.create_feature (area, feature_id)                    
                     feature_id += 1
-    
-    
-    #--------------------------------------------------------------------------
-    # Return number of samples in x and y direction with the configured 
-    # sample size
-    #
-    def number_of_samples (self):
-        return [int (math.floor (self.size.width / self.sample_size.width)),
-                int (math.floor (self.size.height / self.sample_size.height))]
+                    
+        #
+        # Split image into samples/labels
+        #
+        x_steps = int (math.floor (self.size.width / self.sample_size.width))
+        y_steps = int (math.floor (self.size.height / self.sample_size.height))
+        
+        self.samples = np.zeros ([y_steps, x_steps, int (self.sample_size.width * self.sample_size.height)])
+        self.labels = np.zeros ([y_steps, x_steps]) 
+                
+        for y in range (y_steps):
+            for x in range (x_steps):
+                rect = Rect2d (Point2d (x * self.sample_size.width, y * self.sample_size.height), self.sample_size)
+                self.samples[y][x], self.labels[y][x] = self.get_sample (rect)
 
+    
     
     #--------------------------------------------------------------------------
     # Draw specimen border into image
@@ -354,6 +360,7 @@ class TestImage:
             elif feature_type == 1:
                 self.draw_circular_feature (Ellipse2d (feature_rect).to_circle (), feature_id)
 
+
     #--------------------------------------------------------------------------
     # Return sample area from image
     #
@@ -374,29 +381,8 @@ class TestImage:
 
         label_stat = PIL.ImageStat.Stat (label_mask)
         
-        return ([float (d) / 255 for d in sample.getdata ()], label_stat.extrema[0][1]) 
+        return ([float (d) / 255 for d in sample.getdata ()], int (label_stat.extrema[0][1])) 
 
-    #--------------------------------------------------------------------------
-    # Return array of samples
-    #
-    def get_all_samples (self):
-        
-        x_steps = int (math.floor (self.size.width / self.sample_size.width))
-        y_steps = int (math.floor (self.size.height / self.sample_size.height))
-        
-        samples = np.array ((y_steps, x_steps, self.sample_size.width * self.sample_size.height))
-        labels = np.array ((y_steps, x_steps)) 
-                
-        for y in range (y_steps):
-            for x in range (x_steps):
-                rect = Rect2d (Point2d (x * self.sample_size.width, y * self.sample_size.height), self.sample_size)
-                
-                sample, label = self.get_sample (rect)
-                
-                samples[y][x] = sample
-                labels[y][x]= label
-                                
-        return samples, labels
             
 
     #--------------------------------------------------------------------------
