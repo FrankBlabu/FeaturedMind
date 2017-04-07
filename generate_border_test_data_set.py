@@ -1,16 +1,14 @@
 #!/usr/bin/python3
 #
-# generate_test_data_set.py - Generate test data set
+# generate_border_test_data_set.py - Generate test data set for border detection
 #
 # Frank Blankenburg, Feb. 2017
 #
 
 import argparse
-import math
 import random
 import h5py
 
-from common.geometry import Point2d, Size2d, Rect2d
 from test_image_generator import TestImage
 
 #--------------------------------------------------------------------------

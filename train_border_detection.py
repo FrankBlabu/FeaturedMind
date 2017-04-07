@@ -14,7 +14,6 @@ import subprocess
 import webbrowser
 
 import keras
-import numpy as np
 
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten

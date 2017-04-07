@@ -429,7 +429,6 @@ class TestImage:
         # Paste samples into displayable image in RGB format
         #
         image = PIL.Image.new ('RGB', (int (self.size.width), int (self.size.height)))
-        draw = PIL.ImageDraw.Draw (image, 'RGB')
         
         for y in range (self.samples.shape[0]):
             for x in range (self.samples.shape[1]):
