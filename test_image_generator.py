@@ -41,6 +41,24 @@ class TestImage:
         self.sample_size = Size2d (args.sample_size, args.sample_size)
         self.objects = []
 
+        self.feature_colors = [(0xff, 0xff, 0xff),
+                               (0xff, 0x00, 0x00),
+                               (0x00, 0xff, 0x00),
+                               (0x00, 0x00, 0xff),
+                               (0xff, 0xff, 0x00),
+                               (0xff, 0x00, 0xff),
+                               (0x00, 0xff, 0xff),
+                               (0x88, 0x00, 0x00),
+                               (0x00, 0x88, 0x00),
+                               (0x00, 0x00, 0x88),
+                               (0x88, 0x88, 0x00),
+                               (0x88, 0x00, 0x88),
+                               (0x00, 0x88, 0x88)]
+        
+        self.feature_indices = {}
+        for i in range (len (self.feature_colors)):
+            self.feature_indices[self.feature_colors[i]] = i                               
+
         #
         # The complete test image
         #
@@ -49,7 +67,12 @@ class TestImage:
         #
         # Mask marking the feature and border relevant pixels for detection of edges
         #
-        self.label_mask  = PIL.Image.new ('L', self.size.as_tuple ())
+        self.border_mask  = PIL.Image.new ('L', self.size.as_tuple ())
+        
+        #
+        # Mask marking clusters which should be found during semantic segmentation
+        #
+        self.cluster_mask = PIL.Image.new ('RGB', self.size.as_tuple ())
         
         #
         # Compute area used for the specimen border
@@ -193,7 +216,7 @@ class TestImage:
                 border.append (segment.p1)
             border.append (segment.p0)
     
-        feature_id = 1
+        feature_id = 0
         
         self.draw_border (border, feature_id)
         feature_id += 1
@@ -242,7 +265,7 @@ class TestImage:
     #
     def draw_border (self, border, feature_id):
         
-        assert feature_id > 0x00 and feature_id <= 0xff
+        assert feature_id >= 0 and feature_id < len (self.feature_colors)
         
         specimen_image = PIL.Image.new ('L', self.image.size)
 
@@ -267,9 +290,9 @@ class TestImage:
 
         self.image.paste (specimen_image, mask=specimen_mask)
 
-        draw = PIL.ImageDraw.Draw (self.label_mask)
+        draw = PIL.ImageDraw.Draw (self.border_mask)
         draw.polygon (native_border, fill=None, outline=feature_id)
-                
+                        
 
     #--------------------------------------------------------------------------
     # Draw rectangular feature
@@ -279,7 +302,7 @@ class TestImage:
     #
     def draw_rectangular_feature (self, rect, feature_id):
         
-        assert feature_id > 0x00 and feature_id <= 0xff
+        assert feature_id >= 0 and feature_id < len (self.feature_colors)
         
         feature_image = self.add_background_noise (PIL.Image.new ('L', rect.size ().as_tuple ()))
 
@@ -290,9 +313,14 @@ class TestImage:
         feature_image = feature_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))
         
         self.image.paste (feature_image, box=rect.p0.as_tuple ())
-        
-        draw  = PIL.ImageDraw.Draw (self.label_mask)
+                
+        draw  = PIL.ImageDraw.Draw (self.border_mask)
         draw.rectangle (rect.as_tuple (), fill=None, outline=feature_id)
+        
+        color = self.feature_colors[feature_id]
+        
+        draw = PIL.ImageDraw.Draw (self.cluster_mask)
+        draw.rectangle (rect.as_tuple (), fill=color, outline=color)
         
         self.objects.append (rect)
         
@@ -306,7 +334,7 @@ class TestImage:
     #
     def draw_circular_feature (self, ellipse, feature_id):
 
-        assert feature_id > 0x00 and feature_id <= 0xff
+        assert feature_id >= 0 and feature_id < len (self.feature_colors)
         
         rect = ellipse.rect ()
         r = ellipse.rect ().move_to (Point2d (0, 0))
@@ -322,9 +350,14 @@ class TestImage:
         draw.ellipse (r.as_tuple (), fill=0xff, outline=0xff)
 
         self.image.paste (feature_image, box=rect.p0.as_tuple (), mask=mask_image)
-        
-        draw = PIL.ImageDraw.Draw (self.label_mask)
+                
+        draw = PIL.ImageDraw.Draw (self.border_mask)
         draw.ellipse (rect.as_tuple (), fill=None, outline=feature_id)
+        
+        color = self.feature_colors[feature_id]
+        
+        draw = PIL.ImageDraw.Draw (self.cluster_mask)
+        draw.ellipse (rect.as_tuple (), fill=color, outline=color)
         
         self.objects.append (ellipse)
         
@@ -377,11 +410,11 @@ class TestImage:
         crop_area = area + Size2d (1, 1)
 
         sample = self.image.crop (crop_area.as_tuple ())            
-        label_mask = self.label_mask.crop (crop_area.as_tuple ())
+        border_mask = self.border_mask.crop (crop_area.as_tuple ())
 
-        label_stat = PIL.ImageStat.Stat (label_mask)
+        border_stat = PIL.ImageStat.Stat (border_mask)
         
-        return ([float (d) / 255 for d in sample.getdata ()], int (label_stat.extrema[0][1])) 
+        return ([float (d) / 255 for d in sample.getdata ()], int (border_stat.extrema[0][1])) 
 
             
 
@@ -509,8 +542,10 @@ if __name__ == '__main__':
     args = parser.parse_args ()
 
     image = TestImage (args)
-    image.image.show (title='Generated image')
-    
-    enhancer = PIL.ImageEnhance.Sharpness (image.label_mask)
-    enhancer.enhance (100.0).show (title='Label mask')
+    image.image.show (title='Generated image')   
+
+    #enhancer = PIL.ImageEnhance.Sharpness (image.label_mask)
+    #enhancer.enhance (100.0).show (title='Label mask')
+     
+    image.cluster_mask.show (title='Border mask')
     
