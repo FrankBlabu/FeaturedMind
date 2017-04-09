@@ -9,7 +9,17 @@ import argparse
 import random
 import h5py
 
+from common.geometry import Polygon2d, Rect2d, Ellipse2d
 from test_image_generator import TestImage
+
+#--------------------------------------------------------------------------
+# Convert image into test data compatible numpy array 
+#
+def to_array (image):
+    pass
+    
+
+
 
 #--------------------------------------------------------------------------
 # MAIN
@@ -23,8 +33,8 @@ random.seed ()
 parser = argparse.ArgumentParser ()
 
 parser.add_argument ('file',                     type=str,               help='Output file name')
-parser.add_argument ('-x', '--width',            type=int, default=1024, help='Width of the generated images')
-parser.add_argument ('-y', '--height',           type=int, default=768,  help='Height of the generated images')
+parser.add_argument ('-x', '--width',            type=int, default=640, help='Width of the generated images')
+parser.add_argument ('-y', '--height',           type=int, default=480,  help='Height of the generated images')
 parser.add_argument ('-n', '--number-of-images', type=int, default=5000, help='Number of samples to generate')
 
 args = parser.parse_args ()
@@ -45,15 +55,60 @@ file.attrs['number_of_images'] = args.number_of_images
 file.attrs['HDF5_Version']     = h5py.version.hdf5_version
 file.attrs['h5py_version']     = h5py.version.version
 
-data   = file.create_dataset ('data',   (args.number_of_images, args.width * args.height), dtype='f', compression='lzf')
-labels = file.create_dataset ('labels', (args.number_of_images, args.width * args.height), dtype='f', compression='lzf')
+args.sample_size = 16
+
+images = file.create_dataset ('images', (args.number_of_images, args.width * args.height), dtype='f', compression='lzf')
+
+mask_borders = file.create_dataset ('masks_borders', (args.number_of_images, args.width * args.height), 
+                                    dtype='f', compression='lzf')
+mask_rects  = file.create_dataset ('masks_rects', (0, args.width * args.height), 
+                                    maxshape=(args.number_of_images, args.width * args.height), 
+                                    dtype='f', compression='lzf')
+mask_ellipses = file.create_dataset ('masks_ellipses', (0, args.width * args.height), 
+                                     maxshape=(args.number_of_images, args.width * args.height), 
+                                     dtype='f', compression='lzf')
 
 for i in range (args.number_of_images):
 
     image = TestImage (args)
+    
+    print ('{0}/{1}'.format (i + 1, args.number_of_images))
+    
+    #
+    # Image
+    #
+    images[i] = [float (d) / 255 for d in image.image.getdata ()]
+    
+    #
+    # Borders
+    #
+    mask, valid = image.get_cluster_mask (Polygon2d)
+    assert valid
 
-    data[i]   = image.get_image_data ()
-    labels[i] = image.get_clustering_data () 
+    mask_borders[i] = [float (d) / 255 for d in mask.getdata ()]     
+    
+    #
+    # Rectangles
+    #
+    mask, valid = image.get_cluster_mask (Rect2d)
+
+    if valid:
+        count = mask_rects.shape[0]
+        mask_rects.resize (count + 1, axis=0)
+        mask_rects[count] = [float (d) / 255 for d in mask.getdata ()]     
+
+    #
+    # Ellipses
+    #
+    mask, valid = image.get_cluster_mask (Ellipse2d)
+
+    if valid:
+        count = mask_ellipses.shape[0]
+        mask_ellipses.resize (count + 1, axis=0)
+        mask_ellipses[count] = [float (d) / 255 for d in mask.getdata ()]     
+
+print ("Number of rectangle masks:", mask_rects.shape[0])
+print ("Number of ellipse masks  :", mask_ellipses.shape[0])
 
 file.flush ()
 file.close ()

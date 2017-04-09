@@ -242,16 +242,16 @@ class TestImage:
         #
         # Step 3: Split image into samples and compute the matching labels
         #
-        x_steps = int (math.floor (self.size.width / self.sample_size.width))
-        y_steps = int (math.floor (self.size.height / self.sample_size.height))
+        #x_steps = int (math.floor (self.size.width / self.sample_size.width))
+        #y_steps = int (math.floor (self.size.height / self.sample_size.height))
         
-        self.samples = np.zeros ([y_steps, x_steps, int (self.sample_size.width * self.sample_size.height)])
-        self.labels = np.zeros ([y_steps, x_steps]) 
+        #self.samples = np.zeros ([y_steps, x_steps, int (self.sample_size.width * self.sample_size.height)])
+        #self.labels = np.zeros ([y_steps, x_steps]) 
                 
-        for y in range (y_steps):
-            for x in range (x_steps):
-                rect = Rect2d (Point2d (x * self.sample_size.width, y * self.sample_size.height), self.sample_size)
-                self.samples[y][x], self.labels[y][x] = self.get_sample (rect)
+        #for y in range (y_steps):
+        #    for x in range (x_steps):
+        #        rect = Rect2d (Point2d (x * self.sample_size.width, y * self.sample_size.height), self.sample_size)
+        #        self.samples[y][x], self.labels[y][x] = self.get_sample (rect)
 
     
     
@@ -413,24 +413,30 @@ class TestImage:
     # Extract cluster mask image containing the given feature type
     #
     # @param feature_type Type of features addressed by the cluster image
-    # @return Generated cluster mask image 
+    # @return Generated cluster mask image, Boolean indicating if there is data
+    #         in the mask at all
     #
-    def get_cluster_mask_image (self, feature_type):
+    def get_cluster_mask (self, feature_type):
         
         mask = PIL.Image.new ('1', self.size.as_tuple ())
         draw = PIL.ImageDraw.Draw (mask)
+        
+        found = False
         
         for object in self.objects:
             
             if type (object) is feature_type:
                 if feature_type is Rect2d:
                     draw.rectangle (object.as_tuple (), fill=0xff, outline=0xff)
+                    found = True
                 elif feature_type is Ellipse2d:
                     draw.ellipse (object.as_tuple (), fill=0xff, outline=0xff)
+                    found = True
                 elif feature_type is Polygon2d:
                     draw.polygon (object.as_tuple (), fill=None, outline=0xff)
+                    found = True
                     
-        return mask
+        return mask, found
     
 
     #--------------------------------------------------------------------------
@@ -526,7 +532,7 @@ class TestImage:
 
         
 #--------------------------------------------------------------------------
-# Local functions
+# Show image with title
 #
 def show_image (image, title):
     draw = PIL.ImageDraw.Draw (image)
@@ -559,7 +565,7 @@ if __name__ == '__main__':
     enhancer = PIL.ImageEnhance.Sharpness (image.border_mask)
     show_image (enhancer.enhance (100.0), "Border mask")
     
-    #show_image (image.get_cluster_mask_image (Rect2d), "Cluster mask (Rect)")
-    #show_image (image.get_cluster_mask_image (Ellipse2d), "Cluster mask (Ellipse)")
-    #show_image (image.get_cluster_mask_image (Polygon2d), "Cluster mask (Border)")
+    #show_image (image.get_cluster_mask (Rect2d)[0],    "Cluster mask (Rect)")
+    #show_image (image.get_cluster_mask (Ellipse2d)[0], "Cluster mask (Ellipse)")
+    #show_image (image.get_cluster_mask (Polygon2d)[0], "Cluster mask (Border)")
     
