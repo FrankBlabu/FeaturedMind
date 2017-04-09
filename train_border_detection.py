@@ -37,18 +37,8 @@ def train_cnn (args, data):
     x_test = data.get_test_data (TrainingData.Field.DATA)
     y_test = data.get_test_data (TrainingData.Field.LABELS)
         
-    if K.image_data_format () == 'channels_first':
-        x_train = x_train.reshape (x_train.shape[0], 1, data.sample_size, data.sample_size)
-        x_test = x_test.reshape (x_test.shape[0], 1, data.sample_size, data.sample_size)
-        input_shape = (1, data.sample_size, data.sample_size)
-    else:
-        x_train = x_train.reshape (x_train.shape[0], data.sample_size, data.sample_size, 1)
-        x_test = x_test.reshape (x_test.shape[0], data.sample_size, data.sample_size, 1)
-        input_shape = (data.sample_size, data.sample_size, 1)
+    input_shape = (data.sample_size, data.sample_size, 1)
     
-    x_train = x_train.astype ('float32')
-    x_test = x_test.astype ('float32')
-
     y_train = keras.utils.to_categorical (y_train, 2)
     y_test = keras.utils.to_categorical (y_test, 2)
     

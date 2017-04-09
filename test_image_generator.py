@@ -389,7 +389,7 @@ class TestImage:
     # The label indicates the feature this sample belongs to (0 = no feature)
     #
     # @param area Area to sample
-    # @return Tuple with sample in (float array format / label) 
+    # @return Tuple with sample in (image / label) 
     #
     def get_sample (self, area):
 
@@ -406,7 +406,7 @@ class TestImage:
         #
         border_stat = PIL.ImageStat.Stat (border_mask)
         
-        return ([float (d) / 255 for d in sample.getdata ()], int (border_stat.extrema[0][1])) 
+        return (sample, int (border_stat.extrema[0][1])) 
 
             
     #----------------------------------------------------------------------------

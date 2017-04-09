@@ -8,8 +8,18 @@
 import argparse
 import random
 import h5py
+import math
+import numpy as np
 
+from common.geometry import Point2d, Size2d, Rect2d
 from test_image_generator import TestImage
+
+#
+# Convert image into TensorFlow compatible numpy array
+#
+def to_tf_format (args, image):
+    return np.asarray ([float (d) / 255 for d in image.getdata ()], dtype=np.float32).reshape ((args.sample_size, args.sample_size, 1))
+
 
 #--------------------------------------------------------------------------
 # MAIN
@@ -48,10 +58,13 @@ file.attrs['number_of_samples'] = args.number_of_samples
 file.attrs['HDF5_Version']      = h5py.version.hdf5_version
 file.attrs['h5py_version']      = h5py.version.version
 
-data    = file.create_dataset ('data',    (args.number_of_samples, args.sample_size * args.sample_size), dtype='f', compression='lzf')
+data    = file.create_dataset ('data',    (args.number_of_samples, args.sample_size, args.sample_size, 1), dtype='f', compression='lzf')
 labels  = file.create_dataset ('labels',  (args.number_of_samples,), dtype='i', compression='lzf')
 classes = file.create_dataset ('classes', (args.number_of_samples,), dtype='i', compression='lzf')
 
+x_steps = int (math.floor (args.width / args.sample_size))
+y_steps = int (math.floor (args.height / args.sample_size))
+    
 count = 0
 while count < args.number_of_samples:
     
@@ -60,16 +73,17 @@ while count < args.number_of_samples:
     positive_samples = []
     negative_samples = []
      
-    for y in range (image.samples.shape[0]):
-        for x in range (image.samples.shape[1]):
+    for y in range (y_steps):
+        for x in range (x_steps):
             
-            sample = image.samples[y][x]
-            label = image.labels[y][x]
+            rect = Rect2d (Point2d (x * args.sample_size, y * args.sample_size), Size2d (args.sample_size, args.sample_size))
+            
+            sample, label = image.get_sample (rect)
             
             if label > 0:
-                positive_samples.append ((sample, label))
+                positive_samples.append ((to_tf_format (args, sample), label))
             else:
-                negative_samples.append ((sample, label))
+                negative_samples.append ((to_tf_format (args, sample), label))
             
     random.shuffle (positive_samples)
     random.shuffle (negative_samples)
