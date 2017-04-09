@@ -74,74 +74,65 @@ def create_model ():
     return model
 
 
-def preprocess(imgs):
-    imgs_p = np.ndarray((imgs.shape[0], img_rows, img_cols), dtype=np.uint8)
-    for i in range(imgs.shape[0]):
-        imgs_p[i] = resize(imgs[i], (img_cols, img_rows), preserve_range=True)
-
-    imgs_p = imgs_p[..., np.newaxis]
-    return imgs_p
-
-
 def train_and_predict():
 
-    imgs_train = preprocess (imgs_train)
-    imgs_mask_train = preprocess (imgs_mask_train)
+    #mean = np.mean(imgs_train)  # mean for data centering
+    #std = np.std(imgs_train)  # std for data normalization
 
-    imgs_train = imgs_train.astype('float32')
-    mean = np.mean(imgs_train)  # mean for data centering
-    std = np.std(imgs_train)  # std for data normalization
+    #imgs_train -= mean
+    #imgs_train /= std
 
-    imgs_train -= mean
-    imgs_train /= std
+    #imgs_mask_train = imgs_mask_train.astype('float32')
+    #imgs_mask_train /= 255.  # scale masks to [0, 1]
 
-    imgs_mask_train = imgs_mask_train.astype('float32')
-    imgs_mask_train /= 255.  # scale masks to [0, 1]
+    model = create_model ()
+    #model_checkpoint = ModelCheckpoint('weights.h5', monitor='loss', save_best_only=True)
 
-    print('-'*30)
-    print('Creating and compiling model...')
-    print('-'*30)
-    model = get_unet()
-    model_checkpoint = ModelCheckpoint('weights.h5', monitor='loss', save_best_only=True)
+    model.fit (imgs_train, imgs_mask_train, batch_size=32, nb_epoch=20, verbose=1, shuffle=True,
+               validation_split=0.2)
+               #callbacks=[model_checkpoint])
 
-    print('-'*30)
-    print('Fitting model...')
-    print('-'*30)
-    model.fit(imgs_train, imgs_mask_train, batch_size=32, nb_epoch=20, verbose=1, shuffle=True,
-              validation_split=0.2,
-              callbacks=[model_checkpoint])
+    #model.load_weights('weights.h5')
 
-    print('-'*30)
-    print('Loading and preprocessing test data...')
-    print('-'*30)
-    imgs_test, imgs_id_test = load_test_data()
-    imgs_test = preprocess(imgs_test)
+    #imgs_mask_test = model.predict(imgs_test, verbose=1)
 
-    imgs_test = imgs_test.astype('float32')
-    imgs_test -= mean
-    imgs_test /= std
 
-    print('-'*30)
-    print('Loading saved weights...')
-    print('-'*30)
-    model.load_weights('weights.h5')
+#--------------------------------------------------------------------------
+# MAIN
+#
 
-    print('-'*30)
-    print('Predicting masks on test data...')
-    print('-'*30)
-    imgs_mask_test = model.predict(imgs_test, verbose=1)
-    np.save('imgs_mask_test.npy', imgs_mask_test)
+#
+# Parse command line arguments
+#
+parser = argparse.ArgumentParser ()
 
-    print('-' * 30)
-    print('Saving predicted masks to files...')
-    print('-' * 30)
-    pred_dir = 'preds'
-    if not os.path.exists(pred_dir):
-        os.mkdir(pred_dir)
-    for image, image_id in zip(imgs_mask_test, imgs_id_test):
-        image = (image[:, :, 0] * 255.).astype(np.uint8)
-        imsave(os.path.join(pred_dir, image_id + '_pred.png'), image)
+parser.add_argument ('file',                type=str,               help='Test dataset file name')
+parser.add_argument ('-e', '--epochs',      type=int, default=50,   help='Number of epochs')
+parser.add_argument ('-l', '--log',         type=str, default=None, help='Log file directory')
+parser.add_argument ('-o', '--output',      type=str, default=None, help='Model output file name')
+parser.add_argument ('-b', '--batchsize',   type=int, default=128,  help='Number of samples per training batch')
+parser.add_argument ('-t', '--tensorboard', action='store_true', default=False, help='Open log in tensorboard')
 
-if __name__ == '__main__':
-    train_and_predict()
+args = parser.parse_args ()
+
+assert not args.tensorboard or args.log
+
+#
+# Delete old log files
+#
+if args.log:
+    for root, dirs, files in os.walk (args.log, topdown=False):
+        for name in files:
+            if name.startswith ('events'):
+                os.remove (os.path.join (root, name))
+
+#
+# Load sample data
+#
+file = h5py.File (args.file, 'r')
+    
+print ("Training model...")
+print ("  Number of images: ", data.size ())
+    
+train_cnn (args, data)
 
