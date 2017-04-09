@@ -2,8 +2,8 @@
 #
 # test_image_generator.py - Randomly generated test data image
 #
-# Class for generation of a single test image which can be later divided into
-# multiple rectangluar samples for training.
+# Class for generation of a single test image together with additional data
+# needed for various training cases
 #
 # Frank Blankenburg, Mar. 2017
 #
@@ -14,7 +14,7 @@ import random
 
 import numpy as np
 
-from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d
+from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
 
 import PIL.Image
 import PIL.ImageDraw
@@ -29,11 +29,11 @@ import PIL.ImageStat
 # Class keeping the data of a single test set image
 #
 class TestImage:
-    
+        
     #--------------------------------------------------------------------------
     # Constructor
     #
-    # @param args Image parameters
+    # @param args Image parameters as parsed from the command line
     #
     def __init__ (self, args):
 
@@ -60,29 +60,27 @@ class TestImage:
             self.feature_indices[self.feature_colors[i]] = i                               
 
         #
-        # The complete test image
+        # The complete test image as grayscale
         #
         self.image = self.add_background_noise (PIL.Image.new ('L', self.size.as_tuple ()))
         
         #
-        # Mask marking the feature and border relevant pixels for detection of edges
+        # Mask marking the feature and border relevant pixels for detection of edges. The image
+        # is grayscale and will contain the feature id as pixel value.
         #
         self.border_mask  = PIL.Image.new ('L', self.size.as_tuple ())
         
         #
-        # Mask marking clusters which should be found during semantic segmentation
+        # Step 1: Compute area used for the specimen border
         #
-        self.cluster_mask = PIL.Image.new ('RGB', self.size.as_tuple ())
-        
-        #
-        # Compute area used for the specimen border
+        # The border will be rectangular in principle but in later steps segments of the
+        # specimen are cut out to simulate a more random layout.
         #
         outer_border_offset = 2 * self.sample_size
         outer_border_limit = [Point2d (outer_border_offset), Point2d (self.size - outer_border_offset)]
     
         inner_border_offset = self.size * 25 / 100
-        
-        
+                
         inner_border_limit = [Point2d (inner_border_offset), Point2d (self.size - inner_border_offset)]
         
         border_rect = Rect2d (Point2d (random.randint (outer_border_limit[0].x,
@@ -105,7 +103,7 @@ class TestImage:
         segment_mode = random.randint (0, 2)
     
         #
-        # Case 1: Corner segments might be missing 
+        # Case 1.1: Corner segments might be missing 
         #
         if segment_mode == 0:
             available[0][0] = random.randint (0, 9) > 5
@@ -142,7 +140,7 @@ class TestImage:
             border.append (segment.p0)
     
         #
-        # Case 2: Top/down edge segments might be missing
+        # Case 1.2: Top/down edge segments might be missing
         #
         elif segment_mode == 1:
             available[1][0] = random.randint (0, 9) > 5
@@ -180,7 +178,7 @@ class TestImage:
     
     
         #
-        # Case 3: Left/right edge segments might be missing
+        # Case 1.3: Left/right edge segments might be missing
         #
         elif segment_mode == 2:
             available[0][1] = random.randint (0, 9) > 5
@@ -218,11 +216,11 @@ class TestImage:
     
         feature_id = 0
         
-        self.draw_border (border, feature_id)
+        self.draw_border (Polygon2d (border), feature_id)
         feature_id += 1
         
         #
-        # Add some features to the available areas
+        # Step 2: Add some features to the available areas
         #        
         for y in range (0, 3):
             for x in range (0, 3):
@@ -242,7 +240,7 @@ class TestImage:
                     feature_id += 1
                     
         #
-        # Split image into samples/labels
+        # Step 3: Split image into samples and compute the matching labels
         #
         x_steps = int (math.floor (self.size.width / self.sample_size.width))
         y_steps = int (math.floor (self.size.height / self.sample_size.height))
@@ -278,20 +276,20 @@ class TestImage:
             for x in range (specimen_image.size[0]):
                 draw.point ((x, y), fill=random.randint (100, 120))
         
-        native_border = [point.as_tuple () for point in border]
-        
-        draw.polygon (native_border, fill=None, outline=0xff)
+        draw.polygon (border.as_tuple (), fill=None, outline=0xff)
 
         specimen_image = specimen_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))        
         specimen_mask = PIL.Image.new ('1', self.image.size)
 
         draw = PIL.ImageDraw.Draw (specimen_mask)
-        draw.polygon (native_border, fill=0xff, outline=0xff)
+        draw.polygon (border.as_tuple (), fill=0xff, outline=0xff)
 
         self.image.paste (specimen_image, mask=specimen_mask)
 
         draw = PIL.ImageDraw.Draw (self.border_mask)
-        draw.polygon (native_border, fill=None, outline=feature_id)
+        draw.polygon (border.as_tuple (), fill=None, outline=feature_id)
+        
+        self.objects.append (border)
                         
 
     #--------------------------------------------------------------------------
@@ -316,11 +314,6 @@ class TestImage:
                 
         draw  = PIL.ImageDraw.Draw (self.border_mask)
         draw.rectangle (rect.as_tuple (), fill=None, outline=feature_id)
-        
-        color = self.feature_colors[feature_id]
-        
-        draw = PIL.ImageDraw.Draw (self.cluster_mask)
-        draw.rectangle (rect.as_tuple (), fill=color, outline=color)
         
         self.objects.append (rect)
         
@@ -353,11 +346,6 @@ class TestImage:
                 
         draw = PIL.ImageDraw.Draw (self.border_mask)
         draw.ellipse (rect.as_tuple (), fill=None, outline=feature_id)
-        
-        color = self.feature_colors[feature_id]
-        
-        draw = PIL.ImageDraw.Draw (self.cluster_mask)
-        draw.ellipse (rect.as_tuple (), fill=color, outline=color)
         
         self.objects.append (ellipse)
         
@@ -395,7 +383,7 @@ class TestImage:
 
 
     #--------------------------------------------------------------------------
-    # Return sample area from image
+    # Return single sample area from image
     #
     # The image data is normalized in the interval [0...1]
     # The label indicates the feature this sample belongs to (0 = no feature)
@@ -412,11 +400,38 @@ class TestImage:
         sample = self.image.crop (crop_area.as_tuple ())            
         border_mask = self.border_mask.crop (crop_area.as_tuple ())
 
+        #
+        # Pillow border statistics is used to compute the maximum grayscale value which
+        # is the maximum feature id
+        #
         border_stat = PIL.ImageStat.Stat (border_mask)
         
         return ([float (d) / 255 for d in sample.getdata ()], int (border_stat.extrema[0][1])) 
 
             
+    #----------------------------------------------------------------------------
+    # Extract cluster mask image containing the given feature type
+    #
+    # @param feature_type Type of features addressed by the cluster image
+    # @return Generated cluster mask image 
+    #
+    def get_cluster_mask_image (self, feature_type):
+        
+        mask = PIL.Image.new ('1', self.size.as_tuple ())
+        draw = PIL.ImageDraw.Draw (mask)
+        
+        for object in self.objects:
+            
+            if type (object) is feature_type:
+                if feature_type is Rect2d:
+                    draw.rectangle (object.as_tuple (), fill=0xff, outline=0xff)
+                elif feature_type is Ellipse2d:
+                    draw.ellipse (object.as_tuple (), fill=0xff, outline=0xff)
+                elif feature_type is Polygon2d:
+                    draw.polygon (object.as_tuple (), fill=None, outline=0xff)
+                    
+        return mask
+    
 
     #--------------------------------------------------------------------------
     # Add background noise to an image
@@ -434,11 +449,11 @@ class TestImage:
 
     
     #--------------------------------------------------------------------------
-    # Return the segment rect of an image rect
+    # Return the segment rect in the (3, 3) raster of an image rect
     # 
-    # @param rect    Image rect
-    # @param segment Segment (x, y) identifier
-    # @return Rectangle of the segment
+    # @param rect    Complete image rect
+    # @param segment Segment (x, y) identifier in (3, 3) raster
+    # @return Rectangle of the matching segment part
     #
     @staticmethod
     def get_segment_rect (rect, segment):
@@ -453,30 +468,18 @@ class TestImage:
                        Point2d (rect.p0.x + (x + 1) * rect.size ().width / 3,
                                 rect.p0.y + (y + 1) * rect.size ().height / 3))
 
-    #----------------------------------------------------------------------------
-    # Create image displaying the samples
-    #
-    def to_rgb (self):
-    
-        #
-        # Paste samples into displayable image in RGB format
-        #
-        image = PIL.Image.new ('RGB', (int (self.size.width), int (self.size.height)))
-        
-        for y in range (self.samples.shape[0]):
-            for x in range (self.samples.shape[1]):
-                data = np.array ([int (round (d * 255)) for d in self.samples[y][x]], np.uint8)
-                
-                sample_image = PIL.Image.frombuffer ('L', (int (self.sample_size.width), int (self.sample_size.height)), data.tostring (), 'raw', 'L', 0, 1)
-                sample_image = sample_image.convert ('RGB')
-                
-                rect = Rect2d (Point2d (x * self.sample_size.width, y * self.sample_size.height), self.sample_size)
-                image.paste (sample_image, (rect + Size2d (1, 1)).as_tuple ())
-                
-        return image
 
     #----------------------------------------------------------------------------
-    # Create overlay displaying the generated / found samples
+    # Create image displaying the samples from the sampled parts
+    #
+    # This function is used when results are displayed on top of a generated image
+    #
+    def to_rgb (self):
+        return self.image.convert ('RGB')
+
+
+    #----------------------------------------------------------------------------
+    # Create overlay displaying the generated / found labels
     #
     # @param labels Found labels with the same shape as self.labels
     #
@@ -522,6 +525,14 @@ class TestImage:
 
 
         
+#--------------------------------------------------------------------------
+# Local functions
+#
+def show_image (image, title):
+    draw = PIL.ImageDraw.Draw (image)
+    draw.text ((0, 0), title, fill=0xffffff);
+    
+    image.show (title='Generated image')   
 
 #--------------------------------------------------------------------------
 # MAIN
@@ -542,10 +553,13 @@ if __name__ == '__main__':
     args = parser.parse_args ()
 
     image = TestImage (args)
-    image.image.show (title='Generated image')   
+    
+    show_image (image.image, "Generated image")
 
-    #enhancer = PIL.ImageEnhance.Sharpness (image.label_mask)
-    #enhancer.enhance (100.0).show (title='Label mask')
-     
-    image.cluster_mask.show (title='Border mask')
+    enhancer = PIL.ImageEnhance.Sharpness (image.border_mask)
+    show_image (enhancer.enhance (100.0), "Border mask")
+    
+    #show_image (image.get_cluster_mask_image (Rect2d), "Cluster mask (Rect)")
+    #show_image (image.get_cluster_mask_image (Ellipse2d), "Cluster mask (Ellipse)")
+    #show_image (image.get_cluster_mask_image (Polygon2d), "Cluster mask (Border)")
     

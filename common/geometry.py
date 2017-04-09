@@ -255,12 +255,26 @@ class Ellipse2d:
                                  
     def __eq__ (self, other):
         return self.center == other.center and self.radius == other.radius
-
-
     
     def as_tuple (self):        
         return self.rect ().as_tuple ()
 
+
+#--------------------------------------------------------------------------
+# CLASS Polygon2d
+# 
+# Two dimensional polygon
+#
+class Polygon2d:
+    
+    def __init__ (self, points):
+        self.points = points
+        
+    def as_tuple (self):
+        return [point.as_tuple () for point in self.points]
+        
+    def __repr__ (self):
+        return 'Polygon2d (points={0})'.format (str (self.points))
 
 
 #
