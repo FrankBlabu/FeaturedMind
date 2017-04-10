@@ -11,13 +11,8 @@ import h5py
 import numpy as np
 
 from common.geometry import Polygon2d, Rect2d, Ellipse2d
+from common.utils import image_to_tf
 from test_image_generator import TestImage
-
-#
-# Convert image into TensorFlow compatible numpy array
-#
-def to_tf_format (args, image):
-    return np.asarray ([float (d) / 255 for d in image.getdata ()], dtype=np.float32).reshape ((args.height, args.width, 1))
 
 
 #--------------------------------------------------------------------------
@@ -58,14 +53,16 @@ args.sample_size = 16
 
 images = file.create_dataset ('images', (args.number_of_images, args.height, args.width, 1), dtype='f', compression='lzf')
 
-mask_borders = file.create_dataset ('masks_borders', (args.number_of_images, args.height, args.width, 1), 
-                                    dtype='f', compression='lzf')
-mask_rects  = file.create_dataset ('masks_rects', (0, args.height, args.width, 1), 
-                                    maxshape=(args.number_of_images, args.height, args.width, 1), 
-                                    dtype='f', compression='lzf')
-mask_ellipses = file.create_dataset ('masks_ellipses', (0, args.height, args.width, 1), 
-                                     maxshape=(args.number_of_images, args.height, args.width, 1), 
-                                     dtype='f', compression='lzf')
+masks = file.create_group ('masks')
+
+borders = masks.create_dataset ('borders', (args.number_of_images, args.height, args.width, 1), 
+                                dtype='f', compression='lzf')
+rects  = masks.create_dataset ('rects', (0, args.height, args.width, 1), 
+                               maxshape=(args.number_of_images, args.height, args.width, 1), 
+                               dtype='f', compression='lzf')
+ellipses = masks.create_dataset ('ellipses', (0, args.height, args.width, 1), 
+                                 maxshape=(args.number_of_images, args.height, args.width, 1), 
+                                 dtype='f', compression='lzf')
 
 for i in range (args.number_of_images):
 
@@ -76,7 +73,7 @@ for i in range (args.number_of_images):
     #
     # Image
     #
-    images[i] = to_tf_format (args, image.image)
+    images[i] = image_to_tf (image.image)
     
     #
     # Borders
@@ -84,7 +81,7 @@ for i in range (args.number_of_images):
     mask, valid = image.get_cluster_mask (Polygon2d)
     assert valid
 
-    mask_borders[i] = to_tf_format (args, mask)     
+    borders[i] = image_to_tf (mask)     
     
     #
     # Rectangles
@@ -92,9 +89,9 @@ for i in range (args.number_of_images):
     mask, valid = image.get_cluster_mask (Rect2d)
 
     if valid:
-        count = mask_rects.shape[0]
-        mask_rects.resize (count + 1, axis=0)
-        mask_rects[count] = to_tf_format (args, mask)     
+        count = rects.shape[0]
+        rects.resize (count + 1, axis=0)
+        rects[count] = image_to_tf (mask)     
 
     #
     # Ellipses
@@ -102,12 +99,12 @@ for i in range (args.number_of_images):
     mask, valid = image.get_cluster_mask (Ellipse2d)
 
     if valid:
-        count = mask_ellipses.shape[0]
-        mask_ellipses.resize (count + 1, axis=0)
-        mask_ellipses[count] = to_tf_format (args, mask)     
+        count = ellipses.shape[0]
+        ellipses.resize (count + 1, axis=0)
+        ellipses[count] = image_to_tf (mask)     
 
-print ("Number of rectangle masks:", mask_rects.shape[0])
-print ("Number of ellipse masks  :", mask_ellipses.shape[0])
+print ("Number of rectangle masks:", rects.shape[0])
+print ("Number of ellipse masks  :", ellipses.shape[0])
 
 file.flush ()
 file.close ()
