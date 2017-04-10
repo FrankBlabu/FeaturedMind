@@ -6,9 +6,12 @@
 # Based on: https://github.com/nicolov/segmentation_keras
 #
 
+import argparse
+import h5py
+
 from keras import optimizers
-from keras.layers import Activation, Reshape, Dropout
-from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D
+from keras.layers import Activation, Reshape, Dropout, Input
+from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, Concatenate
 from keras.models import Sequential
 
 def create_model (rows, cols):
@@ -32,19 +35,19 @@ def create_model (rows, cols):
     conv5 = Conv2D (512, (3, 3), activation='relu', padding='same')(pool4)
     conv5 = Conv2D (512, (3, 3), activation='relu', padding='same')(conv5)
 
-    up6 = concatenate ([UpSampling2D(size=(2, 2))(conv5), conv4], axis=3)
+    up6 = Concatenate ([UpSampling2D(size=(2, 2))(conv5), conv4], axis=3)
     conv6 = Conv2D (256, (3, 3), activation='relu', padding='same')(up6)
     conv6 = Conv2D (256, (3, 3), activation='relu', padding='same')(conv6)
 
-    up7 = concatenate ([UpSampling2D(size=(2, 2))(conv6), conv3], axis=3)
+    up7 = Concatenate ([UpSampling2D(size=(2, 2))(conv6), conv3], axis=3)
     conv7 = Conv2D (128, (3, 3), activation='relu', padding='same')(up7)
     conv7 = Conv2D (128, (3, 3), activation='relu', padding='same')(conv7)
 
-    up8 = concatenate ([UpSampling2D(size=(2, 2))(conv7), conv2], axis=3)
+    up8 = Concatenate ([UpSampling2D(size=(2, 2))(conv7), conv2], axis=3)
     conv8 = Conv2D (64, (3, 3), activation='relu', padding='same')(up8)
     conv8 = Conv2D (64, (3, 3), activation='relu', padding='same')(conv8)
 
-    up9 = concatenate ([UpSampling2D(size=(2, 2))(conv8), conv1], axis=3)
+    up9 = Concatenate ([UpSampling2D(size=(2, 2))(conv8), conv1], axis=3)
     conv9 = Conv2D (32, (3, 3), activation='relu', padding='same')(up9)
     conv9 = Conv2D (32, (3, 3), activation='relu', padding='same')(conv9)
 
@@ -115,7 +118,7 @@ if args.log:
 file = h5py.File (args.file, 'r')
         
 images = file['images']
-borders = file['images/borders']
+borders = file['masks/borders']
         
 size = file.attrs['image_size']
  
