@@ -9,16 +9,10 @@ import argparse
 import random
 import h5py
 import math
-import numpy as np
+import common.utils
 
 from common.geometry import Point2d, Size2d, Rect2d
 from test_image_generator import TestImage
-
-#
-# Convert image into TensorFlow compatible numpy array
-#
-def to_tf_format (args, image):
-    return np.asarray ([float (d) / 255 for d in image.getdata ()], dtype=np.float32).reshape ((args.sample_size, args.sample_size, 1))
 
 
 #--------------------------------------------------------------------------
@@ -76,14 +70,13 @@ while count < args.number_of_samples:
     for y in range (y_steps):
         for x in range (x_steps):
             
-            rect = Rect2d (Point2d (x * args.sample_size, y * args.sample_size), Size2d (args.sample_size, args.sample_size))
-            
+            rect = Rect2d (Point2d (x * args.sample_size, y * args.sample_size), Size2d (args.sample_size, args.sample_size))            
             sample, label = image.get_sample (rect)
             
             if label > 0:
-                positive_samples.append ((to_tf_format (args, sample), label))
+                positive_samples.append ((common.utils.image_to_tf (sample), label))
             else:
-                negative_samples.append ((to_tf_format (args, sample), label))
+                negative_samples.append ((common.utils.image_to_tf (sample), label))
             
     random.shuffle (positive_samples)
     random.shuffle (negative_samples)

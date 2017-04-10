@@ -7,8 +7,11 @@
 #
 
 import argparse
+import math
+import numpy as np
 import random
 
+from common.geometry import Point2d, Size2d, Rect2d
 from test_image_generator import TestImage
 
 
@@ -40,8 +43,20 @@ if __name__ == '__main__':
     #
     test_image = TestImage (args)
 
+    x_steps = int (math.floor (args.width / args.sample_size))
+    y_steps = int (math.floor (args.height / args.sample_size))
+        
+    labels = np.zeros ((y_steps, x_steps))
+        
+    for y in range (y_steps):
+        for x in range (x_steps):
+                
+            rect = Rect2d (Point2d (x * args.sample_size, y * args.sample_size), Size2d (args.sample_size, args.sample_size))            
+            _, labels[y][x] = test_image.get_sample (rect)
+
+
     image = test_image.to_rgb ()
-    overlay = test_image.create_result_overlay (test_image.labels)
+    overlay = test_image.create_result_overlay (labels)
     
     image.paste (overlay, mask=overlay)    
     image.show ()

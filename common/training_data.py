@@ -44,9 +44,9 @@ class TrainingData:
         test_set_size = len (data) - training_set_size
         
         self.test_data = {
-            TrainingData.Field.DATA    : data[training_set_offset:training_set_offset + training_set_size],
-            TrainingData.Field.LABELS  : labels[training_set_offset:training_set_offset + training_set_size],
-            TrainingData.Field.CLASSES : classes[training_set_offset:training_set_offset + training_set_size]
+            TrainingData.Field.DATA    : data[test_set_offset:training_set_offset + test_set_size],
+            TrainingData.Field.LABELS  : labels[test_set_offset:training_set_offset + test_set_size],
+            TrainingData.Field.CLASSES : classes[test_set_offset:training_set_offset + test_set_size]
             }
         
         assert len (self.training_data) == len (TrainingData.Field)

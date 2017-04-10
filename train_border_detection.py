@@ -19,41 +19,28 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 from keras.callbacks import TensorBoard
-from keras import backend as K
 
 import common.metrics
-from common.training_data import TrainingData
 
 
 #--------------------------------------------------------------------------
-# Train border detection with a manually constructed multilayer 
-# convolutional network
+# Generate model
 #
-def train_cnn (args, data):
-        
-    x_train = data.get_training_data (TrainingData.Field.DATA)
-    y_train = data.get_training_data (TrainingData.Field.LABELS)
+# @param sample_size Size of a single sample in pixels
+#
+def create_model (sample_size):
 
-    x_test = data.get_test_data (TrainingData.Field.DATA)
-    y_test = data.get_test_data (TrainingData.Field.LABELS)
-        
-    input_shape = (data.sample_size, data.sample_size, 1)
-    
-    y_train = keras.utils.to_categorical (y_train, 2)
-    y_test = keras.utils.to_categorical (y_test, 2)
-    
     model = Sequential ()
-
+    
     model.add (Conv2D (32, kernel_size=(5, 5),
                        activation='relu',
-                       input_shape=input_shape))
+                       input_shape=(sample_size, sample_size, 1)))
     model.add (MaxPooling2D (pool_size=(2, 2)))
-
     
     model.add (Conv2D (64, kernel_size=(5, 5),
                        activation='relu',
-                       input_shape=(int (data.sample_size / 2),
-                                    int (data.sample_size / 2),
+                       input_shape=(int (sample_size / 2),
+                                    int (sample_size / 2),
                                     1)))
     model.add (MaxPooling2D (pool_size=(2, 2)))
     
@@ -66,25 +53,7 @@ def train_cnn (args, data):
                    optimizer=keras.optimizers.Adadelta (),
                    metrics=['accuracy', common.metrics.precision, common.metrics.recall])
     
-    logger = []
-    if args.log != None:
-        logger.append (TensorBoard (os.path.abspath (args.log), histogram_freq=1, write_graph=True, write_images=False))
-    
-    model.fit (x_train, y_train, 
-               batch_size=args.batchsize, 
-               epochs=args.epochs, 
-               verbose=1,
-               validation_split=0.2,
-               callbacks=logger)
-    
-    score = model.evaluate (x_test, y_test, verbose=0)
-
-    print ('Test loss:', score[0])
-    print ('Test accuracy:', score[1])
-
-    if args.output != None:
-        model.save (os.path.abspath (args.output))
-
+    return model
 
         
 #--------------------------------------------------------------------------
@@ -120,14 +89,51 @@ if args.log:
 # Load sample data
 #
 file = h5py.File (args.file, 'r')
-data = TrainingData (file)
-    
-print ("Training model...")
-print ("  Number of samples: ", data.size ())
-print ("  Sample size      : ", data.sample_size)
 
+data    = file['data']
+labels  = file['labels']
+classes = file['classes']
+
+sample_size = file.attrs['sample_size']
+
+assert len (data) == len (labels)
+assert len (data) == len (classes)
+
+print ("Training model...")
+print ("  Number of samples: ", data.size)
+print ("  Sample size      : ", sample_size)
+
+training_set_size = int (len (data) * 0.9)
+        
+x_train = data[0:training_set_size]
+y_train = labels[0:training_set_size]
+
+x_test = data[training_set_size:]
+y_test = labels[training_set_size:]
     
-train_cnn (args, data)
+y_train = keras.utils.to_categorical (y_train, 2)
+y_test = keras.utils.to_categorical (y_test, 2)
+
+model = create_model (sample_size)
+
+logger = []
+if args.log != None:
+    logger.append (TensorBoard (os.path.abspath (args.log), histogram_freq=1, write_graph=True, write_images=False))
+
+model.fit (x_train, y_train, 
+           batch_size=args.batchsize, 
+           epochs=args.epochs, 
+           verbose=1,
+           validation_split=0.2,
+           callbacks=logger)
+
+score = model.evaluate (x_test, y_test, verbose=0)
+
+print ('Test loss:', score[0])
+print ('Test accuracy:', score[1])
+
+if args.output != None:
+    model.save (os.path.abspath (args.output))
 
 #
 # Display result in tensorboard / browser

@@ -12,8 +12,6 @@ import argparse
 import math
 import random
 
-import numpy as np
-
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
 
 import PIL.Image
@@ -40,24 +38,6 @@ class TestImage:
         self.size = Size2d (args.width, args.height)
         self.sample_size = Size2d (args.sample_size, args.sample_size)
         self.objects = []
-
-        self.feature_colors = [(0xff, 0xff, 0xff),
-                               (0xff, 0x00, 0x00),
-                               (0x00, 0xff, 0x00),
-                               (0x00, 0x00, 0xff),
-                               (0xff, 0xff, 0x00),
-                               (0xff, 0x00, 0xff),
-                               (0x00, 0xff, 0xff),
-                               (0x88, 0x00, 0x00),
-                               (0x00, 0x88, 0x00),
-                               (0x00, 0x00, 0x88),
-                               (0x88, 0x88, 0x00),
-                               (0x88, 0x00, 0x88),
-                               (0x00, 0x88, 0x88)]
-        
-        self.feature_indices = {}
-        for i in range (len (self.feature_colors)):
-            self.feature_indices[self.feature_colors[i]] = i                               
 
         #
         # The complete test image as grayscale
@@ -214,7 +194,7 @@ class TestImage:
                 border.append (segment.p1)
             border.append (segment.p0)
     
-        feature_id = 0
+        feature_id = 1
         
         self.draw_border (Polygon2d (border), feature_id)
         feature_id += 1
@@ -239,21 +219,6 @@ class TestImage:
                     self.create_feature (area, feature_id)                    
                     feature_id += 1
                     
-        #
-        # Step 3: Split image into samples and compute the matching labels
-        #
-        #x_steps = int (math.floor (self.size.width / self.sample_size.width))
-        #y_steps = int (math.floor (self.size.height / self.sample_size.height))
-        
-        #self.samples = np.zeros ([y_steps, x_steps, int (self.sample_size.width * self.sample_size.height)])
-        #self.labels = np.zeros ([y_steps, x_steps]) 
-                
-        #for y in range (y_steps):
-        #    for x in range (x_steps):
-        #        rect = Rect2d (Point2d (x * self.sample_size.width, y * self.sample_size.height), self.sample_size)
-        #        self.samples[y][x], self.labels[y][x] = self.get_sample (rect)
-
-    
     
     #--------------------------------------------------------------------------
     # Draw specimen border into image
@@ -262,8 +227,6 @@ class TestImage:
     # @param feature_id Unique feature id
     #
     def draw_border (self, border, feature_id):
-        
-        assert feature_id >= 0 and feature_id < len (self.feature_colors)
         
         specimen_image = PIL.Image.new ('L', self.image.size)
 
@@ -300,8 +263,6 @@ class TestImage:
     #
     def draw_rectangular_feature (self, rect, feature_id):
         
-        assert feature_id >= 0 and feature_id < len (self.feature_colors)
-        
         feature_image = self.add_background_noise (PIL.Image.new ('L', rect.size ().as_tuple ()))
 
         r = rect.move_to (Point2d (0, 0))
@@ -327,8 +288,6 @@ class TestImage:
     #
     def draw_circular_feature (self, ellipse, feature_id):
 
-        assert feature_id >= 0 and feature_id < len (self.feature_colors)
-        
         rect = ellipse.rect ()
         r = ellipse.rect ().move_to (Point2d (0, 0))
         
@@ -385,7 +344,7 @@ class TestImage:
     #--------------------------------------------------------------------------
     # Return single sample area from image
     #
-    # The image data is normalized in the interval [0...1]
+    # The image is in pillow format
     # The label indicates the feature this sample belongs to (0 = no feature)
     #
     # @param area Area to sample
@@ -407,7 +366,7 @@ class TestImage:
         border_stat = PIL.ImageStat.Stat (border_mask)
         
         return (sample, int (border_stat.extrema[0][1])) 
-
+    
             
     #----------------------------------------------------------------------------
     # Extract cluster mask image containing the given feature type
@@ -423,17 +382,17 @@ class TestImage:
         
         found = False
         
-        for object in self.objects:
+        for obj in self.objects:
             
-            if type (object) is feature_type:
+            if type (obj) is feature_type:
                 if feature_type is Rect2d:
-                    draw.rectangle (object.as_tuple (), fill=0xff, outline=0xff)
+                    draw.rectangle (obj.as_tuple (), fill=0xff, outline=0xff)
                     found = True
                 elif feature_type is Ellipse2d:
-                    draw.ellipse (object.as_tuple (), fill=0xff, outline=0xff)
+                    draw.ellipse (obj.as_tuple (), fill=0xff, outline=0xff)
                     found = True
                 elif feature_type is Polygon2d:
-                    draw.polygon (object.as_tuple (), fill=None, outline=0xff)
+                    draw.polygon (obj.as_tuple (), fill=None, outline=0xff)
                     found = True
                     
         return mask, found
@@ -494,13 +453,11 @@ class TestImage:
         overlay = PIL.Image.new ('RGBA', (int (self.size.width), int (self.size.height)))        
         draw = PIL.ImageDraw.Draw (overlay, 'RGBA')
     
-        assert self.labels.shape == labels.shape
-        
         for y in range (labels.shape[0]):
             for x in range (labels.shape[1]):
                 rect = Rect2d (Point2d (x * self.sample_size.width, y * self.sample_size.height), self.sample_size)
+                _, expected = self.get_sample (rect)
                 
-                expected = self.labels[y][x]
                 found    = labels[y][x]
     
                 #
