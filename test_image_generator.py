@@ -9,8 +9,8 @@
 #
 
 import argparse
-import math
 import random
+import numpy as np
 
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
 
@@ -42,13 +42,15 @@ class TestImage:
         #
         # The complete test image as grayscale
         #
-        self.image = self.add_background_noise (PIL.Image.new ('L', self.size.as_tuple ()))
+        #self.image = self.add_background_noise (PIL.Image.new ('L', self.size.as_tuple ()))
+        self.image = self.add_background_noise (np.zeros ((args.height, args.width, 1), dtype=np.float))
         
         #
         # Mask marking the feature and border relevant pixels for detection of edges. The image
         # is grayscale and will contain the feature id as pixel value.
         #
-        self.border_mask  = PIL.Image.new ('L', self.size.as_tuple ())
+        #self.border_mask  = PIL.Image.new ('L', self.size.as_tuple ())
+        self.border_mask = np.zeros ((args.height, args.width, 1), dtype=np.float)
         
         #
         # Step 1: Compute area used for the specimen border
@@ -228,18 +230,21 @@ class TestImage:
     #
     def draw_border (self, border, feature_id):
         
-        specimen_image = PIL.Image.new ('L', self.image.size)
+        #specimen_image = PIL.Image.new ('L', self.image.size)
+        specimen_image = np.zeros (self.image.shape, dtype=np.float)
 
-        draw = PIL.ImageDraw.Draw (specimen_image)
+        #draw = PIL.ImageDraw.Draw (specimen_image)
         
         #
         # Draw specimen background (with some noise)
         #
         for y in range (specimen_image.size[1]):
             for x in range (specimen_image.size[0]):
-                draw.point ((x, y), fill=random.randint (100, 120))
+                specimen_image[y, x] = random.uniform (0.5, 0.6)
+                #draw.point ((x, y), fill=random.randint (100, 120))
         
-        draw.polygon (border.as_tuple (), fill=None, outline=0xff)
+        border.draw (specimen_image, 1.0)
+        #draw.polygon (border.as_tuple (), fill=None, outline=0xff)
 
         specimen_image = specimen_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))        
         specimen_mask = PIL.Image.new ('1', self.image.size)

@@ -9,6 +9,7 @@ import math
 import random
 import unittest
 
+import skimage.draw
 
 #--------------------------------------------------------------------------
 # CLASS Point2d
@@ -114,6 +115,11 @@ class Line2d:
         diff = self.p1 - self.p0 + Point2d (1, 1)
         return math.sqrt (diff.x * diff.x + diff.y * diff.y)
         
+    def draw (self, image, value):
+        rr, cc = skimage.draw.line (int (round (self.p0.y)), int (round (self.p0.x)),
+                                    int (round (self.p1.y)), int (round (self.p1.x)))
+        image[rr, cc] = value
+        
     def __repr__ (self):
         return 'Line2d ({0}, {1})'.format (self.p0, self.p1)
 
@@ -173,6 +179,9 @@ class Rect2d:
     def size (self):
         return Size2d (self.p2.x - self.p0.x + 1, self.p2.y - self.p0.y + 1)
         
+    def draw (self, image, value):
+        polygon = Polygon2d ([self.p0, self.p1, self.p2, self.p3])
+        polygon.draw (image, value)
 
     #--------------------------------------------------------------------------
     # Resize rectangle while keeping top left position
@@ -244,6 +253,13 @@ class Ellipse2d:
         return Rect2d (self.center - Point2d (self.radius.x, self.radius.y),
                        self.center + Point2d (self.radius.x, self.radius.y))
         
+    def draw (self,image, value):
+        rr, cc = skimage.draw.ellipse_perimeter (int (round (self.center.y)), 
+                                                 int (round (self.center.x)), 
+                                                 int (round (self.radius.y)), 
+                                                 int (round (self.radius.x)))
+        image[rr, cc] = value
+        
     def __repr__ (self):
         return 'Ellipse2d (center={0}, radius=({1}, {2}))'.format (self.center, self.radius.x, self.radius.y)
 
@@ -269,6 +285,13 @@ class Polygon2d:
     
     def __init__ (self, points):
         self.points = points
+        
+    def draw (self, image, value):
+        x = [int (round (point.x)) for point in self.points]
+        y = [int (round (point.y)) for point in self.points]
+        
+        rr, cc = skimage.draw.polygon_perimeter (y, x, shape=image.shape, clip=True)
+        image[rr, cc] = value
         
     def as_tuple (self):
         return [point.as_tuple () for point in self.points]
