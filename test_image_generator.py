@@ -12,13 +12,11 @@ import argparse
 import random
 import numpy as np
 
-from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
+import skimage.filters
+import skimage.io
 
-import PIL.Image
-import PIL.ImageDraw
-import PIL.ImageFilter
-import PIL.ImageEnhance
-import PIL.ImageStat
+from matplotlib import pyplot as plt
+from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
 
 
 #--------------------------------------------------------------------------
@@ -42,15 +40,13 @@ class TestImage:
         #
         # The complete test image as grayscale
         #
-        #self.image = self.add_background_noise (PIL.Image.new ('L', self.size.as_tuple ()))
-        self.image = self.add_background_noise (np.zeros ((args.height, args.width, 1), dtype=np.float))
+        self.image = self.add_background_noise (np.zeros ((args.height, args.width), dtype=np.float32))
         
         #
         # Mask marking the feature and border relevant pixels for detection of edges. The image
         # is grayscale and will contain the feature id as pixel value.
         #
-        #self.border_mask  = PIL.Image.new ('L', self.size.as_tuple ())
-        self.border_mask = np.zeros ((args.height, args.width, 1), dtype=np.float)
+        self.border_mask = np.zeros ((args.height, args.width), dtype=np.float32)
         
         #
         # Step 1: Compute area used for the specimen border
@@ -198,7 +194,7 @@ class TestImage:
     
         feature_id = 1
         
-        self.draw_border (Polygon2d (border), feature_id)
+        self.draw_border (Polygon2d (border), self.id_to_color (feature_id))
         feature_id += 1
         
         #
@@ -230,32 +226,25 @@ class TestImage:
     #
     def draw_border (self, border, feature_id):
         
-        #specimen_image = PIL.Image.new ('L', self.image.size)
-        specimen_image = np.zeros (self.image.shape, dtype=np.float)
+        specimen_image = np.zeros (self.image.shape, dtype=np.float32)
 
-        #draw = PIL.ImageDraw.Draw (specimen_image)
-        
         #
         # Draw specimen background (with some noise)
         #
-        for y in range (specimen_image.size[1]):
-            for x in range (specimen_image.size[0]):
-                specimen_image[y, x] = random.uniform (0.5, 0.6)
-                #draw.point ((x, y), fill=random.randint (100, 120))
+        for y in range (specimen_image.shape[0]):
+            for x in range (specimen_image.shape[1]):
+                specimen_image[y, x] = random.uniform (0.3, 0.5)
         
-        border.draw (specimen_image, 1.0)
-        #draw.polygon (border.as_tuple (), fill=None, outline=0xff)
+        border.draw (specimen_image, 1.0, fill=False)
 
-        specimen_image = specimen_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))        
-        specimen_mask = PIL.Image.new ('1', self.image.size)
+        specimen_image = skimage.filters.gaussian (specimen_image)
+                
+        specimen_mask = np.zeros (self.image.shape, dtype=np.float32)
+        border.draw (specimen_mask, 1.0, fill=True)
 
-        draw = PIL.ImageDraw.Draw (specimen_mask)
-        draw.polygon (border.as_tuple (), fill=0xff, outline=0xff)
+        self.image[specimen_mask != 0] = specimen_image[specimen_mask != 0] 
 
-        self.image.paste (specimen_image, mask=specimen_mask)
-
-        draw = PIL.ImageDraw.Draw (self.border_mask)
-        draw.polygon (border.as_tuple (), fill=None, outline=feature_id)
+        border.draw (self.border_mask, self.id_to_color (feature_id))
         
         self.objects.append (border)
                         
@@ -268,19 +257,19 @@ class TestImage:
     #
     def draw_rectangular_feature (self, rect, feature_id):
         
-        feature_image = self.add_background_noise (PIL.Image.new ('L', rect.size ().as_tuple ()))
+        feature_image = self.add_background_noise (self.create_array (rect.size ()))
 
         r = rect.move_to (Point2d (0, 0))
+        r.draw (feature_image, 1.0)
         
-        draw = PIL.ImageDraw.Draw (feature_image)
-        draw.rectangle (r.as_tuple (), fill=None, outline=0xff)
-        feature_image = feature_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))
+        feature_image = skimage.filters.gaussian (feature_image)
+
+        x = int (round (rect.p0.x))
+        y = int (round (rect.p0.y))
         
-        self.image.paste (feature_image, box=rect.p0.as_tuple ())
-                
-        draw  = PIL.ImageDraw.Draw (self.border_mask)
-        draw.rectangle (rect.as_tuple (), fill=None, outline=feature_id)
+        self.image[y:y+feature_image.shape[0], x:x+feature_image.shape[1]] = feature_image
         
+        rect.draw (self.border_mask, self.id_to_color (feature_id))
         self.objects.append (rect)
         
         
@@ -292,25 +281,24 @@ class TestImage:
     # @param feature_id Unique feature id
     #
     def draw_circular_feature (self, ellipse, feature_id):
-
-        rect = ellipse.rect ()
-        r = ellipse.rect ().move_to (Point2d (0, 0))
         
-        feature_image = self.add_background_noise (PIL.Image.new ('L', rect.size ().as_tuple ()))
-
-        draw = PIL.ImageDraw.Draw (feature_image)
-        draw.ellipse (r.as_tuple (), fill=None, outline=0xff)
-        feature_image = feature_image.filter (PIL.ImageFilter.GaussianBlur (radius=1))
-
-        mask_image = PIL.Image.new ('1', rect.size ().as_tuple ())
-        draw = PIL.ImageDraw.Draw (mask_image)
-        draw.ellipse (r.as_tuple (), fill=0xff, outline=0xff)
-
-        self.image.paste (feature_image, box=rect.p0.as_tuple (), mask=mask_image)
-                
-        draw = PIL.ImageDraw.Draw (self.border_mask)
-        draw.ellipse (rect.as_tuple (), fill=None, outline=feature_id)
+        e = ellipse.move_to (Point2d (ellipse.radius.x, ellipse.radius.y))
         
+        feature_image = self.add_background_noise (self.create_array (ellipse.rect ().size () + Size2d (1, 1)))
+        
+        e.draw (feature_image, 1.0)
+        
+        feature_image = skimage.filters.gaussian (feature_image)
+
+        mask = np.zeros (feature_image.shape, dtype=np.float32)
+        e.draw (mask, 1.0, fill=True)
+
+        x = int (round (ellipse.rect ().p0.x))
+        y = int (round (ellipse.rect ().p0.y))
+        
+        self.image[y:y+feature_image.shape[0], x:x+feature_image.shape[1]][mask > 0] = feature_image[mask > 0]
+
+        ellipse.draw (self.border_mask, self.id_to_color (feature_id))                
         self.objects.append (ellipse)
         
 
@@ -357,20 +345,10 @@ class TestImage:
     #
     def get_sample (self, area):
 
-        assert type (area) is Rect2d
+        r = area.as_tuple ()
 
-        crop_area = area + Size2d (1, 1)
-
-        sample = self.image.crop (crop_area.as_tuple ())            
-        border_mask = self.border_mask.crop (crop_area.as_tuple ())
-
-        #
-        # Pillow border statistics is used to compute the maximum grayscale value which
-        # is the maximum feature id
-        #
-        border_stat = PIL.ImageStat.Stat (border_mask)
-        
-        return (sample, int (border_stat.extrema[0][1])) 
+        sample = self.image[r[1]:r[3],r[0]:r[2]]
+        return sample, sample.max ()
     
             
     #----------------------------------------------------------------------------
@@ -382,23 +360,15 @@ class TestImage:
     #
     def get_cluster_mask (self, feature_type):
         
-        mask = PIL.Image.new ('1', self.size.as_tuple ())
-        draw = PIL.ImageDraw.Draw (mask)
+        mask = self.create_array (self.size)
         
         found = False
         
         for obj in self.objects:
             
             if type (obj) is feature_type:
-                if feature_type is Rect2d:
-                    draw.rectangle (obj.as_tuple (), fill=0xff, outline=0xff)
-                    found = True
-                elif feature_type is Ellipse2d:
-                    draw.ellipse (obj.as_tuple (), fill=0xff, outline=0xff)
-                    found = True
-                elif feature_type is Polygon2d:
-                    draw.polygon (obj.as_tuple (), fill=None, outline=0xff)
-                    found = True
+                obj.draw (mask, 1.0, fill=feature_type is not Polygon2d)
+                found = True
                     
         return mask, found
     
@@ -408,14 +378,18 @@ class TestImage:
     #
     @staticmethod
     def add_background_noise (image):
-        draw = PIL.ImageDraw.Draw (image)
         
-        for y in range (image.size[1]):
-            for x in range (image.size[0]):
-                draw.point ((x, y), fill=random.randint (0, 80))
+        for y in range (image.shape[0]):
+            for x in range (image.shape[1]):
+                image[y][x] = random.uniform (0.0, 0.4)
 
-        return image.filter (PIL.ImageFilter.GaussianBlur (radius=2))
+        return skimage.filters.gaussian (image)
 
+    #--------------------------------------------------------------------------
+    # Generate a numpy array matching the given size
+    #
+    def create_array (self, size):
+        return np.zeros ((int (size.height), int (size.width)), dtype=np.float32)
 
     
     #--------------------------------------------------------------------------
@@ -440,12 +414,11 @@ class TestImage:
 
 
     #----------------------------------------------------------------------------
-    # Create image displaying the samples from the sampled parts
+    # Convert feature id into a color for the border mask
     #
-    # This function is used when results are displayed on top of a generated image
-    #
-    def to_rgb (self):
-        return self.image.convert ('RGB')
+    def id_to_color (self, feature_id):
+        assert feature_id <= 100
+        return feature_id / 100.0
 
 
     #----------------------------------------------------------------------------
@@ -455,40 +428,36 @@ class TestImage:
     #
     def create_result_overlay (self, labels):
     
-        overlay = PIL.Image.new ('RGBA', (int (self.size.width), int (self.size.height)))        
-        draw = PIL.ImageDraw.Draw (overlay, 'RGBA')
+        overlay = np.zeros ((int (self.size.width), int (self.size.height), 4))
     
         for y in range (labels.shape[0]):
             for x in range (labels.shape[1]):
                 rect = Rect2d (Point2d (x * self.sample_size.width, y * self.sample_size.height), self.sample_size)
                 _, expected = self.get_sample (rect)
                 
-                found    = labels[y][x]
+                found = labels[y][x]
     
                 #
                 # Case 1: Hit
                 #
                 if expected > 0 and found > 0:
-                    draw.rectangle (rect.as_tuple (), fill=(0x00, 0xff, 0x00, 0x20), outline=(0x00, 0xff, 0x00))
+                    rect.draw (overlay, (0.0, 1.0, 0.0, 0.1), fill=True)
+                    rect.draw (overlay, (0.0, 1.0, 0.0, 1.0), fill=False)
                     
                 #
                 # Case 2: False positive
                 #
                 elif expected == 0 and found > 0:
-                    draw.rectangle (rect.as_tuple (), fill=(0x00, 0x00, 0xff, 0x20), outline=(0x00, 0x00, 0xff))
+                    rect.draw (overlay, (0.0, 0.0, 1.0, 0.1), fill=True)
+                    rect.draw (overlay, (0.0, 0.0, 1.0, 1.0), fill=False)
                     
                 #
                 # Case 3: False negative
                 #
                 elif expected > 0 and found == 0:
-                    draw.rectangle (rect.as_tuple (), fill=(0xff, 0x00, 0x00, 0x20), outline=(0xff, 0x00, 0x00))
-                
-                #
-                # Add overlay with the cluster id
-                #    
-                if found > 0:
-                    draw.text (rect.p0.as_tuple (), str (int (found)))
-                        
+                    rect.draw (overlay, (1.0, 0.0, 0.0, 0.1), fill=True)
+                    rect.draw (overlay, (1.0, 0.0, 0.0, 1.0), fill=False)
+                                        
         return overlay
 
 
@@ -497,10 +466,10 @@ class TestImage:
 # Show image with title
 #
 def show_image (image, title):
-    draw = PIL.ImageDraw.Draw (image)
-    draw.text ((0, 0), title, fill=0xffffff);
     
-    image.show (title='Generated image')   
+    skimage.io.imshow (image)
+    plt.show ()
+
 
 #--------------------------------------------------------------------------
 # MAIN
@@ -524,8 +493,8 @@ if __name__ == '__main__':
     
     show_image (image.image, "Generated image")
 
-    enhancer = PIL.ImageEnhance.Sharpness (image.border_mask)
-    show_image (enhancer.enhance (100.0), "Border mask")
+    #enhancer = PIL.ImageEnhance.Sharpness (image.border_mask)
+    #show_image (enhancer.enhance (100.0), "Border mask")
     
     #show_image (image.get_cluster_mask (Rect2d)[0],    "Cluster mask (Rect)")
     #show_image (image.get_cluster_mask (Ellipse2d)[0], "Cluster mask (Ellipse)")

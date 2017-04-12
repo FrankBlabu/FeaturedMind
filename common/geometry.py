@@ -94,7 +94,7 @@ class Size2d:
         return self.height < other.height if self.width == other.width else self.width < other.width
     
     def as_tuple (self):
-        return (int (self.width), int (self.height))
+        return (int (round (self.width)), int (round (self.height)))
 
 
 #--------------------------------------------------------------------------
@@ -115,6 +115,12 @@ class Line2d:
         diff = self.p1 - self.p0 + Point2d (1, 1)
         return math.sqrt (diff.x * diff.x + diff.y * diff.y)
         
+    #--------------------------------------------------------------------------
+    # Draw line into numpy array
+    #
+    # @param image Image to draw into
+    # @param value Value used for drawing
+    #       
     def draw (self, image, value):
         rr, cc = skimage.draw.line (int (round (self.p0.y)), int (round (self.p0.x)),
                                     int (round (self.p1.y)), int (round (self.p1.x)))
@@ -179,9 +185,16 @@ class Rect2d:
     def size (self):
         return Size2d (self.p2.x - self.p0.x + 1, self.p2.y - self.p0.y + 1)
         
-    def draw (self, image, value):
+    #--------------------------------------------------------------------------
+    # Draw rectangle into numpy array
+    #
+    # @param image Image to draw into
+    # @param value Value used for drawing
+    # @param fill  When set, the rectangle is drawn filled
+    #       
+    def draw (self, image, value, fill=False):
         polygon = Polygon2d ([self.p0, self.p1, self.p2, self.p3])
-        polygon.draw (image, value)
+        polygon.draw (image, value, fill)
 
     #--------------------------------------------------------------------------
     # Resize rectangle while keeping top left position
@@ -204,7 +217,7 @@ class Rect2d:
                        Point2d (max (rect.p2.x, self.p2.x), max (rect.p2.y, self.p2.y)))
                 
     #--------------------------------------------------------------------------
-    # Move rectangle to a position without changing its size
+    # Move rectangle to a position without changing the rectangles size
     #
     # @param pos Position to move the top left corner of the rectangle to
     # @return Rectangle at new position
@@ -246,6 +259,15 @@ class Ellipse2d:
             self.center = center
             self.radius = radius
 
+    #--------------------------------------------------------------------------
+    # Move center to a position without changing the ellipses size
+    #
+    # @param pos Position to move the top left corner of the rectangle to
+    # @return Rectangle at new position
+    #
+    def move_to (self, pos):
+        return Ellipse2d (pos, self.radius)
+
     #
     # Return bounding rectangle
     #       
@@ -253,11 +275,25 @@ class Ellipse2d:
         return Rect2d (self.center - Point2d (self.radius.x, self.radius.y),
                        self.center + Point2d (self.radius.x, self.radius.y))
         
-    def draw (self,image, value):
-        rr, cc = skimage.draw.ellipse_perimeter (int (round (self.center.y)), 
-                                                 int (round (self.center.x)), 
-                                                 int (round (self.radius.y)), 
-                                                 int (round (self.radius.x)))
+    #--------------------------------------------------------------------------
+    # Draw ellipse into numpy array
+    #
+    # @param image Image to draw into
+    # @param value Value used for drawing
+    # @param fill  When set, the ellipse is drawn filled
+    #       
+    def draw (self,image, value, fill=False):
+        if fill:
+            rr, cc = skimage.draw.ellipse (int (round (self.center.y)), 
+                                           int (round (self.center.x)), 
+                                           int (round (self.radius.y)), 
+                                           int (round (self.radius.x)))
+        else:
+            rr, cc = skimage.draw.ellipse_perimeter (int (round (self.center.y)), 
+                                                     int (round (self.center.x)), 
+                                                     int (round (self.radius.y)), 
+                                                     int (round (self.radius.x)))
+            
         image[rr, cc] = value
         
     def __repr__ (self):
@@ -286,11 +322,22 @@ class Polygon2d:
     def __init__ (self, points):
         self.points = points
         
-    def draw (self, image, value):
+    #--------------------------------------------------------------------------
+    # Draw polygon into numpy array
+    #
+    # @param image Image to draw into
+    # @param value Value used for drawing
+    # @param fill  When set, the polygon is drawn filled
+    #       
+    def draw (self, image, value, fill=False):
         x = [int (round (point.x)) for point in self.points]
         y = [int (round (point.y)) for point in self.points]
         
-        rr, cc = skimage.draw.polygon_perimeter (y, x, shape=image.shape, clip=True)
+        if fill:
+            rr, cc = skimage.draw.polygon (y, x, shape=image.shape)
+        else:
+            rr, cc = skimage.draw.polygon_perimeter (y, x, shape=image.shape, clip=True)
+            
         image[rr, cc] = value
         
     def as_tuple (self):
