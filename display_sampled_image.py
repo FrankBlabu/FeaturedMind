@@ -11,6 +11,10 @@ import math
 import numpy as np
 import random
 
+import skimage.color
+import skimage.io
+
+from matplotlib import pyplot as plt
 from common.geometry import Point2d, Size2d, Rect2d
 from test_image_generator import TestImage
 
@@ -55,8 +59,10 @@ if __name__ == '__main__':
             _, labels[y][x] = test_image.get_sample (rect)
 
 
-    image = test_image.to_rgb ()
+    image = skimage.color.gray2rgb (test_image.image)
     overlay = test_image.create_result_overlay (labels)
+
+    print (image.shape, overlay.shape)
     
-    image.paste (overlay, mask=overlay)    
-    image.show ()
+    skimage.io.imshow (image)
+    plt.show ()

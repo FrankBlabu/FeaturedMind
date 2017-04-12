@@ -389,7 +389,7 @@ class TestImage:
     # Generate a numpy array matching the given size
     #
     def create_array (self, size):
-        return np.zeros ((int (size.height), int (size.width)), dtype=np.float32)
+        return np.zeros ((int (round (size.height)), int (round (size.width))), dtype=np.float32)
 
     
     #--------------------------------------------------------------------------
@@ -428,7 +428,7 @@ class TestImage:
     #
     def create_result_overlay (self, labels):
     
-        overlay = np.zeros ((int (self.size.width), int (self.size.height), 4))
+        overlay = np.zeros ((int (round (self.size.height)), int (round (self.size.width)), 4))
     
         for y in range (labels.shape[0]):
             for x in range (labels.shape[1]):
