@@ -13,8 +13,10 @@ import math
 import time
 
 import numpy as np
-import common.metrics
-import common.utils
+import common.metrics as metrics
+import common.utils as utils
+
+import skimage.color
 
 from common.geometry import Point2d, Size2d, Rect2d
 from keras.models import load_model
@@ -46,12 +48,12 @@ assert args.height < 4096
 #
 # Load and construct model
 #
-model = load_model (args.model, custom_objects={'precision': common.metrics.precision, 'recall': common.metrics.recall})
+model = load_model (args.model, custom_objects={'precision': metrics.precision, 'recall': metrics.recall})
 
 #
 # Create test image and setup input tensors
 #
-image = TestImage (args)
+source = TestImage (args)
 
 x_steps = int (math.floor (args.width / args.sample_size))
 y_steps = int (math.floor (args.height / args.sample_size))
@@ -65,9 +67,9 @@ for y in range (y_steps):
     for x in range (x_steps):
         
         rect = Rect2d (Point2d (x * args.sample_size, y * args.sample_size), Size2d (args.sample_size, args.sample_size))            
-        sample, label = image.get_sample (rect)
+        sample, label = source.get_sample (rect)
         
-        x_predict[count] = common.utils.image_to_tf (sample)
+        x_predict[count] = utils.image_to_tf (sample)
         y_predict[count] = label
         count += 1
 
@@ -94,11 +96,12 @@ if args.performance > 0:
     elapsed_time = time.process_time () - start_time
     
     print ('Duration ({0} runs): {1:.2f} s'.format (args.performance, elapsed_time))
-    
-result_image = image.to_rgb ()
-overlay = image.create_result_overlay (result)
-result_image.paste (overlay, (0, 0), overlay)
-result_image.show ()
+
+image = skimage.color.gray2rgb (source.image)
+overlay = source.create_result_overlay (result)
+
+image = utils.add_overlay_to_image (image, overlay)
+utils.show_image ((image, 'Result'))
 
 #
 # Tensorflow termination bug workaround
