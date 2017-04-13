@@ -194,7 +194,7 @@ class TestImage:
     
         feature_id = 1
         
-        self.draw_border (Polygon2d (border), self.id_to_color (feature_id))
+        self.draw_border (Polygon2d (border), feature_id)
         feature_id += 1
         
         #
@@ -347,8 +347,10 @@ class TestImage:
 
         r = area.as_tuple ()
 
-        sample = self.image[r[1]:r[3],r[0]:r[2]]
-        return sample, sample.max ()
+        sample = self.image[r[1]:r[3]+1,r[0]:r[2]+1]
+        mask = self.border_mask[r[1]:r[3]+1,r[0]:r[2]+1]
+        
+        return sample, self.color_to_id (mask.max ())
     
             
     #----------------------------------------------------------------------------
@@ -420,6 +422,12 @@ class TestImage:
         assert feature_id <= 100
         return feature_id / 100.0
 
+    #----------------------------------------------------------------------------
+    # Convert color of the border mask into feature id
+    #
+    def color_to_id (self, color):
+        assert color >= 0 and color <= 1
+        return int (round (color * 100))
 
     #----------------------------------------------------------------------------
     # Create overlay displaying the generated / found labels

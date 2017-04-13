@@ -62,7 +62,34 @@ if __name__ == '__main__':
     image = skimage.color.gray2rgb (test_image.image)
     overlay = test_image.create_result_overlay (labels)
 
-    print (image.shape, overlay.shape)
+    assert image.shape[2] == 3
+    assert overlay.shape[2] == 4
     
-    skimage.io.imshow (image)
+    overlay_alpha = np.zeros ((overlay.shape[0], overlay.shape[1], 3))
+    overlay_alpha[:,:,0] = overlay[:,:,3]
+    overlay_alpha[:,:,1] = overlay[:,:,3]
+    overlay_alpha[:,:,2] = overlay[:,:,3]
+    
+    overlay_image = overlay[:,:,0:3]
+
+    image = (np.ones (image.shape) - overlay_alpha) * image + overlay_alpha * overlay_image
+
+    fig = plt.figure ()
+    
+    part1 = fig.add_subplot (1, 2, 1)
+    part1.set_title ('Specimen')
+    plt.imshow (image)
+    
+    part2 = fig.add_subplot (1, 2, 2)
+    part2.set_title ('Border mask')
+    
+    mask = test_image.border_mask
+    mask = mask / mask.max ()
+    
+    plt.imshow (skimage.color.gray2rgb (mask))
+    
+    
+    
+    print (test_image.border_mask.max ())
+        
     plt.show ()
