@@ -354,13 +354,13 @@ class TestImage:
     
             
     #----------------------------------------------------------------------------
-    # Extract cluster mask image containing the given feature type
+    # Extract feature mask image containing the given feature type
     #
     # @param feature_type Type of features addressed by the cluster image
-    # @return Generated cluster mask image, Boolean indicating if there is data
-    #         in the mask at all
+    # @return (Generated feature mask image, Boolean indicating if there is data
+    #         in the mask at all)
     #
-    def get_cluster_mask (self, feature_type):
+    def get_feature_mask (self, feature_type):
         
         mask = self.create_array (self.size)
         
@@ -369,7 +369,7 @@ class TestImage:
         for obj in self.objects:
             
             if type (obj) is feature_type:
-                obj.draw (mask, 1.0, fill=feature_type is not Polygon2d)
+                obj.draw (mask, 1.0, fill=False)
                 found = True
                     
         return mask, found
@@ -482,9 +482,9 @@ if __name__ == '__main__':
     #
     parser = argparse.ArgumentParser ()
     
-    parser.add_argument ('-x', '--width',       type=int, default=1024, help='Width of the generated images')
-    parser.add_argument ('-y', '--height',      type=int, default=768,  help='Height of the generated images')
-    parser.add_argument ('-s', '--sample-size', type=int, default=16,   help='Edge size of each sample in pixels')
+    parser.add_argument ('-x', '--width',       type=int, default=640, help='Width of the generated images')
+    parser.add_argument ('-y', '--height',      type=int, default=480, help='Height of the generated images')
+    parser.add_argument ('-s', '--sample-size', type=int, default=16,  help='Edge size of each sample in pixels')
     parser.add_argument ('-m', '--mode',        type=str, default='borders', choices=['borders', 'segments'], help='Image generation mode')
 
     args = parser.parse_args ()
@@ -494,8 +494,8 @@ if __name__ == '__main__':
     if args.mode == 'borders':    
         utils.show_image ([gray2rgb (image.image), 'Generated image'])
     elif args.mode == 'segments':
-        utils.show_image ([gray2rgb (image.image),                        'Generated image'],
-                          [gray2rgb (image.get_cluster_mask (Polygon2d)[0]), 'Cluster mask (Border)'],
-                          [gray2rgb (image.get_cluster_mask (Rect2d)[0]),    'Cluster mask (Rect)'],
-                          [gray2rgb (image.get_cluster_mask (Ellipse2d)[0]), 'Cluster mask (Ellipse)'])
+        utils.show_image ([gray2rgb (image.image),                           'Generated image'],
+                          [gray2rgb (image.get_feature_mask (Polygon2d)[0]), 'Cluster mask (Border)'],
+                          [gray2rgb (image.get_feature_mask (Rect2d)[0]),    'Cluster mask (Rect)'],
+                          [gray2rgb (image.get_feature_mask (Ellipse2d)[0]), 'Cluster mask (Ellipse)'])
     

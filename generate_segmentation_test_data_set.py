@@ -8,7 +8,6 @@
 import argparse
 import random
 import h5py
-import numpy as np
 
 from common.geometry import Polygon2d, Rect2d, Ellipse2d
 from common.utils import image_to_tf
@@ -78,7 +77,7 @@ for i in range (args.number_of_images):
     #
     # Borders
     #
-    mask, valid = image.get_cluster_mask (Polygon2d)
+    mask, valid = image.get_feature_mask (Polygon2d)
     assert valid
 
     borders[i] = image_to_tf (mask)     
@@ -86,7 +85,7 @@ for i in range (args.number_of_images):
     #
     # Rectangles
     #
-    mask, valid = image.get_cluster_mask (Rect2d)
+    mask, valid = image.get_feature_mask (Rect2d)
 
     if valid:
         count = rects.shape[0]
@@ -96,7 +95,7 @@ for i in range (args.number_of_images):
     #
     # Ellipses
     #
-    mask, valid = image.get_cluster_mask (Ellipse2d)
+    mask, valid = image.get_feature_mask (Ellipse2d)
 
     if valid:
         count = ellipses.shape[0]
