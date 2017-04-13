@@ -49,13 +49,33 @@ def add_overlay_to_image (image, overlay):
 # @param images Images to show
 # @param titles Image titles
 #
-def show_image (*arg):
+def show_image (*args):
     
     fig = plt.figure ()
 
-    for i in range (len (arg)):                    
-        part = fig.add_subplot (1, len (arg), i+1)
-        part.set_title (arg[i][1])            
-        plt.imshow (arg[i][0])
+    if len (args) == 1:
+        partitions = [ (1, 1, 1) ]
+    elif len (args) == 2:
+        partitions = [ (2, 1, 1), (2, 1, 2) ]
+    elif len (args) == 3:
+        partitions = [ (2,3,(1,3)), (2,3,4), (2,3,5), (2,3,6) ]
+    elif len (args) == 4:
+        partitions = [ (2, 2, 1), (2, 2, 2), (2, 2, 3), (2, 2, 4) ]
+    else:
+        raise '{0} image partitions are not supported'.format (len (arg))
+
+    assert len (args) == len (partitions)
+
+    for arg, partition in zip (args, partitions):  
+        part = fig.add_subplot (partition[0], partition[1], partition[2])
+        part.set_title (arg[1])
+        plt.imshow (arg[0])
+    
+    fig.tight_layout ()
+    
+    def onresize (event):
+        plt.tight_layout ()
+        
+    cid = fig.canvas.mpl_connect ('resize_event', onresize)
     
     plt.show ()

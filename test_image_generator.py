@@ -11,13 +11,13 @@
 import argparse
 import random
 import numpy as np
+import matplotlib.pyplot as plt
+import common.utils as utils 
 
 import skimage.filters
-import skimage.io
 
-from matplotlib import pyplot as plt
-from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
-
+from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d 
+from skimage.color import gray2rgb
 
 #--------------------------------------------------------------------------
 # CLASS TestImage
@@ -449,34 +449,25 @@ class TestImage:
                 # Case 1: Hit
                 #
                 if expected > 0 and found > 0:
-                    rect.draw (overlay, (0.0, 1.0, 0.0, 0.1), fill=True)
+                    rect.draw (overlay, (0.0, 1.0, 0.0, 0.2), fill=True)
                     rect.draw (overlay, (0.0, 1.0, 0.0, 1.0), fill=False)
                     
                 #
                 # Case 2: False positive
                 #
                 elif expected == 0 and found > 0:
-                    rect.draw (overlay, (0.0, 0.0, 1.0, 0.1), fill=True)
+                    rect.draw (overlay, (0.0, 0.0, 1.0, 0.2), fill=True)
                     rect.draw (overlay, (0.0, 0.0, 1.0, 1.0), fill=False)
                     
                 #
                 # Case 3: False negative
                 #
                 elif expected > 0 and found == 0:
-                    rect.draw (overlay, (1.0, 0.0, 0.0, 0.1), fill=True)
+                    rect.draw (overlay, (1.0, 0.0, 0.0, 0.2), fill=True)
                     rect.draw (overlay, (1.0, 0.0, 0.0, 1.0), fill=False)
                                         
         return overlay
 
-
-        
-#--------------------------------------------------------------------------
-# Show image with title
-#
-def show_image (image, title):
-    
-    skimage.io.imshow (image)
-    plt.show ()
 
 
 #--------------------------------------------------------------------------
@@ -494,17 +485,17 @@ if __name__ == '__main__':
     parser.add_argument ('-x', '--width',       type=int, default=1024, help='Width of the generated images')
     parser.add_argument ('-y', '--height',      type=int, default=768,  help='Height of the generated images')
     parser.add_argument ('-s', '--sample-size', type=int, default=16,   help='Edge size of each sample in pixels')
+    parser.add_argument ('-m', '--mode',        type=str, default='borders', choices=['borders', 'segments'], help='Image generation mode')
 
     args = parser.parse_args ()
 
     image = TestImage (args)
-    
-    show_image (image.image, "Generated image")
 
-    #enhancer = PIL.ImageEnhance.Sharpness (image.border_mask)
-    #show_image (enhancer.enhance (100.0), "Border mask")
-    
-    #show_image (image.get_cluster_mask (Rect2d)[0],    "Cluster mask (Rect)")
-    #show_image (image.get_cluster_mask (Ellipse2d)[0], "Cluster mask (Ellipse)")
-    #show_image (image.get_cluster_mask (Polygon2d)[0], "Cluster mask (Border)")
+    if args.mode == 'borders':    
+        utils.show_image ([gray2rgb (image.image), 'Generated image'])
+    elif args.mode == 'segments':
+        utils.show_image ([gray2rgb (image.image),                        'Generated image'],
+                          [gray2rgb (image.get_cluster_mask (Polygon2d)[0]), 'Cluster mask (Border)'],
+                          [gray2rgb (image.get_cluster_mask (Rect2d)[0]),    'Cluster mask (Rect)'],
+                          [gray2rgb (image.get_cluster_mask (Ellipse2d)[0]), 'Cluster mask (Ellipse)'])
     
