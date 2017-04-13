@@ -10,11 +10,10 @@ import argparse
 import math
 import numpy as np
 import random
+import common.utils as utils
 
 import skimage.color
-import skimage.io
 
-from matplotlib import pyplot as plt
 from common.geometry import Point2d, Size2d, Rect2d
 from test_image_generator import TestImage
 
@@ -58,38 +57,10 @@ if __name__ == '__main__':
             rect = Rect2d (Point2d (x * args.sample_size, y * args.sample_size), Size2d (args.sample_size, args.sample_size))            
             _, labels[y][x] = test_image.get_sample (rect)
 
-
     image = skimage.color.gray2rgb (test_image.image)
     overlay = test_image.create_result_overlay (labels)
 
-    assert image.shape[2] == 3
-    assert overlay.shape[2] == 4
-    
-    overlay_alpha = np.zeros ((overlay.shape[0], overlay.shape[1], 3))
-    overlay_alpha[:,:,0] = overlay[:,:,3]
-    overlay_alpha[:,:,1] = overlay[:,:,3]
-    overlay_alpha[:,:,2] = overlay[:,:,3]
-    
-    overlay_image = overlay[:,:,0:3]
-
-    image = (np.ones (image.shape) - overlay_alpha) * image + overlay_alpha * overlay_image
-
-    fig = plt.figure ()
-    
-    part1 = fig.add_subplot (1, 2, 1)
-    part1.set_title ('Specimen')
-    plt.imshow (image)
-    
-    part2 = fig.add_subplot (1, 2, 2)
-    part2.set_title ('Border mask')
-    
-    mask = test_image.border_mask
-    mask = mask / mask.max ()
-    
-    plt.imshow (skimage.color.gray2rgb (mask))
-    
-    
-    
-    print (test_image.border_mask.max ())
-        
-    plt.show ()
+    image = utils.add_overlay_to_image (image, overlay)
+    border = skimage.color.gray2rgb (test_image.border_mask / test_image.border_mask.max ())
+    #utils.show_image ((image, 'Specimen'))
+    utils.show_image ((image, 'Specimen'), (border, 'Border mask'))
