@@ -101,7 +101,7 @@ assert len (data) == len (labels)
 assert len (data) == len (classes)
 
 print ("Training model...")
-print ("  Number of samples: ", data.size)
+print ("  Number of samples: ", data.shape[0])
 print ("  Sample size      : ", sample_size)
 
 training_set_size = int (len (data) * 0.9)

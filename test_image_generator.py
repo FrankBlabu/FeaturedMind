@@ -11,7 +11,6 @@
 import argparse
 import random
 import numpy as np
-import matplotlib.pyplot as plt
 import common.utils as utils 
 
 import skimage.filters
@@ -40,8 +39,8 @@ class TestImage:
         #
         # The complete test image as grayscale
         #
-        self.image = self.add_background_noise (np.zeros ((args.height, args.width), dtype=np.float32))
-        
+        self.image = self.add_background_noise (np.zeros ((args.height, args.width), dtype=np.float32), bias=0.2, delta=0.2)
+
         #
         # Mask marking the feature and border relevant pixels for detection of edges. The image
         # is grayscale and will contain the feature id as pixel value.
@@ -227,18 +226,8 @@ class TestImage:
     def draw_border (self, border, feature_id):
         
         specimen_image = np.zeros (self.image.shape, dtype=np.float32)
+        specimen_image = self.add_background_noise (specimen_image, bias=0.5, delta=0.1)
 
-        #
-        # Draw specimen background (with some noise)
-        #
-        for y in range (specimen_image.shape[0]):
-            for x in range (specimen_image.shape[1]):
-                specimen_image[y, x] = random.uniform (0.3, 0.5)
-        
-        border.draw (specimen_image, 1.0, fill=False)
-
-        specimen_image = skimage.filters.gaussian (specimen_image)
-                
         specimen_mask = np.zeros (self.image.shape, dtype=np.float32)
         border.draw (specimen_mask, 1.0, fill=True)
 
@@ -257,15 +246,10 @@ class TestImage:
     #
     def draw_rectangular_feature (self, rect, feature_id):
         
-        feature_image = self.add_background_noise (self.create_array (rect.size ()))
+        feature_image = self.add_background_noise (self.create_array (rect.size ()), bias=0.2, delta=0.2)
 
-        r = rect.move_to (Point2d (0, 0))
-        r.draw (feature_image, 1.0)
-        
-        feature_image = skimage.filters.gaussian (feature_image)
-
-        x = int (round (rect.p0.x))
-        y = int (round (rect.p0.y))
+        x = int (rect.p0.x)
+        y = int (rect.p0.y)
         
         self.image[y:y+feature_image.shape[0], x:x+feature_image.shape[1]] = feature_image
         
@@ -284,17 +268,13 @@ class TestImage:
         
         e = ellipse.move_to (Point2d (ellipse.radius.x, ellipse.radius.y))
         
-        feature_image = self.add_background_noise (self.create_array (ellipse.rect ().size () + Size2d (1, 1)))
-        
-        e.draw (feature_image, 1.0)
-        
-        feature_image = skimage.filters.gaussian (feature_image)
+        feature_image = self.add_background_noise (self.create_array (ellipse.rect ().size () + Size2d (1, 1)), bias=0.2, delta=0.2)                
 
         mask = np.zeros (feature_image.shape, dtype=np.float32)
         e.draw (mask, 1.0, fill=True)
 
-        x = int (round (ellipse.rect ().p0.x))
-        y = int (round (ellipse.rect ().p0.y))
+        x = int (ellipse.rect ().p0.x)
+        y = int (ellipse.rect ().p0.y)
         
         self.image[y:y+feature_image.shape[0], x:x+feature_image.shape[1]][mask > 0] = feature_image[mask > 0]
 
@@ -379,11 +359,11 @@ class TestImage:
     # Add background noise to an image
     #
     @staticmethod
-    def add_background_noise (image):
+    def add_background_noise (image, bias, delta):
         
         for y in range (image.shape[0]):
             for x in range (image.shape[1]):
-                image[y][x] = random.uniform (0.0, 0.4)
+                image[y][x] = random.uniform (max (bias - delta, 0.0), min (bias + delta, 1.0))
 
         return skimage.filters.gaussian (image)
 
