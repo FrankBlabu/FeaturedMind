@@ -9,7 +9,6 @@
 import argparse
 import gc
 import h5py
-import keras
 import os
 import subprocess
 import webbrowser
@@ -22,35 +21,38 @@ from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate
 from keras.models import Model
 from keras.callbacks import TensorBoard
 
+
+def dice_coef_loss (y_true, y_pred):
+    return -common.metrics.dice_coef (y_true, y_pred)
+
 def create_model (rows, cols):
     
     inputs = Input ((rows, cols, 1))
     
-    conv1 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same') (inputs)
-    conv1 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same') (conv1)
-    pool1 = MaxPooling2D (pool_size=(2, 2)) (conv1)
+    conv1 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(inputs)
+    conv1 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(conv1)
+    pool1 = MaxPooling2D (pool_size=(2, 2))(conv1)
 
-    conv2 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same') (pool1)
-    conv2 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same') (conv2)
-    pool2 = MaxPooling2D (pool_size=(2, 2)) (conv2)
+    conv2 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same')(pool1)
+    conv2 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same')(conv2)
+    pool2 = MaxPooling2D (pool_size=(2, 2))(conv2)
 
-    conv3 = Conv2D (128, kernel_size=(3, 3), activation='relu', padding='same') (pool2)
-    conv3 = Conv2D (128, kernel_size=(3, 3), activation='relu', padding='same') (conv3)
+    conv3 = Conv2D (128, kernel_size=(3, 3), activation='relu', padding='same')(pool2)
+    conv3 = Conv2D (128, kernel_size=(3, 3), activation='relu', padding='same')(conv3)
 
-    up4 = concatenate ([UpSampling2D (size=(2, 2)) (conv3), conv2], axis=3)
-    conv4 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same') (up4)
-    conv4 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same') (conv4)
+    up4 = concatenate ([UpSampling2D (size=(2, 2))(conv3), conv2], axis=3)
+    conv4 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same')(up4)
+    conv4 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same')(conv4)
 
-    up5 = concatenate ([UpSampling2D (size=(2, 2)) (conv4), conv1], axis=3)
-    conv5 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same') (up5)
-    conv5 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same') (conv5)
+    up5 = concatenate ([UpSampling2D (size=(2, 2))(conv4), conv1], axis=3)
+    conv5 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(up5)
+    conv5 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(conv5)
 
     conv6 = Conv2D (1, kernel_size=(1, 1), activation='sigmoid')(conv5)
 
     model = Model (inputs=[inputs], outputs=[conv6])
-    model.compile (optimizer=optimizers.Adam (lr=1e-5), 
-                   loss=keras.losses.categorical_crossentropy, 
-                   metrics=['accuracy', common.metrics.precision, common.metrics.recall])
+    model.compile (optimizer=optimizers.Adam (lr=1e-5), loss=dice_coef_loss, 
+                   metrics=['accuracy', common.metrics.precision, common.metrics.recall, common.metrics.dice_coef])
 
     return model
 
