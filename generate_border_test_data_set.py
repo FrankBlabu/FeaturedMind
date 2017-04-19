@@ -12,6 +12,7 @@ import common.utils as utils
 
 from common.geometry import Point2d, Size2d, Rect2d
 from test_image_generator import TestImage
+from skimage.color import gray2rgb
 
 #--------------------------------------------------------------------------
 # Local functions
@@ -61,6 +62,8 @@ file.attrs['h5py_version']      = h5py.version.version
 data  = file.create_dataset ('data',         (args.number_of_samples, args.sample_size, args.sample_size, 1), dtype='f', compression='lzf')
 truth = file.create_dataset ('ground_truth', (args.number_of_samples, args.sample_size, args.sample_size, 1), dtype='f', compression='lzf')
 
+displayed_images = []
+
 count = 0
 while count < args.number_of_samples:
     
@@ -76,17 +79,25 @@ while count < args.number_of_samples:
         while x_offset + args.sample_size < args.width and count < args.number_of_samples:
             
             rect = Rect2d (Point2d (x_offset, y_offset), Size2d (args.sample_size, args.sample_size))            
-            
-            data[count]  = utils.mean_center (cutout (image, rect))
-            truth[count] = utils.mean_center (cutout (mask, rect))
-            count += 1
 
+            image_sample = cutout (image, rect)
+            mask_sample = cutout (mask, rect)
+            
+            data[count]  = utils.mean_center (image_sample)
+            truth[count] = utils.mean_center (mask_sample)
+
+            displayed_images.append ((gray2rgb (image_sample.reshape (args.sample_size, args.sample_size)), 'Image {0}'.format (count)))
+            displayed_images.append ((gray2rgb (mask_sample.reshape (args.sample_size, args.sample_size)), 'Mask {0}'.format (count)))
+
+            count += 1
             x_offset += args.sample_size / 2
         
         print (count)
                 
         y_offset += args.sample_size / 2
 
+
+#utils.show_image (displayed_images[40], displayed_images[41], displayed_images[42], displayed_images[43])
 
 file.flush ()
 file.close ()
