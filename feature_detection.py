@@ -48,7 +48,6 @@ model = load_model (args.model, custom_objects={'precision'     : common.metrics
                                                 'dice_coef'     : common.metrics.dice_coef,
                                                 'dice_coef_loss': dice_coef_loss})
 
-
 #
 # Generate new image and predict feature pixel mask
 #
@@ -58,14 +57,12 @@ test_image = TestImage (args)
 image = test_image.image
 mask = model.predict (np.reshape (image, (1, image.shape[0], image.shape[1], 1)))
 
-mask = mask[0,:,:,0]
+mask[mask < 0.5] = 0
 
 utils.show_image ([gray2rgb (image), 'Generated image'],
-                  [mask,             'Result mask'])
-
+                  [mask[0,:,:,0],    'Result mask'])
 
 #
 # Tensorflow termination bug workaround
 #
 gc.collect ()
-
