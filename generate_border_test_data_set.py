@@ -8,11 +8,18 @@
 import argparse
 import random
 import h5py
-import math
-import common.utils
+import common.utils as utils
 
 from common.geometry import Point2d, Size2d, Rect2d
 from test_image_generator import TestImage
+
+#--------------------------------------------------------------------------
+# Local functions
+#
+def cutout (image, area):
+    r = area.as_tuple ()
+    result = image[r[1]:r[3]+1,r[0]:r[2]+1]    
+    return result.reshape ((result.shape[0], result.shape[1], 1))
 
 
 #--------------------------------------------------------------------------
@@ -30,18 +37,17 @@ parser.add_argument ('file',                      type=str,               help='
 parser.add_argument ('-x', '--width',             type=int, default=1024, help='Width of the generated images')
 parser.add_argument ('-y', '--height',            type=int, default=768,  help='Height of the generated images')
 parser.add_argument ('-n', '--number-of-samples', type=int, default=5000, help='Number of samples to generate')
-parser.add_argument ('-s', '--sample-size',       type=int, default=16,   help='Edge size of each sample in pixels')
+parser.add_argument ('-s', '--sample-size',       type=int, default=64,   help='Edge size of each sample in pixels')
 
 args = parser.parse_args ()
 
 assert args.width <= 4096 and 'Training image width is too large.'
 assert args.height <= 4096 and 'Training image height is too large.'
-assert args.sample_size <= 64 and 'Sample size is unusual large.'
 
 #
 # Create test data sets
 #
-print ("Generating {0} samples of size {1}x{1}...".format (args.number_of_samples, args.sample_size))
+print ("Generating {0} border samples of size {1}x{1}...".format (args.number_of_samples, args.sample_size))
 
 file = h5py.File (args.file, 'w')
 
@@ -52,54 +58,36 @@ file.attrs['number_of_samples'] = args.number_of_samples
 file.attrs['HDF5_Version']      = h5py.version.hdf5_version
 file.attrs['h5py_version']      = h5py.version.version
 
-data    = file.create_dataset ('data',    (args.number_of_samples, args.sample_size, args.sample_size, 1), dtype='f', compression='lzf')
-labels  = file.create_dataset ('labels',  (args.number_of_samples,), dtype='i', compression='lzf')
-classes = file.create_dataset ('classes', (args.number_of_samples,), dtype='i', compression='lzf')
+data  = file.create_dataset ('data',         (args.number_of_samples, args.sample_size, args.sample_size, 1), dtype='f', compression='lzf')
+truth = file.create_dataset ('ground_truth', (args.number_of_samples, args.sample_size, args.sample_size, 1), dtype='f', compression='lzf')
 
-x_steps = int (math.floor (args.width / args.sample_size))
-y_steps = int (math.floor (args.height / args.sample_size))
-    
 count = 0
 while count < args.number_of_samples:
     
-    image = TestImage (args)
-
-    positive_samples = []
-    negative_samples = []
-     
-    for y in range (y_steps):
-        for x in range (x_steps):
-            
-            rect = Rect2d (Point2d (x * args.sample_size, y * args.sample_size), Size2d (args.sample_size, args.sample_size))            
-            sample, label = image.get_sample (rect)
-            
-            if label > 0:
-                positive_samples.append ((common.utils.image_to_tf (sample), label))
-            else:
-                negative_samples.append ((common.utils.image_to_tf (sample), label))
-            
-    random.shuffle (positive_samples)
-    random.shuffle (negative_samples)
+    test_image = TestImage (args)
     
-    if len (negative_samples) > len (positive_samples):
-        negative_samples = negative_samples[0:len (positive_samples)]
+    image    = test_image.image
+    mask, _  = test_image.get_feature_mask ()
 
-    samples = positive_samples + negative_samples 
-    random.shuffle (samples)
-    
-    for sample in samples:
+    y_offset = 0
+    while y_offset + args.sample_size < args.height and count < args.number_of_samples:
+        
+        x_offset = 0
+        while x_offset + args.sample_size < args.width and count < args.number_of_samples:
+            
+            rect = Rect2d (Point2d (x_offset, y_offset), Size2d (args.sample_size, args.sample_size))            
+            
+            data[count]  = utils.mean_center (cutout (image, rect))
+            truth[count] = utils.mean_center (cutout (mask, rect))
+            count += 1
 
-        data[count]    = sample[0]
-        labels[count]  = 1 if sample[1] > 0 else 0 
-        classes[count] = sample[1]
+            x_offset += args.sample_size / 2
+        
+        print (count)
+                
+        y_offset += args.sample_size / 2
 
-        count += 1
-        if count == args.number_of_samples:
-            break
-
-    print (len (samples), count)
 
 file.flush ()
 file.close ()
 
-print ("Done")

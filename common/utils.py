@@ -42,7 +42,6 @@ def add_overlay_to_image (image, overlay):
     return (np.ones (image.shape) - overlay_alpha) * image + overlay_alpha * overlay_image
 
 
-
 #----------------------------------------------------------------------------
 # Show images in dialog
 #
@@ -62,7 +61,7 @@ def show_image (*args):
     elif len (args) == 4:
         partitions = [ (2, 2, 1), (2, 2, 2), (2, 2, 3), (2, 2, 4) ]
     else:
-        raise '{0} image partitions are not supported'.format (len (arg))
+        raise '{0} image partitions are not supported'.format (len (args))
 
     assert len (args) == len (partitions)
 
@@ -76,6 +75,14 @@ def show_image (*args):
     def onresize (event):
         plt.tight_layout ()
         
-    cid = fig.canvas.mpl_connect ('resize_event', onresize)
+    fig.canvas.mpl_connect ('resize_event', onresize)
     
     plt.show ()
+
+#----------------------------------------------------------------------------
+# Mean center image data
+#
+def mean_center (image):
+    return 2 * (image - image.mean ()) / (image.max () - image.min ()) 
+    
+    

@@ -337,11 +337,12 @@ class TestImage:
     #----------------------------------------------------------------------------
     # Extract feature mask image containing the given feature type
     #
-    # @param feature_type Type of features addressed by the cluster image
+    # @param feature_type Type of features addressed by the cluster image or
+    #                     'None' if any feature type is requested 
     # @return (Generated feature mask image, Boolean indicating if there is data
     #         in the mask at all)
     #
-    def get_feature_mask (self, feature_type):
+    def get_feature_mask (self, feature_type=None):
         
         mask = self.create_array (self.size)
         
@@ -349,7 +350,7 @@ class TestImage:
         
         for obj in self.objects:
             
-            if type (obj) is feature_type:
+            if type is None or type (obj) is feature_type:
                 obj.draw (mask, 1.0, fill=False)
                 found = True
                     
