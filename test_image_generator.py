@@ -18,6 +18,7 @@ import skimage.filters
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d 
 from skimage.color import gray2rgb
 
+
 #--------------------------------------------------------------------------
 # CLASS TestImage
 #

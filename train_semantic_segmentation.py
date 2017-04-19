@@ -10,6 +10,7 @@ import argparse
 import gc
 import h5py
 import os
+import random
 import subprocess
 import webbrowser
 
@@ -106,6 +107,9 @@ elif args.features == 'ellipses':
 else:
     assert False and 'Unknown feature type'
         
+if images.shape[0] > features.shape[0]:
+    images = images[:features.shape[0],:,:,:]
+
 size = file.attrs['image_size'] 
         
 print ("Training model...")
@@ -126,7 +130,7 @@ model.fit (images, features, batch_size=args.batchsize, epochs=args.epochs,
 if args.output != None:
     model.save (os.path.abspath (args.output))
 
-mask = model.predict (images[0], verbose=args.verbose)
+mask = model.predict (images[random.randint (0, images.shape[0]),:,:,:], verbose=args.verbose)
 
 #
 # Display result in tensorboard / browser
