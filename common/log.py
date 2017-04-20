@@ -17,7 +17,29 @@ import skimage.io
 
 
 #--------------------------------------------------------------------------
+# CLASS NoLogger
+#
+class NoLogger:
+    '''
+    Logger which does not log anything. Meant to be a stub for 'with'
+    statements.
+    '''
+
+    def __init__ (self):
+        pass
+    
+    def __enter__ (self):
+        return self
+    
+    def __exit__ (self, exc_type, exc_value, exc_tb):
+        pass
+            
+    def add_row (self, columns):
+        pass
+            
+#--------------------------------------------------------------------------
 # CLASS HTMLLogger
+#
 class HTMLLogger:
     '''
     This class is used to generate HTML based logs. It can list strings and

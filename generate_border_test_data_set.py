@@ -64,7 +64,7 @@ with h5py.File (args.file, 'w') as file:
     data  = file.create_dataset ('data',         (args.number_of_samples, args.sample_size, args.sample_size, 1), dtype='f', compression='lzf')
     truth = file.create_dataset ('ground_truth', (args.number_of_samples, args.sample_size, args.sample_size, 1), dtype='f', compression='lzf')
     
-    logger = None
+    logger = common.log.NoLogger ()
     if args.log:
         logger = common.log.HTMLLogger (args.log, 'Border test data set', ['Position', 'Image', 'Mask'])
     
@@ -95,8 +95,7 @@ with h5py.File (args.file, 'w') as file:
                     data[count]  = utils.mean_center (image_sample)
                     truth[count] = mask_sample
         
-                    if log:
-                        log.add_row (['({0}, {1})'.format (x_offset, y_offset), image_sample, mask_sample])
+                    log.add_row (['({0}, {1})'.format (x_offset, y_offset), image_sample, mask_sample])
         
                     count += 1
                     x_offset += args.sample_size / 2

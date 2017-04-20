@@ -13,11 +13,10 @@ import os
 import subprocess
 import webbrowser
 
-import keras
-
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten
-from keras.layers import Conv2D, MaxPooling2D
+from keras import optimizers
+from keras.layers import Input
+from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate
+from keras.models import Model
 from keras.callbacks import TensorBoard
 
 import common.metrics
@@ -28,32 +27,40 @@ import common.metrics
 #
 # @param sample_size Size of a single sample in pixels
 #
-def create_model (sample_size):
+def dice_coef_loss (y_true, y_pred):
+    return -common.metrics.dice_coef (y_true, y_pred)
 
-    model = Sequential ()
+def create_model (sample_size):
     
-    model.add (Conv2D (32, kernel_size=(5, 5),
-                       activation='relu',
-                       input_shape=(sample_size, sample_size, 1)))
-    model.add (MaxPooling2D (pool_size=(2, 2)))
+    inputs = Input ((sample_size, sample_size, 1))
     
-    model.add (Conv2D (64, kernel_size=(5, 5),
-                       activation='relu',
-                       input_shape=(int (sample_size / 2),
-                                    int (sample_size / 2),
-                                    1)))
-    model.add (MaxPooling2D (pool_size=(2, 2)))
-    
-    model.add (Flatten ())
-    model.add (Dense (1024, activation='relu'))
-    model.add (Dropout (0.5))
-    model.add (Dense (2, activation='softmax'))
-            
-    model.compile (loss=keras.losses.categorical_crossentropy,
-                   optimizer=keras.optimizers.Adadelta (),
-                   metrics=['accuracy', common.metrics.precision, common.metrics.recall])
-    
+    conv1 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(inputs)
+    conv1 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(conv1)
+    pool1 = MaxPooling2D (pool_size=(2, 2))(conv1)
+
+    conv2 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same')(pool1)
+    conv2 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same')(conv2)
+    pool2 = MaxPooling2D (pool_size=(2, 2))(conv2)
+
+    conv3 = Conv2D (128, kernel_size=(3, 3), activation='relu', padding='same')(pool2)
+    conv3 = Conv2D (128, kernel_size=(3, 3), activation='relu', padding='same')(conv3)
+
+    up4 = concatenate ([UpSampling2D (size=(2, 2))(conv3), conv2], axis=3)
+    conv4 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same')(up4)
+    conv4 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same')(conv4)
+
+    up5 = concatenate ([UpSampling2D (size=(2, 2))(conv4), conv1], axis=3)
+    conv5 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(up5)
+    conv5 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(conv5)
+
+    conv6 = Conv2D (1, kernel_size=(1, 1), activation='sigmoid')(conv5)
+
+    model = Model (inputs=[inputs], outputs=[conv6])
+    model.compile (optimizer=optimizers.Adam (lr=1e-5), loss=dice_coef_loss, 
+                   metrics=['accuracy', common.metrics.precision, common.metrics.recall, common.metrics.dice_coef])
+
     return model
+
 
         
 #--------------------------------------------------------------------------
@@ -91,47 +98,26 @@ if args.log:
 #
 file = h5py.File (args.file, 'r')
 
-data    = file['data']
-labels  = file['labels']
-classes = file['classes']
+data         = file['data']
+ground_truth = file['ground_truth']
 
 sample_size = file.attrs['sample_size']
 
-assert len (data) == len (labels)
-assert len (data) == len (classes)
+assert len (data) == len (ground_truth)
 
 print ("Training model...")
 print ("  Number of samples: ", data.shape[0])
 print ("  Sample size      : ", sample_size)
 
-training_set_size = int (len (data) * 0.9)
-        
-x_train = data[0:training_set_size]
-y_train = labels[0:training_set_size]
-
-x_test = data[training_set_size:]
-y_test = labels[training_set_size:]
+loggers = []
+if args.log != None:
+    loggers.append (TensorBoard (os.path.abspath (args.log), histogram_freq=1, write_graph=True, write_images=False))
     
-y_train = keras.utils.to_categorical (y_train, 2)
-y_test = keras.utils.to_categorical (y_test, 2)
-
 model = create_model (sample_size)
 
-logger = []
-if args.log != None:
-    logger.append (TensorBoard (os.path.abspath (args.log), histogram_freq=1, write_graph=True, write_images=False))
-
-model.fit (x_train, y_train, 
-           batch_size=args.batchsize, 
-           epochs=args.epochs, 
-           verbose=1,
-           validation_split=0.2,
-           callbacks=logger)
-
-score = model.evaluate (x_test, y_test, verbose=0)
-
-print ('Test loss:', score[0])
-print ('Test accuracy:', score[1])
+model.fit (data, ground_truth, batch_size=args.batchsize, epochs=args.epochs, 
+           verbose=args.verbose, shuffle=True, validation_split=0.2,
+           callbacks=loggers)
 
 if args.output != None:
     model.save (os.path.abspath (args.output))
@@ -151,3 +137,4 @@ file.close ()
 # Tensorflow termination bug workaround
 #
 gc.collect ()
+
