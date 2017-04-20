@@ -5,7 +5,9 @@
 # Frank Blankenburg, Apr. 2017
 #
 
+import math
 import numpy as np
+
 from matplotlib import pyplot as plt
 
 #----------------------------------------------------------------------------
@@ -83,6 +85,9 @@ def show_image (*args):
 # Mean center image data
 #
 def mean_center (image):
-    return 2 * (image - image.mean ()) / (image.max () - image.min ()) 
+    if math.isclose (image.max (), image.min ()):
+        return image
+
+    return 2 * (image - image.mean ()) / (image.max () - image.min ())
     
     

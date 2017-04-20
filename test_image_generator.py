@@ -347,10 +347,10 @@ class TestImage:
         mask = self.create_array (self.size)
         
         found = False
-        
+
         for obj in self.objects:
             
-            if type is None or type (obj) is feature_type:
+            if feature_type is None or type (obj) is feature_type:
                 obj.draw (mask, 1.0, fill=False)
                 found = True
                     
