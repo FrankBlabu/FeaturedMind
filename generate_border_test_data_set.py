@@ -73,34 +73,78 @@ with h5py.File (args.file, 'w') as file:
         #
         # Generate samples and masks
         #
-        count = 0
-        while count < args.number_of_samples:
+        count_samples = 0
+        count_images = 0
+        
+        while count_samples < args.number_of_samples:
             
             test_image = TestImage (args)
             
             image    = test_image.image
             mask, _  = test_image.get_feature_mask ()
+
+            log.add_caption ('Image #{0}'.format (count_images))
+            log.add_image (image)
+            
+            count_images += 1
+        
+            positives = []
+            negatives = []
+                
+            log_rows = []
         
             y_offset = 0
-            while y_offset + args.sample_size < args.height and count < args.number_of_samples:
+            while y_offset + args.sample_size < args.height:
+                
+                log_columns_image = []
+                log_columns_mask  = []
                 
                 x_offset = 0
-                while x_offset + args.sample_size < args.width and count < args.number_of_samples:
+                while x_offset + args.sample_size < args.width:
                     
                     rect = Rect2d (Point2d (x_offset, y_offset), Size2d (args.sample_size, args.sample_size))            
         
                     image_sample = cutout (image, rect)
                     mask_sample = cutout (mask, rect)
                     
-                    data[count]  = utils.mean_center (image_sample)
-                    truth[count] = mask_sample
+                    if mask_sample.max () > 0.5:
+                        positives.append ((utils.mean_center (image_sample), mask_sample))
+                    else:
+                        negatives.append ((utils.mean_center (image_sample), mask_sample))
+                    
+                    log_columns_image.append (image_sample)
+                    log_columns_mask.append (mask_sample)
         
-                    log.add_row (['({0}, {1})'.format (x_offset, y_offset), image_sample, mask_sample])
-        
-                    count += 1
                     x_offset += args.sample_size / 2
+                                        
+                log_rows.append (log_columns_image)
+                log_rows.append (log_columns_mask)
                 
-                print (count)
                         
                 y_offset += args.sample_size / 2
         
+            if len (negatives) > len (positives):                
+                negatives = negatives[:len(positives)]
+                
+            samples = positives
+            samples.extend (negatives)
+            
+            random.shuffle (samples)
+            
+            for sample in samples:
+                
+                if count_samples < args.number_of_samples:
+                    data[count_samples]  = sample[0]
+                    truth[count_samples] = sample[1]
+                
+                    count_samples += 1
+                    
+            print (count_samples)
+        
+            log.add_caption ('Samples')
+            log.add_table (log_rows)
+            
+            
+            
+            
+            

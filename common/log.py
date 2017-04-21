@@ -33,9 +33,19 @@ class NoLogger:
     
     def __exit__ (self, exc_type, exc_value, exc_tb):
         pass
-            
-    def add_row (self, columns):
+        
+    def add_caption (self, text):
         pass
+            
+    def add_table (self, rows):
+        pass
+    
+    def add_content (self, element, content):
+        pass
+
+    def add_image (self, image, element=None):
+        pass
+    
             
 #--------------------------------------------------------------------------
 # CLASS HTMLLogger
@@ -71,17 +81,11 @@ class HTMLLogger:
             title_tag = ET.SubElement (head, 'title')
             title_tag.text = title
         
-        body = ET.SubElement (self.document, 'body')
+        self.body = ET.SubElement (self.document, 'body')
         
         if title:
-            caption= ET.SubElement (body, 'h1')
+            caption= ET.SubElement (self.body, 'h1')
             caption.text = title
-
-        self.table = ET.SubElement (body, 'table')
-        tr = ET.SubElement (self.table, 'tr')
-        
-        for cell in header:
-            self.add_table_cell (tr, cell, tag='th') 
 
     def __enter__ (self):
         return self
@@ -98,49 +102,75 @@ class HTMLLogger:
             
             file.flush ()
             file.close ()
+        
+    def add_caption (self, text):
+        '''
+        Add caption to document body
+        
+        @param text Caption text to add
+        '''
+        
+        caption = ET.SubElement (self.body, 'h2')
+        caption.text = caption
+            
+    def add_table (self, rows):
+        '''
+        Add HTML table to log
+        
+        @param rows    Table rows
+        '''
+        
+        table = ET.SubElement (self.body, 'table')        
+        
+        for row in rows:
+            tr = ET.SubElement (table, 'tr')
+        
+            for cell in row:
+                td = ET.SubElement (tr, 'td')
+                self.add_content (td, cell) 
     
-    def add_row (self, columns):
+    
+    def add_content (self, element, content):
         '''
-        Add a row to the logging table
+        Add content (text, image, ...) to document
         
-        @param columns Ordered list of columns to be added. The number of columns must match
-                       the number of columns of the header row. 
-        '''
-        assert len (columns) == len (self.header)
-        
-        tr = ET.SubElement (self.table, 'tr')
-        
-        for cell in columns:
-            self.add_table_cell (tr, cell)
-            
-    def add_table_cell (self, row, entry, tag='td'):
-        '''
-        Generate a table cell
-        
-        @param row   Parent row element the cell is to be added to
-        @param entry Cell entry. Can be a string or a numpy array representing an image.
-        @param tag   HTML tag to be used for the cell. Default is 'td'
+        @param element Element the content is added to
+        @param content Content to be added. Can be a string or a numpy array representing an image.
         '''        
-        cell = ET.SubElement (row, tag)
         
-        if isinstance (entry, str):
-            cell.text = entry
-        elif isinstance (entry, np.ndarray):
-            file = 'image_{0}.png'.format (self.resource_counter)
-            self.resource_counter += 1
+        if isinstance (content, str):
+            element.text = content
             
-            ET.SubElement (cell, 'img', {'src': './' + file})
+        elif isinstance (content, np.ndarray):
+            self.add_image (content, element=element)
             
-            if len (entry.shape) == 3:
-                entry = entry.reshape ((entry.shape[0], entry.shape[1]))
+        else:
+            raise Exception ("Unsupported data type '{0}'".format (type (content))) 
+        
+
+    def add_image (self, image, element=None):
+        '''
+        Add image to document
+        
+        @param image   Image to add (numpy array format)
+        @param element Element the image is added to (body by default)
+        '''
+
+        if element is None:
+            element = self.body
+
+        file = 'image_{0}.png'.format (self.resource_counter)
+        self.resource_counter += 1
             
-            image = skimage.color.gray2rgb (entry)
+        ET.SubElement (element, 'img', {'src': './' + file})
+            
+        if len (image.shape) == 3:
+            image = image.reshape ((image.shape[0], image.shape[1]))            
+            image = skimage.color.gray2rgb (image)
             
             with warnings.catch_warnings ():
                 warnings.simplefilter ('ignore')
                 skimage.io.imsave (os.path.join (self.directory, file), skimage.img_as_uint (image))
-            
-        else:
-            raise Exception ("Unsupported data type '{0}'".format (type (entry))) 
-        
+                
+                
 
