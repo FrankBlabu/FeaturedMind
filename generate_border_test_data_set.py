@@ -13,15 +13,6 @@ import common.utils as utils
 
 from common.geometry import Point2d, Size2d, Rect2d
 from test_image_generator import TestImage
-#from skimage.color import gray2rgb
-
-#--------------------------------------------------------------------------
-# Local functions
-#
-def cutout (image, area):
-    r = area.as_tuple ()
-    result = image[r[1]:r[3]+1,r[0]:r[2]+1]    
-    return result.reshape ((result.shape[0], result.shape[1], 1))
 
 
 #--------------------------------------------------------------------------
@@ -104,8 +95,8 @@ with h5py.File (args.file, 'w') as file:
                     
                     rect = Rect2d (Point2d (x_offset, y_offset), Size2d (args.sample_size, args.sample_size))            
         
-                    image_sample = cutout (image, rect)
-                    mask_sample = cutout (mask, rect)
+                    image_sample = utils.cutout (image, rect)
+                    mask_sample = utils.cutout (mask, rect)
                     
                     if mask_sample.max () > 0.5:
                         positives.append ((utils.mean_center (image_sample), mask_sample))
@@ -119,12 +110,11 @@ with h5py.File (args.file, 'w') as file:
                                         
                 log_rows.append (log_columns_image)
                 log_rows.append (log_columns_mask)
-                
-                        
+                                        
                 y_offset += args.sample_size / 2
         
-            if len (negatives) > len (positives):                
-                negatives = negatives[:len(positives)]
+            if len (negatives) > len (positives) / 10:                
+                negatives = negatives[:int (len(positives) / 10)]
                 
             samples = positives
             samples.extend (negatives)
@@ -143,8 +133,5 @@ with h5py.File (args.file, 'w') as file:
         
             log.add_caption ('Samples')
             log.add_table (log_rows)
-            
-            
-            
             
             

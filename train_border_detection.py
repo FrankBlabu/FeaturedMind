@@ -43,19 +43,27 @@ def create_model (sample_size):
     pool2 = MaxPooling2D (pool_size=(2, 2))(conv2)
 
     conv3 = Conv2D (128, kernel_size=(3, 3), activation='relu', padding='same')(pool2)
-    conv3 = Conv2D (128, kernel_size=(3, 3), activation='relu', padding='same')(conv3)
+    conv3 = Conv2D (128, kernel_size=(3, 3), activation='relu', padding='same')(conv3)    
+    pool3 = MaxPooling2D (pool_size=(2, 2))(conv3)
 
-    up4 = concatenate ([UpSampling2D (size=(2, 2))(conv3), conv2], axis=3)
-    conv4 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same')(up4)
-    conv4 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same')(conv4)
+    conv4 = Conv2D (256, kernel_size=(3, 3), activation='relu', padding='same')(pool3)
+    conv4 = Conv2D (256, kernel_size=(3, 3), activation='relu', padding='same')(conv4)
 
-    up5 = concatenate ([UpSampling2D (size=(2, 2))(conv4), conv1], axis=3)
-    conv5 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(up5)
-    conv5 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(conv5)
+    up5 = concatenate ([UpSampling2D (size=(2, 2))(conv4), conv3], axis=3)
+    conv5 = Conv2D (128, kernel_size=(3, 3), activation='relu', padding='same')(up5)
+    conv5 = Conv2D (128, kernel_size=(3, 3), activation='relu', padding='same')(conv5)
+    
+    up6 = concatenate ([UpSampling2D (size=(2, 2))(conv5), conv2], axis=3)
+    conv6 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same')(up6)
+    conv6 = Conv2D (64, kernel_size=(3, 3), activation='relu', padding='same')(conv6)
 
-    conv6 = Conv2D (1, kernel_size=(1, 1), activation='sigmoid')(conv5)
+    up7 = concatenate ([UpSampling2D (size=(2, 2))(conv6), conv1], axis=3)
+    conv7 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(up7)
+    conv7 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(conv7)
 
-    model = Model (inputs=[inputs], outputs=[conv6])
+    conv8 = Conv2D (1, kernel_size=(1, 1), activation='sigmoid')(conv7)
+
+    model = Model (inputs=[inputs], outputs=[conv8])
     model.compile (optimizer=optimizers.Adam (lr=1e-5), loss=dice_coef_loss, 
                    metrics=['accuracy', common.metrics.precision, common.metrics.recall, common.metrics.dice_coef])
 

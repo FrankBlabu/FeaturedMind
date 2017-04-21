@@ -57,7 +57,7 @@ def show_image (*args):
     if len (args) == 1:
         partitions = [ (1, 1, 1) ]
     elif len (args) == 2:
-        partitions = [ (2, 1, 1), (2, 1, 2) ]
+        partitions = [ (1, 2, 1), (1, 2, 2) ]
     elif len (args) == 3:
         partitions = [ (2,3,(1,3)), (2,3,4), (2,3,5), (2,3,6) ]
     elif len (args) == 4:
@@ -90,4 +90,12 @@ def mean_center (image):
 
     return 2 * (image - image.mean ()) / (image.max () - image.min ())
     
-    
+
+#--------------------------------------------------------------------------
+# Cut area out of image
+#
+def cutout (image, area):
+    r = area.as_tuple ()
+    result = image[r[1]:r[3]+1,r[0]:r[2]+1]    
+    return result.reshape ((result.shape[0], result.shape[1], 1))
+
