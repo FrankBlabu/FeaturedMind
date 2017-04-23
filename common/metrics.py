@@ -38,12 +38,3 @@ def recall (y_true, y_pred):
     true_positives = K.sum (K.round (K.clip (y_true * y_pred, 0, 1)))
     all_positives = K.sum (K.round (K.clip (y_true, 0, 1)))
     return true_positives / (all_positives + K.epsilon ())
-
-def dice_coef (y_true, y_pred):
-    smooth = 1.0
-    
-    y_true_f = K.flatten (y_true)
-    y_pred_f = K.flatten (y_pred)
-    intersection = K.sum (y_true_f * y_pred_f)
-    return (2. * intersection + smooth) / (K.sum (y_true_f) + K.sum (y_pred_f) + smooth)
-

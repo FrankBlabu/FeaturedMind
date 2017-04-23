@@ -9,6 +9,7 @@ import math
 import numpy as np
 
 from matplotlib import pyplot as plt
+from skimage.color import gray2rgb
 
 #----------------------------------------------------------------------------
 # Convert scikit image into TensorFlow compatible numpy array
@@ -81,15 +82,37 @@ def show_image (*args):
     
     plt.show ()
 
-#----------------------------------------------------------------------------
-# Mean center image data
-#
-def mean_center (image):
-    if math.isclose (image.max (), image.min ()):
-        return image
 
-    return 2 * (image - image.mean ()) / (image.max () - image.min ())
+def mean_center (image):
+    '''
+    Mean center image data in the interval [-1, 1]
+    '''
+    if math.isclose (image.max (), image.min ()):
+        return np.clip (image - image.min (), 0, 1)
+
+    return np.clip (2 * (image - image.mean ()) / (image.max () - image.min ()), 0, 1)
+
+def mean_uncenter (image):
+    '''
+    Transpose (probably mean centered) image data into the interval [0, 1]
+    '''
+    if math.isclose (image.max (), image.min ()):
+        return np.clip (image - image.min (), 0, 1)
     
+    return np.clip ((image - image.min ()) / (image.max () - image.min ()), 0, 1) 
+    
+def to_rgb (image):
+    '''
+    Convert numpy array representing an image into a RGB image of the right shape
+    ''' 
+    
+    image = mean_uncenter (image)
+    
+    if len (image.shape) > 2:
+        image = image.reshape ((image.shape[0], image.shape[1]))
+        
+    return gray2rgb (image)
+
 
 #--------------------------------------------------------------------------
 # Cut area out of image

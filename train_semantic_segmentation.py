@@ -10,6 +10,7 @@ import argparse
 import gc
 import h5py
 import os
+import keras
 import random
 import subprocess
 import webbrowser
@@ -23,8 +24,6 @@ from keras.models import Model
 from keras.callbacks import TensorBoard
 
 
-def dice_coef_loss (y_true, y_pred):
-    return -common.metrics.dice_coef (y_true, y_pred)
 
 def create_model (rows, cols):
     
@@ -52,8 +51,8 @@ def create_model (rows, cols):
     conv6 = Conv2D (1, kernel_size=(1, 1), activation='sigmoid')(conv5)
 
     model = Model (inputs=[inputs], outputs=[conv6])
-    model.compile (optimizer=optimizers.Adam (lr=1e-5), loss=dice_coef_loss, 
-                   metrics=['accuracy', common.metrics.precision, common.metrics.recall, common.metrics.dice_coef])
+    model.compile (optimizer=optimizers.Adam (lr=1e-5), loss=keras.losses.mean_squared_error, 
+                   metrics=['accuracy', common.metrics.precision, common.metrics.recall])
 
     return model
 

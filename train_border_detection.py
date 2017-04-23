@@ -13,6 +13,8 @@ import os
 import subprocess
 import webbrowser
 
+import keras
+
 from keras import optimizers
 from keras.layers import Input
 from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate
@@ -27,9 +29,6 @@ import common.metrics
 #
 # @param sample_size Size of a single sample in pixels
 #
-def dice_coef_loss (y_true, y_pred):
-    return -common.metrics.dice_coef (y_true, y_pred)
-
 def create_model (sample_size):
     
     inputs = Input ((sample_size, sample_size, 1))
@@ -64,8 +63,8 @@ def create_model (sample_size):
     conv8 = Conv2D (1, kernel_size=(1, 1), activation='sigmoid')(conv7)
 
     model = Model (inputs=[inputs], outputs=[conv8])
-    model.compile (optimizer=optimizers.Adam (lr=1e-5), loss=dice_coef_loss, 
-                   metrics=['accuracy', common.metrics.precision, common.metrics.recall, common.metrics.dice_coef])
+    model.compile (optimizer=optimizers.Adam (lr=1e-5), loss=keras.losses.mean_squared_error, 
+                   metrics=['accuracy', common.metrics.precision, common.metrics.recall])
 
     return model
 

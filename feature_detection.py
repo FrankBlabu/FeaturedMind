@@ -17,8 +17,6 @@ from skimage.color import gray2rgb
 
 from test_image_generator import TestImage
 
-def dice_coef_loss (y_true, y_pred):
-    return -common.metrics.dice_coef (y_true, y_pred)
 
 #--------------------------------------------------------------------------
 # MAIN
@@ -44,9 +42,7 @@ assert args.height < 4096
 # Load and construct border detection model
 #
 model = load_model (args.model, custom_objects={'precision'     : common.metrics.precision, 
-                                                'recall'        : common.metrics.recall,
-                                                'dice_coef'     : common.metrics.dice_coef,
-                                                'dice_coef_loss': dice_coef_loss})
+                                                'recall'        : common.metrics.recall})
 
 #
 # Generate new image and predict feature pixel mask

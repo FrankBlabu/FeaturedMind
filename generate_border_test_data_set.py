@@ -57,7 +57,7 @@ with h5py.File (args.file, 'w') as file:
     
     logger = common.log.NoLogger ()
     if args.log:
-        logger = common.log.HTMLLogger (args.log, 'Border test data set', ['Position', 'Image', 'Mask'])
+        logger = common.log.HTMLLogger (args.log, 'Border test data set')
     
     with logger as log:
 

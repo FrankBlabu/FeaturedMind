@@ -57,18 +57,38 @@ class HTMLLogger:
     that the resultin HTML page is complete and well formatted.
     '''
 
-    def __init__ (self, directory, title, header):
+    css = '\
+    .image { \
+        width: 100%; \
+        height: 100%; \
+    } \
+    \
+    .image img { \
+        -webkit-transition: all 1s ease; /* Safari and Chrome */ \
+        -moz-transition: all 1s ease; /* Firefox */ \
+        -ms-transition: all 1s ease; /* IE 9 */ \
+        -o-transition: all 1s ease; /* Opera */ \
+        transition: all 1s ease; \
+    } \
+    \
+    .image:hover img { \
+        -webkit-transform:scale(2.0); /* Safari and Chrome */ \
+        -moz-transform:scale(2.0); /* Firefox */ \
+        -ms-transform:scale(2.0); /* IE 9 */ \
+        -o-transform:scale(2.0); /* Opera */ \
+        transform:scale(2.0); \
+    }'
+
+    def __init__ (self, directory, title):
         '''
         Initialize logger
         
         @param directory Directory the log and the resources files are written
                          into. If not existing, the directory will be created.
         @param title     Log title
-        @param header    List of header cells
         '''
         
         self.directory = os.path.abspath (directory)
-        self.header = header
         self.resource_counter = 0
         
         if not os.path.exists (self.directory):
@@ -76,10 +96,15 @@ class HTMLLogger:
         
         self.document = ET.Element ('html')
         head = ET.SubElement (self.document, 'head')
+
+        ET.SubElement (head, 'meta',  {'charset': 'utf-8'})
         
         if title:
             title_tag = ET.SubElement (head, 'title')
             title_tag.text = title
+        
+        style = ET.SubElement (head, 'style')
+        style.text = HTMLLogger.css
         
         self.body = ET.SubElement (self.document, 'body')
         
@@ -113,21 +138,29 @@ class HTMLLogger:
         caption = ET.SubElement (self.body, 'h2')
         caption.text = caption
             
-    def add_table (self, rows):
+    def add_table (self, rows, has_header=False):
         '''
         Add HTML table to log
         
-        @param rows    Table rows
+        @param rows       Table rows
+        @param has_header If 'True', the first row is interpreted as the table header
         '''
         
         table = ET.SubElement (self.body, 'table')        
         
+        row_count = 0
         for row in rows:
             tr = ET.SubElement (table, 'tr')
         
             for cell in row:
-                td = ET.SubElement (tr, 'td')
-                self.add_content (td, cell) 
+                if not has_header or row_count > 0:
+                    td = ET.SubElement (tr, 'td')
+                else: 
+                    td = ET.SubElement (tr, 'th')
+                    
+                self.add_content (td, cell)
+                
+            row_count += 1 
     
     
     def add_content (self, element, content):
@@ -161,16 +194,15 @@ class HTMLLogger:
 
         file = 'image_{0}.png'.format (self.resource_counter)
         self.resource_counter += 1
+
+        div1 = ET.SubElement (element, 'div', {'class': 'thumbnail'})
+        div2 = ET.SubElement (div1, 'div', {'class': 'image'})
             
-        ET.SubElement (element, 'img', {'src': './' + file})
-            
-        if len (image.shape) == 3:
-            image = image.reshape ((image.shape[0], image.shape[1]))            
-            image = skimage.color.gray2rgb (image)
-            
-            with warnings.catch_warnings ():
-                warnings.simplefilter ('ignore')
-                skimage.io.imsave (os.path.join (self.directory, file), skimage.img_as_uint (image))
+        ET.SubElement (div2, 'img', {'src': './' + file})
+
+        with warnings.catch_warnings ():
+            warnings.simplefilter ('ignore')
+            skimage.io.imsave (os.path.join (self.directory, file), skimage.img_as_uint (image))
                 
                 
 
