@@ -23,6 +23,16 @@ from keras.callbacks import TensorBoard
 
 import common.metrics
 
+#--------------------------------------------------------------------------
+# Modified loss function filtering with a threshold
+#
+def threshold_mean_squared_error (y_true, y_pred):
+    y_true[y_true < 0.5] = 0.0
+
+    print (y_true, y_pred)
+    
+    return keras.losses.mean_squared_error (y_true, y_pred)
+
 
 #--------------------------------------------------------------------------
 # Generate model

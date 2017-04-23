@@ -126,11 +126,6 @@ for y in range (y_steps):
         ys = y * args.sample_size
         
         result_image[ys:ys + args.sample_size, xs:xs + args.sample_size] = result[count]
-
-        if count == 0:
-            print (result[count].shape)
-            print (result[count])
-
         count += 1
 
 result_image = utils.mean_uncenter (result_image)
