@@ -218,7 +218,7 @@ class TestImage:
                         area = area.expanded (self.get_segment_rect (border_rect, (x, y+1)))
                         available[x][y+1] = False
                 
-                    self.create_feature (area, feature_id)                    
+                    self.create_feature_set (area, feature_id)                    
                     feature_id += 1
                     
     
@@ -322,7 +322,7 @@ class TestImage:
                                  area.split ((1, 1, 3), (2, 2, 3)),
                                  area.split ((2, 2, 3), (2, 2, 3))])
 
-        split = split_scenarios[random.randint (len (split_scenarios))]
+        split = split_scenarios[random.randint (0, len (split_scenarios) - 1)]
 
         for area in split:
             feature_id = self.create_feature (area, feature_id)
