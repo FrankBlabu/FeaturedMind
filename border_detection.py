@@ -49,7 +49,8 @@ assert args.height < 4096
 # Load and construct model
 #
 model = load_model (args.model, custom_objects={'precision': metrics.precision, 
-                                                'recall': metrics.recall})
+                                                'recall'   : metrics.recall,
+                                                'f1_score' : metrics.f1_score})
 
 #
 # Create test image and setup input tensors

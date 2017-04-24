@@ -200,6 +200,9 @@ class HTMLLogger:
             
         ET.SubElement (div2, 'img', {'src': './' + file})
 
+        if len (image.shape) > 2:
+            image = image.reshape ((image.shape[0], image.shape[1]))
+
         with warnings.catch_warnings ():
             warnings.simplefilter ('ignore')
             skimage.io.imsave (os.path.join (self.directory, file), skimage.img_as_uint (image))

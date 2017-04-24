@@ -16,7 +16,6 @@ import common.utils as utils
 import skimage.filters
 
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d 
-from skimage.color import gray2rgb
 
 
 #--------------------------------------------------------------------------
@@ -25,6 +24,12 @@ from skimage.color import gray2rgb
 # Class keeping the data of a single test set image
 #
 class TestImage:
+        
+    #--------------------------------------------------------------------------
+    # Configuration
+    #
+    border_spacing = 10 
+        
         
     #--------------------------------------------------------------------------
     # Constructor
@@ -54,11 +59,10 @@ class TestImage:
         # The border will be rectangular in principle but in later steps segments of the
         # specimen are cut out to simulate a more random layout.
         #
-        outer_border_offset = 2 * self.sample_size
+        outer_border_offset = self.sample_size / 2
         outer_border_limit = [Point2d (outer_border_offset), Point2d (self.size - outer_border_offset)]
     
-        inner_border_offset = self.size * 25 / 100
-                
+        inner_border_offset = self.sample_size * 2                
         inner_border_limit = [Point2d (inner_border_offset), Point2d (self.size - inner_border_offset)]
         
         border_rect = Rect2d (Point2d (random.randint (outer_border_limit[0].x,
@@ -284,15 +288,57 @@ class TestImage:
         
 
     #--------------------------------------------------------------------------
+    # Generate feature set in the given area
+    #
+    # @param image      Image to draw into
+    # @param area       Area the feature may occupy
+    # @param feature_id Unique feature id
+    # @return Next available feature id
+    #
+    def create_feature_set (self, area, feature_id):
+
+        split_scenarios = []
+        split_scenarios.append ([area])        
+        split_scenarios.append ([area])        
+        split_scenarios.append ([area])        
+        split_scenarios.append ([area])        
+        split_scenarios.append ([area])        
+        split_scenarios.append ([area.split ((0, 1, 3), (0, 1, 3)),
+                                 area.split ((2, 2, 3), (0, 1, 3)),
+                                 area.split ((0, 2, 3), (2, 2, 3))])
+        split_scenarios.append ([area.split ((0, 2, 3), (0, 0, 3)),
+                                 area.split ((0, 2, 3), (1, 2, 3))])    
+        split_scenarios.append ([area.split ((0, 2, 3), (0, 0, 3)),
+                                 area.split ((0, 2, 3), (1, 2, 3))])    
+        split_scenarios.append ([area.split ((0, 2, 3), (0, 1, 3)),
+                                 area.split ((0, 2, 3), (2, 2, 3))])    
+        split_scenarios.append ([area.split ((0, 0, 3), (0, 0, 3)),
+                                 area.split ((1, 1, 3), (0, 0, 3)),
+                                 area.split ((2, 2, 3), (0, 0, 3)),
+                                 area.split ((0, 0, 3), (1, 1, 3)),
+                                 area.split ((1, 1, 3), (1, 1, 3)),
+                                 area.split ((2, 2, 3), (1, 1, 3)),
+                                 area.split ((0, 0, 3), (2, 2, 3)),
+                                 area.split ((1, 1, 3), (2, 2, 3)),
+                                 area.split ((2, 2, 3), (2, 2, 3))])
+
+        split = split_scenarios[random.randint (len (split_scenarios))]
+
+        for area in split:
+            feature_id = self.create_feature (area, feature_id)
+            
+        return feature_id
+
+    #--------------------------------------------------------------------------
     # Generate random feature
     #
     # @param image      Image to draw into
     # @param area       Area the feature may occupy
     # @param feature_id Unique feature id
+    # @return Next available feature id
     #
     def create_feature (self, area, feature_id):
-        inner_rect = Rect2d (area.p0 + self.sample_size + Size2d (2, 2),
-                             area.p2 - self.sample_size - Size2d (2, 2))
+        inner_rect = Rect2d (area.p0 + self.sample_size / 2, area.p2 - self.sample_size / 2)
     
         if inner_rect.size ().width > self.sample_size.width and inner_rect.size ().height > self.sample_size.height:
     
@@ -313,6 +359,8 @@ class TestImage:
             #
             elif feature_type == 1:
                 self.draw_circular_feature (Ellipse2d (feature_rect).to_circle (), feature_id)
+                
+        return feature_id + 1
 
 
     #--------------------------------------------------------------------------
@@ -334,6 +382,26 @@ class TestImage:
         return sample, self.color_to_id (mask.max ())
     
             
+    #----------------------------------------------------------------------------
+    # Extract specimen mask containing the area covered by the specimen
+    #
+    # @return Mask marking the specimen area
+    #
+    def get_specimen_mask (self):
+        
+        mask = self.create_array (self.size)
+        
+        for obj in self.objects:
+            if isinstance (obj, Polygon2d):
+                obj.draw (mask, 1.0, fill=True)
+                
+        for obj in self.objects:
+            if not isinstance (obj, Polygon2d):
+                obj.draw (mask, 0.0, fill=True)
+                    
+        return mask
+    
+    
     #----------------------------------------------------------------------------
     # Extract feature mask image containing the given feature type
     #
@@ -474,10 +542,11 @@ if __name__ == '__main__':
     image = TestImage (args)
 
     if args.mode == 'borders':    
-        utils.show_image ([gray2rgb (image.image), 'Generated image'])
+        utils.show_image ([utils.to_rgb (image.image),                'Generated image'],
+                          [utils.to_rgb (image.get_specimen_mask ()), 'Specimen mask'])
     elif args.mode == 'segments':
-        utils.show_image ([gray2rgb (image.image),                           'Generated image'],
-                          [gray2rgb (image.get_feature_mask (Polygon2d)[0]), 'Cluster mask (Border)'],
-                          [gray2rgb (image.get_feature_mask (Rect2d)[0]),    'Cluster mask (Rect)'],
-                          [gray2rgb (image.get_feature_mask (Ellipse2d)[0]), 'Cluster mask (Ellipse)'])
+        utils.show_image ([utils.to_rgb (image.image),                           'Generated image'],
+                          [utils.to_rgb (image.get_feature_mask (Polygon2d)[0]), 'Cluster mask (Border)'],
+                          [utils.to_rgb (image.get_feature_mask (Rect2d)[0]),    'Cluster mask (Rect)'],
+                          [utils.to_rgb (image.get_feature_mask (Ellipse2d)[0]), 'Cluster mask (Ellipse)'])
     

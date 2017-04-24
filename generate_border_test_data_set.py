@@ -71,8 +71,8 @@ with h5py.File (args.file, 'w') as file:
             
             test_image = TestImage (args)
             
-            image    = test_image.image
-            mask, _  = test_image.get_feature_mask ()
+            image = test_image.image
+            mask  = test_image.get_specimen_mask ()
 
             log.add_caption ('Image #{0}'.format (count_images))
             log.add_image (image)
@@ -98,7 +98,7 @@ with h5py.File (args.file, 'w') as file:
                     image_sample = utils.cutout (image, rect)
                     mask_sample = utils.cutout (mask, rect)
                     
-                    if mask_sample.max () > 0.5:
+                    if mask_sample.min () < 0.5 and mask_sample.max () > 0.5:
                         positives.append ((utils.mean_center (image_sample), mask_sample))
                     else:
                         negatives.append ((utils.mean_center (image_sample), mask_sample))

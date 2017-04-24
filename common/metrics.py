@@ -16,11 +16,13 @@ from keras import backend as K
 # Meaning: When we found a feature, how many times was is really a feature ?
 #
 def precision (y_true, y_pred):
-    """Precision metric.
+    '''
+    Precision metric.
+    
     Only computes a batch-wise average of precision.
     Computes the precision, a metric for multi-label classification of
     how many selected items are relevant.
-    """
+    '''
     true_positives = K.sum (K.round (K.clip (y_true * y_pred, 0, 1)))
     predicted_positives = K.sum (K.round (K.clip (y_pred, 0, 1)))
     
@@ -38,3 +40,17 @@ def recall (y_true, y_pred):
     true_positives = K.sum (K.round (K.clip (y_true * y_pred, 0, 1)))
     all_positives = K.sum (K.round (K.clip (y_true, 0, 1)))
     return true_positives / (all_positives + K.epsilon ())
+
+
+#--------------------------------------------------------------------------
+# Compute F1 score
+#
+# f1 = 2 * precision * recall / (precision + recall)
+#
+# Meaning: 'Balance' between precision and recall
+#
+def f1_score (y_true, y_pred):
+    p = precision (y_true, y_pred)
+    r = recall (y_true, y_pred)
+    
+    return 2 * p * r / (p + r)

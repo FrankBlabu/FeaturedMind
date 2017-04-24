@@ -226,6 +226,25 @@ class Rect2d:
         return Rect2d (pos, self.size ())
                 
     #--------------------------------------------------------------------------
+    # Split rectangle into parts
+    #
+    # @param x X split layout tuple (from, to, number of parts)
+    # @param y Y split layout tuple (from, to, number of parts)
+    #
+    def split (self, x, y):
+        
+        assert x[0] <= x[1]
+        assert x[1] < x[2]
+        assert y[0] <= y[1]
+        assert y[1] < y[2]
+        
+        width = self.size ().width / x[2]
+        height = self.size ().height / y[2]
+
+        return Rect2d (self.p0 + Point2d (width * x[0], height * y[0]),
+                       self.p0 + Point2d (width * (x[1] + 1), height * (y[1] + 1)))
+    
+    #--------------------------------------------------------------------------
     # Return center coordinate of rectangle
     #
     def center (self):
@@ -406,6 +425,12 @@ class TestGeometry (unittest.TestCase):
         
         self.assertEqual (r5.size (), Size2d (10, 10))
         self.assertEqual (r5 + Size2d (3, 5), Rect2d (Point2d (0, 0), Size2d (13, 15)))
+        
+        r6 = Rect2d (Point2d (10, 10), Point2d (19, 19))
+        self.assertEqual (r6.split ((0, 0, 10), (0, 0, 10)), Rect2d (Point2d (10, 10), Point2d (11, 11)))
+        self.assertEqual (r6.split ((0, 3, 10), (0, 2, 10)), Rect2d (Point2d (10, 10), Point2d (14, 13)))
+        self.assertEqual (r6.split ((5, 6, 10), (7, 8, 10)), Rect2d (Point2d (15, 17), Point2d (17, 19)))
+        
 
     def test_Ellipse2d (self):
         e1 = Ellipse2d (Point2d (2, 2), Point2d (2, 2))

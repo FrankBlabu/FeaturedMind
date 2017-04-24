@@ -5,6 +5,9 @@
 #
 # Frank Blankenburg, Mar. 2017
 #
+# See https://people.eecs.berkeley.edu/~jonlong/long_shelhamer_fcn.pd
+#     https://github.com/fchollet/keras/issues/2526
+#
 
 import argparse
 import gc
@@ -16,22 +19,12 @@ import webbrowser
 import keras
 
 from keras import optimizers
-from keras.layers import Input
+from keras.layers import Input, Reshape, Activation
 from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate
-from keras.models import Model
+from keras.models import Model, Sequential
 from keras.callbacks import TensorBoard
 
 import common.metrics
-
-#--------------------------------------------------------------------------
-# Modified loss function filtering with a threshold
-#
-def threshold_mean_squared_error (y_true, y_pred):
-    y_true[y_true < 0.5] = 0.0
-
-    print (y_true, y_pred)
-    
-    return keras.losses.mean_squared_error (y_true, y_pred)
 
 
 #--------------------------------------------------------------------------
@@ -39,7 +32,7 @@ def threshold_mean_squared_error (y_true, y_pred):
 #
 # @param sample_size Size of a single sample in pixels
 #
-def create_model (sample_size):
+def create_model2 (sample_size):
     
     inputs = Input ((sample_size, sample_size, 1))
     
@@ -73,11 +66,31 @@ def create_model (sample_size):
     conv8 = Conv2D (1, kernel_size=(1, 1), activation='sigmoid')(conv7)
 
     model = Model (inputs=[inputs], outputs=[conv8])
-    model.compile (optimizer=optimizers.Adam (lr=1e-5), loss=keras.losses.mean_squared_error, 
-                   metrics=['accuracy', common.metrics.precision, common.metrics.recall])
+    model.compile (optimizer=optimizers.Adam (lr=1e-5),
+                   loss=keras.losses.binary_crossentropy, 
+                   metrics=['accuracy', common.metrics.precision, common.metrics.recall, common.metrics.f1_score])
 
     return model
 
+
+def create_model (sample_size):
+    
+    model = Sequential ()
+    
+    model.add (Conv2D (32,  kernel_size=(3, 3), padding='same', activation='relu', input_shape=(sample_size, sample_size, 1)))
+    model.add (Conv2D (64,  kernel_size=(3, 3), padding='same', activation='relu'))    
+    model.add (Conv2D (128, kernel_size=(3, 3), padding='same', activation='relu'))
+    model.add (Conv2D (256, kernel_size=(3, 3), padding='same', activation='relu'))    
+    model.add (Conv2D (1, kernel_size=(1, 1), padding='same'))
+    
+    model.add (Reshape ((sample_size, sample_size, 1)))
+    model.add (Activation('sigmoid'))
+    
+    model.compile (optimizer=optimizers.Adam (lr=1e-5),
+                   loss=keras.losses.binary_crossentropy,
+                   metrics=['accuracy', common.metrics.precision, common.metrics.recall, common.metrics.f1_score])
+    
+    return model
 
         
 #--------------------------------------------------------------------------
