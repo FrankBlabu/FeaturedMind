@@ -312,6 +312,12 @@ class TestImage:
                                  area.split ((0, 2, 3), (1, 2, 3))])    
         split_scenarios.append ([area.split ((0, 2, 3), (0, 1, 3)),
                                  area.split ((0, 2, 3), (2, 2, 3))])    
+        split_scenarios.append ([area.split ((0, 1, 3), (0, 2, 3)),
+                                 area.split ((2, 2, 3), (0, 2, 3))])    
+        split_scenarios.append ([area.split ((0, 1, 3), (0, 1, 3)),
+                                 area.split ((2, 2, 3), (0, 1, 3)),    
+                                 area.split ((0, 1, 3), (2, 2, 3)),    
+                                 area.split ((2, 2, 3), (2, 2, 3))])    
         split_scenarios.append ([area.split ((0, 0, 3), (0, 0, 3)),
                                  area.split ((1, 1, 3), (0, 0, 3)),
                                  area.split ((2, 2, 3), (0, 0, 3)),
