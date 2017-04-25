@@ -88,9 +88,9 @@ def mean_center (image):
     Mean center image data in the interval [-1, 1]
     '''
     if math.isclose (image.max (), image.min ()):
-        return np.clip (image - image.min (), 0, 1)
+        return np.clip (image - image.min (), -1, 1)
 
-    return np.clip (2 * (image - image.mean ()) / (image.max () - image.min ()), 0, 1)
+    return np.clip (2 * (image - image.mean ()) / (image.max () - image.min ()), -1, 1)
 
 def mean_uncenter (image):
     '''

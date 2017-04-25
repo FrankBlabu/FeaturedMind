@@ -16,14 +16,13 @@ import os
 import subprocess
 import webbrowser
 
-import keras
-
 from keras import optimizers
-from keras.layers import Input, Reshape, Activation
+from keras.layers import Input
 from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate
-from keras.models import Model, Sequential
+from keras.models import Model
 from keras.callbacks import TensorBoard
 
+import common.losses
 import common.metrics
 
 
@@ -32,9 +31,9 @@ import common.metrics
 #
 # @param sample_size Size of a single sample in pixels
 #
-def create_model2 (sample_size):
+def create_model (width, height):
     
-    inputs = Input ((sample_size, sample_size, 1))
+    inputs = Input ((height, width, 1))
     
     conv1 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(inputs)
     conv1 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(conv1)
@@ -67,30 +66,11 @@ def create_model2 (sample_size):
 
     model = Model (inputs=[inputs], outputs=[conv8])
     model.compile (optimizer=optimizers.Adam (lr=1e-5),
-                   loss=keras.losses.binary_crossentropy, 
+                   loss=common.losses.dice_coef, 
                    metrics=['accuracy', common.metrics.precision, common.metrics.recall, common.metrics.f1_score])
 
     return model
 
-
-def create_model (sample_size):
-    
-    model = Sequential ()
-    
-    model.add (Conv2D (32,  kernel_size=(3, 3), padding='same', activation='relu', input_shape=(sample_size, sample_size, 1)))
-    model.add (Conv2D (64,  kernel_size=(3, 3), padding='same', activation='relu'))    
-    model.add (Conv2D (128, kernel_size=(3, 3), padding='same', activation='relu'))
-    model.add (Conv2D (256, kernel_size=(3, 3), padding='same', activation='relu'))    
-    model.add (Conv2D (1, kernel_size=(1, 1), padding='same'))
-    
-    model.add (Reshape ((sample_size, sample_size, 1)))
-    model.add (Activation('sigmoid'))
-    
-    model.compile (optimizer=optimizers.Adam (lr=1e-5),
-                   loss=keras.losses.binary_crossentropy,
-                   metrics=['accuracy', common.metrics.precision, common.metrics.recall, common.metrics.f1_score])
-    
-    return model
 
         
 #--------------------------------------------------------------------------
@@ -128,24 +108,24 @@ if args.log:
 #
 file = h5py.File (args.file, 'r')
 
-data         = file['data']
-ground_truth = file['ground_truth']
+data = file['data']
+mask = file['mask']
 
-sample_size = file.attrs['sample_size']
+image_size = file.attrs['image_size']
 
-assert len (data) == len (ground_truth)
+assert len (data) == len (mask)
 
-print ("Training model...")
-print ("  Number of samples: ", data.shape[0])
-print ("  Sample size      : ", sample_size)
+print ('Training model...')
+print ('  Number of samples: ', data.shape[0])
+print ('  Image size       : {0}x{1}'.format (image_size[1], image_size[0]))
 
 loggers = []
 if args.log != None:
     loggers.append (TensorBoard (os.path.abspath (args.log), histogram_freq=1, write_graph=True, write_images=False))
     
-model = create_model (sample_size)
+model = create_model (image_size[0], image_size[1])
 
-model.fit (data, ground_truth, batch_size=args.batchsize, epochs=args.epochs, 
+model.fit (data, mask, batch_size=args.batchsize, epochs=args.epochs, 
            verbose=args.verbose, shuffle=True, validation_split=0.2,
            callbacks=loggers)
 
