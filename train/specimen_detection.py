@@ -78,13 +78,13 @@ def create_model (width, height):
 #--------------------------------------------------------------------------
 # Generator
 #
-def sheet_metal_generator (width, height, batchsize):
+def sheet_metal_generator (width, height, batch_size):
     while True:
         
-        images = np.zeros ((batchsize, height, width, 1), dtype=np.float32)
-        masks  = np.zeros ((batchsize, height, width, 1), dtype=np.float32)
+        images = np.zeros ((batch_size, height, width, 1), dtype=np.float32)
+        masks  = np.zeros ((batch_size, height, width, 1), dtype=np.float32)
         
-        for i in range (batchsize):
+        for i in range (batch_size):
             sheet = SheetMetalGenerator (width, height)
             
             image = utils.mean_center (sheet.image)

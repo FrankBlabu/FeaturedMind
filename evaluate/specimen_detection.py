@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 #
-# border_detection.py - Detect borders in image using a previously trained
-#                       deep learning graph
+# specimenr_detection.py - Detect specimen using a previously trained model
 #
 # Frank Blankenburg, Mar. 2017
 #
@@ -16,7 +15,7 @@ import common.metrics as metrics
 import common.utils as utils
 
 from keras.models import load_model
-from test_image_generator import TestImage
+from generator.sheetmetal import SheetMetalGenerator
 
 
 
@@ -52,14 +51,14 @@ model = load_model (args.model, custom_objects={'dice_coef': losses.dice_coef,
                                                 'f1_score' : metrics.f1_score})
 
 #
-# Create test image and setup input tensors
+# Create test specimen and setup input tensors
 #
-test_image = TestImage (args)
+sheet = SheetMetalGenerator (args.width, args.height)
 
-image = utils.mean_center (test_image.image)
+image = utils.mean_center (sheet.image)
 image = image.reshape (1, args.height, args.width, 1)
 
-mask = test_image.get_specimen_mask ()
+mask = sheet.mask
 mask = mask.reshape (1, args.height, args.width, 1)
         
 #
