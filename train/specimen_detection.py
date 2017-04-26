@@ -147,6 +147,8 @@ model = create_model (args.width, args.height)
 model.fit_generator (generator=sheet_metal_generator (args.width, args.height, args.batchsize),
                      steps_per_epoch=args.steps, 
                      epochs=args.epochs, 
+                     validation_data=sheet_metal_generator (args.width, args.height, args.batchsize),
+                     validation_steps=int (args.steps / 10),
                      verbose=1 if args.verbose else 0, 
                      callbacks=loggers)
 
