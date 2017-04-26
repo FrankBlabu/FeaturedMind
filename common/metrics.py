@@ -55,4 +55,19 @@ def f1_score (y_true, y_pred):
     
     return 2 * p * r / (p + r)
 
+smooth = 1.0
+
+#--------------------------------------------------------------------------
+# Sorensen-Dice coefficient computing (see https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient)
+#    
+#    This is a method to measure similarities between two samples
+#
+def dice_coef (y_true, y_pred):
+    
+    smooth = 1.0
+    
+    y_true_f = K.flatten (y_true)
+    y_pred_f = K.flatten (y_pred)
+    intersection = K.sum (y_true_f * y_pred_f)
+    return -(2. * intersection + smooth) / (K.sum (y_true_f) + K.sum (y_pred_f) + smooth)
 

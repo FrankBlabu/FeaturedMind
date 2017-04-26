@@ -5,7 +5,7 @@
 # Frank Blankenburg, Apr. 2017
 #
 
-from keras import backend as K
+import common.metrics
 
 smooth = 1.0
 
@@ -15,7 +15,4 @@ def dice_coef (y_true, y_pred):
     
     This is a method to measure similarities between two samples
     '''
-    y_true_f = K.flatten (y_true)
-    y_pred_f = K.flatten (y_pred)
-    intersection = K.sum (y_true_f * y_pred_f)
-    return -(2. * intersection + smooth) / (K.sum (y_true_f) + K.sum (y_pred_f) + smooth)
+    return -common.metrics.dice_coef (y_true, y_pred)
