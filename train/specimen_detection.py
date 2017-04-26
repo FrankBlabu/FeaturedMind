@@ -14,6 +14,7 @@ import os
 import subprocess
 import webbrowser
 import numpy as np
+import sys
 
 from keras import optimizers
 from keras.layers import Input
@@ -99,7 +100,7 @@ def sheet_metal_generator (width, height, batch_size):
             mask = mask.reshape ((mask.shape[0], mask.shape[1], 1))
             masks[i] = mask
         
-        yield (images, masks)
+        yield images, masks
     
     
 
@@ -150,11 +151,10 @@ print ('  Batchsize : {0}'.format (args.batchsize))
 callbacks = []
 
 if args.log != None:
-    callbacks.append (TensorBoard (os.path.abspath (args.log), histogram_freq=1, write_graph=True, write_images=False))
+    callbacks.append (TensorBoard (os.path.abspath (args.log), histogram_freq=1, write_graph=True, write_images=True))
 
 if args.intermediate_saving:
-    file, ext = os.path.splitext (args.output)
-    callbacks.append (ModelCheckpoint (file + '.{epoch:02d}' + ext, 
+    callbacks.append (ModelCheckpoint (args.output, 
                                        monitor='dice_coef', 
                                        verbose=0, 
                                        save_best_only=True, 
