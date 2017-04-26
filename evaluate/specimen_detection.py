@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# specimenr_detection.py - Detect specimen using a previously trained model
+# specimen_detection.py - Detect specimen using a previously trained model
 #
 # Frank Blankenburg, Mar. 2017
 #
