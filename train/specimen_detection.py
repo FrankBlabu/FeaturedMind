@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 #
-# train_border_detection.py - Train net to recognize border structures
-#                             in feature images
+# specimen_detection.py - Train net to recognize sheet metals in different environments
 #
 # Frank Blankenburg, Mar. 2017
 #
@@ -11,10 +10,10 @@
 
 import argparse
 import gc
-import h5py
 import os
 import subprocess
 import webbrowser
+import numpy as np
 
 from keras import optimizers
 from keras.layers import Input
@@ -24,6 +23,9 @@ from keras.callbacks import TensorBoard
 
 import common.losses
 import common.metrics
+import common.utils as utils
+
+from generator.sheetmetal import SheetMetalGenerator
 
 
 #--------------------------------------------------------------------------
@@ -73,6 +75,30 @@ def create_model (width, height):
     return model
 
 
+#--------------------------------------------------------------------------
+# Generator
+#
+def sheet_metal_generator (width, height, batchsize):
+    while True:
+        
+        images = np.zeros ((batchsize, height, width, 1), dtype=np.float32)
+        masks  = np.zeros ((batchsize, height, width, 1), dtype=np.float32)
+        
+        for i in range (batchsize):
+            sheet = SheetMetalGenerator (width, height)
+            
+            image = utils.mean_center (sheet.image)
+            image = image.reshape (image.shape[0], image.shape[1], 1)
+            images[i] = image
+            
+            mask = sheet.mask
+            mask = mask.reshape (mask.shape[0], mask.shape[1], 1)
+            masks[i] = mask
+        
+        yield (images, masks)
+    
+    
+
         
 #--------------------------------------------------------------------------
 # MAIN
@@ -83,11 +109,13 @@ def create_model (width, height):
 #
 parser = argparse.ArgumentParser ()
 
-parser.add_argument ('file',                type=str,               help='Test dataset file name')
-parser.add_argument ('-e', '--epochs',      type=int, default=50,   help='Number of epochs')
-parser.add_argument ('-l', '--log',         type=str, default=None, help='Log file directory')
+parser.add_argument ('-x', '--width',       type=int, default=640,  help='Image width')
+parser.add_argument ('-y', '--height',      type=int, default=480,  help='Image height')
+parser.add_argument ('-s', '--steps',       type=int, default=1000, help='Steps per epoch')
+parser.add_argument ('-e', '--epochs',      type=int, default=10,   help='Number of epochs')
+parser.add_argument ('-b', '--batchsize',   type=int, default=5  ,  help='Number of samples per training batch')
 parser.add_argument ('-o', '--output',      type=str, default=None, help='Model output file name')
-parser.add_argument ('-b', '--batchsize',   type=int, default=128,  help='Number of samples per training batch')
+parser.add_argument ('-l', '--log',         type=str, default=None, help='Log file directory')
 parser.add_argument ('-t', '--tensorboard', action='store_true', default=False, help='Open log in tensorboard')
 parser.add_argument ('-v', '--verbose',     action='store_true', default=False, help='Verbose output')
 
@@ -104,31 +132,23 @@ if args.log:
             if name.startswith ('events'):
                 os.remove (os.path.join (root, name))
 
-#
-# Load sample data
-#
-file = h5py.File (args.file, 'r')
-
-data = file['data']
-mask = file['mask']
-
-image_size = file.attrs['image_size']
-
-assert len (data) == len (mask)
-
 print ('Training model...')
-print ('  Number of samples: ', data.shape[0])
-print ('  Image size       : {0}x{1}'.format (image_size[1], image_size[0]))
+print ('  Image size: {0}x{1}'.format (args.width, args.height))
+print ('  Steps     : {0}'.format (args.steps))
+print ('  Epochs    : {0}'.format (args.epochs))
+print ('  Batchsize : {0}'.format (args.batchsize))
 
 loggers = []
 if args.log != None:
     loggers.append (TensorBoard (os.path.abspath (args.log), histogram_freq=1, write_graph=True, write_images=False))
     
-model = create_model (image_size[0], image_size[1])
+model = create_model (args.width, args.height)
 
-model.fit (data, mask, batch_size=args.batchsize, epochs=args.epochs, 
-           verbose=args.verbose, shuffle=True, validation_split=0.2,
-           callbacks=loggers)
+model.fit_generator (generator=sheet_metal_generator (args.width, args.height, args.batchsize),
+                     steps_per_epoch=args.steps, 
+                     epochs=args.epochs, 
+                     verbose=1 if args.verbose else 0, 
+                     callbacks=loggers)
 
 if args.output != None:
     model.save (os.path.abspath (args.output))
@@ -141,8 +161,6 @@ if args.tensorboard:
     webbrowser.open ('http://localhost:6006', new=2)
     input ("Press [Enter] to continue...")
     process.terminate ()
-
-file.close ()
 
 #
 # Tensorflow termination bug workaround
