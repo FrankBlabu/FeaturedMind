@@ -29,7 +29,8 @@ import common.metrics
 #--------------------------------------------------------------------------
 # Generate model
 #
-# @param sample_size Size of a single sample in pixels
+# @param width  Width of the image in pixels
+# @param height Height of the image in pixels
 #
 def create_model (width, height):
     

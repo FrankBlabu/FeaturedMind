@@ -47,7 +47,6 @@ model = load_model (args.model, custom_objects={'precision'     : common.metrics
 #
 # Generate new image and predict feature pixel mask
 #
-args.sample_size = 16
 test_image = TestImage (args)
 
 image = test_image.image

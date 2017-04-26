@@ -48,8 +48,6 @@ file.attrs['number_of_images'] = args.number_of_images
 file.attrs['HDF5_Version']     = h5py.version.hdf5_version
 file.attrs['h5py_version']     = h5py.version.version
 
-args.sample_size = 16
-
 images = file.create_dataset ('images', (args.number_of_images, args.height, args.width, 1), dtype='f', compression='lzf')
 
 masks = file.create_group ('masks')

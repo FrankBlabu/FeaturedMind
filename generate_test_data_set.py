@@ -51,8 +51,6 @@ with h5py.File (args.file, 'w') as file:
     data  = file.create_dataset ('data', (args.number_of_images, args.height, args.width, 1), dtype='f', compression='lzf')
     truth = file.create_dataset ('mask', (args.number_of_images, args.height, args.width, 1), dtype='f', compression='lzf')
 
-    args.sample_size = 64
-
     for count in range (args.number_of_images):
         test_image = TestImage (args)
             

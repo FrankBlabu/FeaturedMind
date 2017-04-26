@@ -54,7 +54,6 @@ model = load_model (args.model, custom_objects={'dice_coef': losses.dice_coef,
 #
 # Create test image and setup input tensors
 #
-args.sample_size = 8
 test_image = TestImage (args)
 
 image = utils.mean_center (test_image.image)
