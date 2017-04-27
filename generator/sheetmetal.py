@@ -199,7 +199,8 @@ class SheetMetalGenerator:
         border = Polygon2d (border)
         
         specimen_image = np.zeros (self.specimen.shape, dtype=np.float32)
-        specimen_image = skimage.util.random_noise (specimen_image, mode='gaussian', seed=None, clip=True, mean=0.5, var=0.005)
+        specimen_image.fill (0.125)
+        specimen_image = skimage.util.random_noise (specimen_image, mode='speckle', seed=None, clip=True, mean=0.0, var=0.005)
 
         specimen_mask = np.zeros (self.specimen.shape, dtype=np.float32)
         border.draw (specimen_mask, 1.0, fill=True)
@@ -227,7 +228,7 @@ class SheetMetalGenerator:
                     self.create_feature_set (area)                    
 
         #
-        # Apply some transformations to the image
+        # Step 3: Apply some transformations to the specimen
         #
         scale = (random.uniform (0.5, 0.8), random.uniform (0.5, 0.8))
         shear = random.uniform (0.0, 0.2)
@@ -237,7 +238,7 @@ class SheetMetalGenerator:
         self.mask = self.transform (self.mask, scale=scale, shear = shear, rotation=rotation)
 
         #
-        # Setup random background pattern
+        # Step 4: Setup random background pattern
         #
         self.image = np.zeros (self.specimen.shape, dtype=np.float32)
         self.image = skimage.util.random_noise (self.image, mode='gaussian', seed=None, clip=True, mean=0.2, var=0.0001)
@@ -253,7 +254,7 @@ class SheetMetalGenerator:
             rect = rect.move_to (Point2d (random.randint (int (-1 * self.size.width / 10), int (9 * self.size.width / 10)),
                                           random.randint (int (-1 * self.size.height / 10), int (9 * self.size.height / 10))))
 
-            color = random.uniform (0.02, 0.15)
+            color = random.uniform (0.02, 0.1)
             rect.draw (rect_image, color, fill=True)
             
             if random.randint (0, 3) == 0:
@@ -265,10 +266,14 @@ class SheetMetalGenerator:
                                         rotation=random.uniform (0.0, 2 * math.pi))
             
             self.image[rect_image >= color] = rect_image[rect_image >= color]
+            
+        self.image = skimage.filters.gaussian (self.image, sigma=3)
 
         #
-        # Combine image and background
+        # Step 5: Combine image and background
         #
+        self.mask[self.mask <= 0.5] = 0.0
+        self.mask[self.mask > 0.5] = 1.0
         self.image[self.mask > 0.5] = self.specimen[self.mask > 0.5]
 
     #--------------------------------------------------------------------------

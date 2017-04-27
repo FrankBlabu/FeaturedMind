@@ -68,7 +68,7 @@ mask = mask.reshape (1, args.height, args.width, 1)
 scores = model.evaluate (image, mask, verbose=args.verbose)
 
 for score in zip (scores, model.metrics_names):
-    print ('{0}: {1}'.format (score[1], score[0]))
+    print ('{0}: {1:.02f}'.format (score[1], score[0]))
 
 if args.performance:
     start_time = time.process_time ()
@@ -78,14 +78,18 @@ if args.performance:
 
     elapsed_time = (time.process_time () - start_time) / (10 * args.performance)
 
-    print ('Single run duration: {0:.2f} s'.format (elapsed_time))
+    print ('Single run duration: {0:.4f} s'.format (elapsed_time))
 
+start_time = time.process_time ()
 
 result = model.predict (image)[0]
+
+print ('Duration: {0:.4f}s'.format ((time.process_time () - start_time) / 10))
+
 result[result < 0.5] = 0.0
 
 edges = result.reshape ((result.shape[0], result.shape[1]))
-edges = skimage.filters.sobel (edges)
+#edges = skimage.filters.sobel (edges)
 
 utils.show_image ([utils.to_rgb (image[0]), 'Generated image'], 
                   [utils.to_rgb (edges),    'Predicted specimen borders'])
