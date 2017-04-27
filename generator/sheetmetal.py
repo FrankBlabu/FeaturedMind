@@ -13,6 +13,7 @@ import common.utils as utils
 
 import skimage.filters
 import skimage.transform
+import skimage.util
 
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
 
@@ -198,7 +199,7 @@ class SheetMetalGenerator:
         border = Polygon2d (border)
         
         specimen_image = np.zeros (self.specimen.shape, dtype=np.float32)
-        specimen_image = self.add_background_noise (specimen_image, bias=0.5, delta=0.1)
+        specimen_image = skimage.util.random_noise (specimen_image, mode='gaussian', seed=None, clip=True, mean=0.5, var=0.005)
 
         specimen_mask = np.zeros (self.specimen.shape, dtype=np.float32)
         border.draw (specimen_mask, 1.0, fill=True)
@@ -224,8 +225,7 @@ class SheetMetalGenerator:
                         available[x][y+1] = False
                 
                     self.create_feature_set (area)                    
-                    
-    
+
         #
         # Apply some transformations to the image
         #
@@ -236,8 +236,40 @@ class SheetMetalGenerator:
         self.specimen = self.transform (self.specimen, scale=scale, shear = shear, rotation=rotation)
         self.mask = self.transform (self.mask, scale=scale, shear = shear, rotation=rotation)
 
-        self.image = self.add_background_noise (np.zeros (self.specimen.shape, dtype=np.float32), bias=0.2, delta=0.2)        
-        self.image[self.specimen > 0] = self.specimen[self.specimen > 0]
+        #
+        # Setup random background pattern
+        #
+        self.image = np.zeros (self.specimen.shape, dtype=np.float32)
+        self.image = skimage.util.random_noise (self.image, mode='gaussian', seed=None, clip=True, mean=0.2, var=0.0001)
+        
+        number_of_shapes = random.randint (30, 80)
+        for _ in range (number_of_shapes):
+
+            rect_image = np.zeros (self.specimen.shape, dtype=np.float32)
+            
+            rect = Rect2d (Point2d (2 * self.size.width / 10, 4.5 * self.size.height / 10),
+                           Point2d (8 * self.size.width / 10, 5.5 * self.size.height / 10))
+
+            rect = rect.move_to (Point2d (random.randint (int (-1 * self.size.width / 10), int (9 * self.size.width / 10)),
+                                          random.randint (int (-1 * self.size.height / 10), int (9 * self.size.height / 10))))
+
+            color = random.uniform (0.02, 0.15)
+            rect.draw (rect_image, color, fill=True)
+            
+            if random.randint (0, 3) == 0:
+                rect_image = skimage.util.random_noise (rect_image, mode='gaussian', seed=None, clip=True, mean=color, var=0.005)
+
+            rect_image = self.transform (rect_image,
+                                        scale=(random.uniform (0.3, 1.4), random.uniform (0.8, 1.2)), 
+                                        shear=random.uniform (0.0, 0.3), 
+                                        rotation=random.uniform (0.0, 2 * math.pi))
+            
+            self.image[rect_image >= color] = rect_image[rect_image >= color]
+
+        #
+        # Combine image and background
+        #
+        self.image[self.mask > 0.5] = self.specimen[self.mask > 0.5]
 
     #--------------------------------------------------------------------------
     # Apply transformation to image
@@ -263,17 +295,10 @@ class SheetMetalGenerator:
     #
     # @param rect Rectangle used for the feature
     #
-    def draw_rectangular_feature (self, rect):
-        
-        feature_image = self.add_background_noise (self.create_array (rect.size ()), bias=0.2, delta=0.2)
-
-        x = int (rect.p0.x)
-        y = int (rect.p0.y)
-        
-        self.specimen[y:y+feature_image.shape[0], x:x+feature_image.shape[1]] = feature_image        
+    def draw_rectangular_feature (self, rect):        
+        rect.draw (self.specimen, 0.0, fill=True)         
         rect.draw (self.mask, 0.0, fill=True)
-        
-        
+                
             
     #--------------------------------------------------------------------------
     # Draw circular feature
@@ -281,18 +306,7 @@ class SheetMetalGenerator:
     # @param ellipse Ellipse of the feature
     #
     def draw_circular_feature (self, ellipse):
-        
-        e = ellipse.move_to (Point2d (ellipse.radius.x, ellipse.radius.y))
-        
-        feature_image = self.add_background_noise (self.create_array (ellipse.rect ().size () + Size2d (1, 1)), bias=0.2, delta=0.2)                
-
-        mask = np.zeros (feature_image.shape, dtype=np.float32)
-        e.draw (mask, 1.0, fill=True)
-
-        x = int (ellipse.rect ().p0.x)
-        y = int (ellipse.rect ().p0.y)
-        
-        self.specimen[y:y+feature_image.shape[0], x:x+feature_image.shape[1]][mask > 0] = feature_image[mask > 0]
+        ellipse.draw (self.specimen, 0.0, fill=True)
         ellipse.draw (self.mask, 0.0, fill=True)                
         
 
@@ -369,18 +383,7 @@ class SheetMetalGenerator:
             #
             elif feature_type == 1:
                 self.draw_circular_feature (Ellipse2d (feature_rect).to_circle ())
-                
-    #--------------------------------------------------------------------------
-    # Add background noise to an image
-    #
-    @staticmethod
-    def add_background_noise (image, bias, delta):
-        
-        for y in range (image.shape[0]):
-            for x in range (image.shape[1]):
-                image[y][x] = random.uniform (max (bias - delta, 0.0), min (bias + delta, 1.0))
 
-        return skimage.filters.gaussian (image)
 
     #--------------------------------------------------------------------------
     # Generate a numpy array matching the given size
