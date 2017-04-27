@@ -81,10 +81,10 @@ if args.performance:
     print ('Single run duration: {0:.2f} s'.format (elapsed_time))
 
 
-result = np.zeros ((1, args.height, args.width, 1))
-result = model.predict (image)
+result = model.predict (image)[0]
+result[result < 0.5] = 0.0
 
-edges = result[0].reshape ((result[0].shape[0], result[0].shape[1]))
+edges = result.reshape ((result.shape[0], result.shape[1]))
 edges = skimage.filters.sobel (edges)
 
 utils.show_image ([utils.to_rgb (image[0]), 'Generated image'], 
