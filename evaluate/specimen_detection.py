@@ -13,6 +13,7 @@ import numpy as np
 import common.losses as losses
 import common.metrics as metrics
 import common.utils as utils
+import skimage.filters
 
 from keras.models import load_model
 from generator.sheetmetal import SheetMetalGenerator
@@ -83,8 +84,11 @@ if args.performance:
 result = np.zeros ((1, args.height, args.width, 1))
 result = model.predict (image)
 
-utils.show_image ([utils.to_rgb (image[0]),  'Generated image'], 
-                  [utils.to_rgb (result[0]), 'Predicted specimen borders'])
+edges = result[0].reshape ((result[0].shape[0], result[0].shape[1]))
+edges = skimage.filters.sobel (edges)
+
+utils.show_image ([utils.to_rgb (image[0]), 'Generated image'], 
+                  [utils.to_rgb (edges),    'Predicted specimen borders'])
 
 
 

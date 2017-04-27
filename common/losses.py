@@ -15,4 +15,4 @@ def dice_coef (y_true, y_pred):
     
     This is a method to measure similarities between two samples
     '''
-    return -common.metrics.dice_coef (y_true, y_pred)
+    return 1.0 - common.metrics.dice_coef (y_true, y_pred)

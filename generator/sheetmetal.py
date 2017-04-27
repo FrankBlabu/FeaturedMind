@@ -7,10 +7,12 @@
 
 import argparse
 import random
+import math
 import numpy as np
 import common.utils as utils 
 
 import skimage.filters
+import skimage.transform
 
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
 
@@ -43,7 +45,7 @@ class SheetMetalGenerator:
         #
         # Generale image as grayscale with some background noise
         #
-        self.image = self.add_background_noise (np.zeros ((height, width), dtype=np.float32), bias=0.2, delta=0.2)
+        self.specimen = np.zeros ((height, width), dtype=np.float32)
 
         #
         # Mask marking the area covered by the sheet
@@ -195,13 +197,13 @@ class SheetMetalGenerator:
         #
         border = Polygon2d (border)
         
-        specimen_image = np.zeros (self.image.shape, dtype=np.float32)
+        specimen_image = np.zeros (self.specimen.shape, dtype=np.float32)
         specimen_image = self.add_background_noise (specimen_image, bias=0.5, delta=0.1)
 
-        specimen_mask = np.zeros (self.image.shape, dtype=np.float32)
+        specimen_mask = np.zeros (self.specimen.shape, dtype=np.float32)
         border.draw (specimen_mask, 1.0, fill=True)
 
-        self.image[specimen_mask != 0] = specimen_image[specimen_mask != 0] 
+        self.specimen[specimen_mask != 0] = specimen_image[specimen_mask != 0] 
         border.draw (self.mask, 1.0, fill=True)
         
         #
@@ -224,6 +226,37 @@ class SheetMetalGenerator:
                     self.create_feature_set (area)                    
                     
     
+        #
+        # Apply some transformations to the image
+        #
+        scale = (random.uniform (0.5, 0.8), random.uniform (0.5, 0.8))
+        shear = random.uniform (0.0, 0.2)
+        rotation = random.uniform (-1.0, 1.0)
+        
+        self.specimen = self.transform (self.specimen, scale=scale, shear = shear, rotation=rotation)
+        self.mask = self.transform (self.mask, scale=scale, shear = shear, rotation=rotation)
+
+        self.image = self.add_background_noise (np.zeros (self.specimen.shape, dtype=np.float32), bias=0.2, delta=0.2)        
+        self.image[self.specimen > 0] = self.specimen[self.specimen > 0]
+
+    #--------------------------------------------------------------------------
+    # Apply transformation to image
+    #
+    def transform (self, image, scale, shear, rotation):
+
+        scale_trans = skimage.transform.AffineTransform (scale=scale)
+        image = skimage.transform.warp (image, scale_trans.inverse, output_shape=image.shape)
+        
+        center_trans = skimage.transform.AffineTransform (translation=((1 - scale[0]) * self.size.width / 2, (1 - scale[1]) * self.size.height / 2))
+        image = skimage.transform.warp (image, center_trans.inverse, output_shape=image.shape)
+        
+        image = skimage.transform.rotate (image, angle=rotation * 180.0 / math.pi, resize=False, center=None)
+
+        shear_trans = skimage.transform.AffineTransform (shear=shear)
+        image = skimage.transform.warp (image, shear_trans.inverse, output_shape=image.shape)
+        
+        return image
+
 
     #--------------------------------------------------------------------------
     # Draw rectangular feature
@@ -237,7 +270,7 @@ class SheetMetalGenerator:
         x = int (rect.p0.x)
         y = int (rect.p0.y)
         
-        self.image[y:y+feature_image.shape[0], x:x+feature_image.shape[1]] = feature_image        
+        self.specimen[y:y+feature_image.shape[0], x:x+feature_image.shape[1]] = feature_image        
         rect.draw (self.mask, 0.0, fill=True)
         
         
@@ -259,7 +292,7 @@ class SheetMetalGenerator:
         x = int (ellipse.rect ().p0.x)
         y = int (ellipse.rect ().p0.y)
         
-        self.image[y:y+feature_image.shape[0], x:x+feature_image.shape[1]][mask > 0] = feature_image[mask > 0]
+        self.specimen[y:y+feature_image.shape[0], x:x+feature_image.shape[1]][mask > 0] = feature_image[mask > 0]
         ellipse.draw (self.mask, 0.0, fill=True)                
         
 
