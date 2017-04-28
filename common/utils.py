@@ -71,7 +71,18 @@ def show_image (*args):
     for arg, partition in zip (args, partitions):  
         part = fig.add_subplot (partition[0], partition[1], partition[2])
         part.set_title (arg[1])
-        plt.imshow (arg[0])
+        
+        image = arg[0]
+        
+        colormap = None
+        if len (image.shape) < 3 or image.shape[2] != 3:
+            image = image.reshape ((image.shape[0], image.shape[1]))
+            colormap = 'CMRmap'
+        
+        plt.imshow (arg[0], cmap=colormap)
+        
+        if not colormap is None:
+            plt.colorbar ()
     
     fig.tight_layout ()
     
