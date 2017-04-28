@@ -89,7 +89,7 @@ print ('Duration: {0:.4f}s'.format ((time.process_time () - start_time) / 10))
 result[result < 0.5] = 0.0
 
 edges = result.reshape ((result.shape[0], result.shape[1]))
-#edges = skimage.filters.sobel (edges)
+edges = skimage.filters.sobel (edges)
 
 utils.show_image ([utils.to_rgb (image[0]), 'Generated image'], 
                   [utils.to_rgb (edges),    'Predicted specimen borders'])

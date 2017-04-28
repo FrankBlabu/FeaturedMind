@@ -14,7 +14,6 @@ import os
 import subprocess
 import webbrowser
 import numpy as np
-import sys
 
 from keras import optimizers
 from keras.layers import Input
