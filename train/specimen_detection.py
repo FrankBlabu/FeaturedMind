@@ -36,7 +36,7 @@ from generator.sheetmetal import SheetMetalGenerator
 #
 def create_model (width, height):
     
-    inputs = Input ((height, width, 1))
+    inputs = Input (shape=(height, width, 1), name='input')
     
     conv1 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(inputs)
     conv1 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(conv1)
@@ -65,7 +65,7 @@ def create_model (width, height):
     conv7 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(up7)
     conv7 = Conv2D (32, kernel_size=(3, 3), activation='relu', padding='same')(conv7)
 
-    conv8 = Conv2D (1, kernel_size=(1, 1), activation='sigmoid')(conv7)
+    conv8 = Conv2D (1, kernel_size=(1, 1), activation='sigmoid', name='output')(conv7)
 
     model = Model (inputs=[inputs], outputs=[conv8])
     model.compile (optimizer=optimizers.Adam (lr=1e-5),
