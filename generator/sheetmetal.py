@@ -234,8 +234,8 @@ class SheetMetalGenerator:
         shear = random.uniform (0.0, 0.2)
         rotation = random.uniform (-1.0, 1.0)
         
-        self.specimen = self.transform (self.specimen, scale=scale, shear = shear, rotation=rotation)
-        self.mask = self.transform (self.mask, scale=scale, shear = shear, rotation=rotation)
+        self.specimen = utils.transform (self.specimen, self.size, scale=scale, shear = shear, rotation=rotation)
+        self.mask = utils.transform (self.mask, self.size, scale=scale, shear = shear, rotation=rotation)
 
         #
         # Step 4: Setup random background pattern
@@ -260,10 +260,10 @@ class SheetMetalGenerator:
             if random.randint (0, 3) == 0:
                 rect_image = skimage.util.random_noise (rect_image, mode='gaussian', seed=None, clip=True, mean=color, var=0.005)
 
-            rect_image = self.transform (rect_image,
-                                        scale=(random.uniform (0.3, 1.4), random.uniform (0.8, 1.2)), 
-                                        shear=random.uniform (0.0, 0.3), 
-                                        rotation=random.uniform (0.0, 2 * math.pi))
+            rect_image = utils.transform (rect_image, self.size,
+                                          scale=(random.uniform (0.3, 1.4), random.uniform (0.8, 1.2)), 
+                                          shear=random.uniform (0.0, 0.3), 
+                                          rotation=random.uniform (0.0, 2 * math.pi))
             
             self.image[rect_image >= color] = rect_image[rect_image >= color]
             
@@ -275,24 +275,6 @@ class SheetMetalGenerator:
         self.mask[self.mask <= 0.5] = 0.0
         self.mask[self.mask > 0.5] = 1.0
         self.image[self.mask > 0.5] = self.specimen[self.mask > 0.5]
-
-    #--------------------------------------------------------------------------
-    # Apply transformation to image
-    #
-    def transform (self, image, scale, shear, rotation):
-
-        scale_trans = skimage.transform.AffineTransform (scale=scale)
-        image = skimage.transform.warp (image, scale_trans.inverse, output_shape=image.shape)
-        
-        center_trans = skimage.transform.AffineTransform (translation=((1 - scale[0]) * self.size.width / 2, (1 - scale[1]) * self.size.height / 2))
-        image = skimage.transform.warp (image, center_trans.inverse, output_shape=image.shape)
-        
-        image = skimage.transform.rotate (image, angle=rotation * 180.0 / math.pi, resize=False, center=None)
-
-        shear_trans = skimage.transform.AffineTransform (shear=shear)
-        image = skimage.transform.warp (image, shear_trans.inverse, output_shape=image.shape)
-        
-        return image
 
 
     #--------------------------------------------------------------------------

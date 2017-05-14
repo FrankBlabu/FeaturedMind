@@ -7,6 +7,7 @@
 
 import math
 import numpy as np
+import skimage.transform
 
 from matplotlib import pyplot as plt
 from skimage.color import gray2rgb
@@ -132,4 +133,23 @@ def cutout (image, area):
     r = area.as_tuple ()
     result = image[r[1]:r[3]+1,r[0]:r[2]+1]    
     return result.reshape ((result.shape[0], result.shape[1], 1))
+
+
+#--------------------------------------------------------------------------
+# Transform image
+#
+def transform (image, size, scale, shear, rotation):
+
+    scale_trans = skimage.transform.AffineTransform (scale=scale)
+    image = skimage.transform.warp (image, scale_trans.inverse, output_shape=image.shape)
+    
+    center_trans = skimage.transform.AffineTransform (translation=((1 - scale[0]) * size.width / 2, (1 - scale[1]) * size.height / 2))
+    image = skimage.transform.warp (image, center_trans.inverse, output_shape=image.shape)
+    
+    image = skimage.transform.rotate (image, angle=rotation * 180.0 / math.pi, resize=False, center=None)
+
+    shear_trans = skimage.transform.AffineTransform (shear=shear)
+    image = skimage.transform.warp (image, shear_trans.inverse, output_shape=image.shape)
+    
+    return image
 
