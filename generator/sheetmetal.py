@@ -12,7 +12,6 @@ import numpy as np
 import common.utils as utils 
 
 import skimage.filters
-import skimage.transform
 import skimage.util
 
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
