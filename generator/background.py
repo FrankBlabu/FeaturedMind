@@ -14,6 +14,7 @@ import os
 import common.utils as utils 
 
 import skimage.color
+import skimage.exposure
 import skimage.filters
 import skimage.io
 import skimage.transform
@@ -75,6 +76,9 @@ class ImageBackground:
     # @param path Path containing a set of images
     #
     def __init__ (self, path, size):
+
+        path = os.path.abspath (path)
+     
         self.files = [os.path.join (path, file) for file in os.listdir (path) if self.is_image (os.path.join (path, file))]
         self.size = size
 
@@ -84,21 +88,49 @@ class ImageBackground:
     def get (self):
         
         #
-        # Read image and resize it matching the desired background size
+        # Read image and convert it into grayscale
         #
         image = skimage.io.imread (random.choice (self.files))
         image = skimage.color.rgb2gray (image)
+        
+        #
+        # If possible (image larger than desired size), crop a part
+        #
+        window_size = self.size
+        aspect = (image.shape[1] / self.size.width, image.shape[0] / self.size.height)
+        if aspect[0] > 2 or aspect[1] > 2:
+            factor =  min (aspect[0] / 2, aspect[1] / 2)
+            window_size.width *= factor
+            window_size.height *= factor; 
+        
+        offset_y = random.randint (0, image.shape[0] - int (window_size.height)) if image.shape[0] > window_size.height else 0 
+        offset_x = random.randint (0, image.shape[1] - int (window_size.width))  if image.shape[1] > window_size.width  else 0 
+        
+        image = image[offset_y:offset_y + int (window_size.height), offset_x:offset_x + int (window_size.width)]        
         image = np.reshape (image, (image.shape[0], image.shape[1], 1))
-        
-        image = skimage.transform.resize (image, (int (self.size.height), int (self.size.width), 1), mode='reflect')
-        
+                
         #
-        # Randomly flip image        
+        # Randomly rotate image        
         #
-        if random.randint (0, 1) == 1:
-            image = image[:,::-1,:]
+        flip_mode = random.randint (0, 3)
+        if flip_mode == 1:
+            image = skimage.transform.rotate (image, 90)
+        elif flip_mode == 2:
+            image = skimage.transform.rotate (image, 180)
+        elif flip_mode == 3:
+            image = skimage.transform.rotate (image, 270)
+            
+        #
+        # Randomly blur image
+        #
+        blur = random.randint (0, 6)
+        if blur < 3:
+            image = skimage.util.random_noise (image, mode='gaussian', seed=None, clip=True, mean=0.5, var=0.0001 * blur)
+
+        image = skimage.exposure.rescale_intensity (image)
+                         
+        return skimage.transform.resize (image, (int (self.size.height), int (self.size.width), 1), mode='reflect')
         
-        return image
         
     #
     # Check if the given file is a valid image file
