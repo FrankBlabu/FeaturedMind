@@ -7,9 +7,9 @@
 
 import argparse
 import random
-import math
 import numpy as np
-import common.utils as utils 
+import common.utils as utils
+import generator.background as background 
 
 import skimage.filters
 import skimage.util
@@ -35,10 +35,11 @@ class SheetMetalGenerator:
     #--------------------------------------------------------------------------
     # Constructor
     #
-    # @param width  Overall image width
-    # @param height Overall image height
-    #
-    def __init__ (self, width, height):
+    # @param width                Overall image width
+    # @param height               Overall image height
+    # @param background_generator Background generator class
+    #    
+    def __init__ (self, width, height, background_generator):
 
         self.size = Size2d (width, height)
 
@@ -198,7 +199,7 @@ class SheetMetalGenerator:
         border = Polygon2d (border)
         
         specimen_image = np.zeros (self.specimen.shape, dtype=np.float32)
-        specimen_image.fill (0.125)
+        specimen_image.fill (0.7)
         specimen_image = skimage.util.random_noise (specimen_image, mode='speckle', seed=None, clip=True, mean=0.0, var=0.005)
 
         specimen_mask = np.zeros (self.specimen.shape, dtype=np.float32)
@@ -233,40 +234,13 @@ class SheetMetalGenerator:
         shear = random.uniform (0.0, 0.2)
         rotation = random.uniform (-1.0, 1.0)
         
-        self.specimen = utils.transform (self.specimen, self.size, scale=scale, shear = shear, rotation=rotation)
-        self.mask = utils.transform (self.mask, self.size, scale=scale, shear = shear, rotation=rotation)
+        self.specimen = utils.transform (self.specimen, self.size, scale=scale, shear=shear, rotation=rotation)
+        self.mask = utils.transform (self.mask, self.size, scale=scale, shear=shear, rotation=rotation)
 
         #
         # Step 4: Setup random background pattern
         #
-        self.image = np.zeros (self.specimen.shape, dtype=np.float32)
-        self.image = skimage.util.random_noise (self.image, mode='gaussian', seed=None, clip=True, mean=0.2, var=0.0001)
-        
-        number_of_shapes = random.randint (30, 80)
-        for _ in range (number_of_shapes):
-
-            rect_image = np.zeros (self.specimen.shape, dtype=np.float32)
-            
-            rect = Rect2d (Point2d (2 * self.size.width / 10, 4.5 * self.size.height / 10),
-                           Point2d (8 * self.size.width / 10, 5.5 * self.size.height / 10))
-
-            rect = rect.move_to (Point2d (random.randint (int (-1 * self.size.width / 10), int (9 * self.size.width / 10)),
-                                          random.randint (int (-1 * self.size.height / 10), int (9 * self.size.height / 10))))
-
-            color = random.uniform (0.02, 0.1)
-            rect.draw (rect_image, color, fill=True)
-            
-            if random.randint (0, 3) == 0:
-                rect_image = skimage.util.random_noise (rect_image, mode='gaussian', seed=None, clip=True, mean=color, var=0.005)
-
-            rect_image = utils.transform (rect_image, self.size,
-                                          scale=(random.uniform (0.3, 1.4), random.uniform (0.8, 1.2)), 
-                                          shear=random.uniform (0.0, 0.3), 
-                                          rotation=random.uniform (0.0, 2 * math.pi))
-            
-            self.image[rect_image >= color] = rect_image[rect_image >= color]
-            
-        self.image = skimage.filters.gaussian (self.image, sigma=3)
+        self.image = background_generator.generate ()
 
         #
         # Step 5: Combine image and background
@@ -411,12 +385,20 @@ if __name__ == '__main__':
     #
     parser = argparse.ArgumentParser ()
     
-    parser.add_argument ('-x', '--width',  type=int, default=640, help='Width of the generated images')
-    parser.add_argument ('-y', '--height', type=int, default=480, help='Height of the generated images')
+    parser.add_argument ('-x', '--width',     type=int, default=640,  help='Width of the generated images')
+    parser.add_argument ('-y', '--height',    type=int, default=480,  help='Height of the generated images')
+    parser.add_argument ('-d', '--directory', type=str, default=None, help='Directory for database based background generation')
+    parser.add_argument ('-m', '--mode',  action='store', choices=['rects', 'imagedb'], default='rects', help='Background creation mode')
 
     args = parser.parse_args ()
 
-    image = SheetMetalGenerator (args.width, args.height)
+    if args.mode == 'rects':
+        background_generator = background.NoisyRectBackgroundGenerator (Size2d (args.width, args.height))
+    elif args.mode == 'imagedb':
+        assert args.directory is not None
+        background_generator = background.ImageBackgroundGenerator (args.directory, Size2d (args.width, args.height))
+
+    image = SheetMetalGenerator (args.width, args.height, background_generator)
 
     utils.show_image ([utils.to_rgb (image.image), 'Sheet metal'],
                       [utils.to_rgb (image.mask),  'Specimen mask'])

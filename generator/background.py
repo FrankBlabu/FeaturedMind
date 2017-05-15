@@ -6,6 +6,7 @@
 #
 
 import argparse
+import copy
 import imghdr
 import random
 import math
@@ -24,51 +25,67 @@ from common.geometry import Point2d, Size2d, Rect2d
 
 
 #--------------------------------------------------------------------------
+# CLASS NoisyRectBackgroundGenerator
+#
 # Generate pattern based background
 #
 # This class will generate an image background consisting of random, blurred,
 # noisy and variated rectangles
 #
-def generate_noisy_rects (size): 
-
-    shape = (int (size.height), int (size.width))
-
-    image = np.zeros (shape, dtype=np.float32)
-    image = skimage.util.random_noise (image, mode='gaussian', seed=None, clip=True, mean=0.2, var=0.0001)
+class NoisyRectBackgroundGenerator:
     
-    number_of_shapes = random.randint (30, 80)
-    for _ in range (number_of_shapes):
+    #
+    # Constructor
+    #
+    # @param size Desired size
+    #
+    def __init__ (self, size):
+        self.size = size
 
-        rect_image = np.zeros (shape, dtype=np.float32)
+    #
+    # Generate single image
+    #
+    def generate (self):
+        shape = (int (self.size.height), int (self.size.width))
+    
+        image = np.zeros (shape, dtype=np.float32)
+        image = skimage.util.random_noise (image, mode='gaussian', seed=None, clip=True, mean=0.2, var=0.0001)
         
-        rect = Rect2d (Point2d (2 * size.width / 10, 4.5 * size.height / 10),
-                       Point2d (8 * size.width / 10, 5.5 * size.height / 10))
-
-        rect = rect.move_to (Point2d (random.randint (int (-1 * size.width / 10), int (9 * size.width / 10)),
-                                      random.randint (int (-1 * size.height / 10), int (9 * size.height / 10))))
-
-        color = random.uniform (0.02, 0.1)
-        rect.draw (rect_image, color, fill=True)
+        number_of_shapes = random.randint (30, 80)
+        for _ in range (number_of_shapes):
+    
+            rect_image = np.zeros (shape, dtype=np.float32)
+            
+            rect = Rect2d (Point2d (2 * self.size.width / 10, 4.5 * self.size.height / 10),
+                           Point2d (8 * self.size.width / 10, 5.5 * self.size.height / 10))
+    
+            rect = rect.move_to (Point2d (random.randint (int (-1 * self.size.width / 10), int (9 * self.size.width / 10)),
+                                          random.randint (int (-1 * self.size.height / 10), int (9 * self.size.height / 10))))
+    
+            color = random.uniform (0.02, 0.1)
+            rect.draw (rect_image, color, fill=True)
+            
+            if random.randint (0, 3) == 0:
+                rect_image = skimage.util.random_noise (rect_image, mode='gaussian', seed=None, clip=True, mean=color, var=0.005)
+    
+            rect_image = utils.transform (rect_image, self.size,
+                                          scale=(random.uniform (0.3, 1.4), random.uniform (0.8, 1.2)), 
+                                          shear=random.uniform (0.0, 0.3), 
+                                          rotation=random.uniform (0.0, 2 * math.pi))
+            
+            image[rect_image >= color] = rect_image[rect_image >= color]
+            
+        image = skimage.exposure.rescale_intensity (image)
         
-        if random.randint (0, 3) == 0:
-            rect_image = skimage.util.random_noise (rect_image, mode='gaussian', seed=None, clip=True, mean=color, var=0.005)
-
-        rect_image = utils.transform (rect_image, size,
-                                      scale=(random.uniform (0.3, 1.4), random.uniform (0.8, 1.2)), 
-                                      shear=random.uniform (0.0, 0.3), 
-                                      rotation=random.uniform (0.0, 2 * math.pi))
-        
-        image[rect_image >= color] = rect_image[rect_image >= color]
-        
-    return skimage.filters.gaussian (image, sigma=3)
+        return skimage.filters.gaussian (image, sigma=3)
 
 
 #--------------------------------------------------------------------------
-# CLASS ImageBackground
+# CLASS ImageBackgroundGenerator
 #
 # Background generator using a file based image database
 #
-class ImageBackground:
+class ImageBackgroundGenerator:
     
     #
     # Constructor
@@ -83,9 +100,9 @@ class ImageBackground:
         self.size = size
 
     #
-    # Get random file
+    # Generate single inage
     #
-    def get (self):
+    def generate (self):
         
         #
         # Read image and convert it into grayscale
@@ -96,7 +113,7 @@ class ImageBackground:
         #
         # If possible (image larger than desired size), crop a part
         #
-        window_size = self.size
+        window_size = copy.deepcopy (self.size)
         aspect = (image.shape[1] / self.size.width, image.shape[0] / self.size.height)
         if aspect[0] > 2 or aspect[1] > 2:
             factor =  min (aspect[0] / 2, aspect[1] / 2)
@@ -107,7 +124,6 @@ class ImageBackground:
         offset_x = random.randint (0, image.shape[1] - int (window_size.width))  if image.shape[1] > window_size.width  else 0 
         
         image = image[offset_y:offset_y + int (window_size.height), offset_x:offset_x + int (window_size.width)]        
-        image = np.reshape (image, (image.shape[0], image.shape[1], 1))
                 
         #
         # Randomly rotate image        
@@ -121,15 +137,26 @@ class ImageBackground:
             image = skimage.transform.rotate (image, 270)
             
         #
-        # Randomly blur image
+        # Make some noise
+        #
+        noise = random.randint (0, 6)
+        if noise < 3:
+            image = skimage.util.random_noise (image, mode='gaussian', seed=None, clip=True, mean=0.5, var=0.0001 * noise)
+
+        #
+        # Blur image
         #
         blur = random.randint (0, 6)
-        if blur < 3:
-            image = skimage.util.random_noise (image, mode='gaussian', seed=None, clip=True, mean=0.5, var=0.0001 * blur)
+        if blur < 4:
+            image = skimage.filters.gaussian (image, sigma=blur)
 
+        #
+        # Adapt image value range
+        #
         image = skimage.exposure.rescale_intensity (image)
-                         
-        return skimage.transform.resize (image, (int (self.size.height), int (self.size.width), 1), mode='reflect')
+                    
+        image = skimage.transform.resize (image, (int (self.size.height), int (self.size.width), 1), mode='reflect')
+        return np.reshape (image, (image.shape[0], image.shape[1]))
         
         
     #
@@ -171,13 +198,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args ()
 
-    print ('Background mode: {0}'.format (args.mode))
-
     if args.mode == 'rects':
-        image = generate_noisy_rects (Size2d (args.width, args.height))
+        generator = NoisyRectBackgroundGenerator (Size2d (args.width, args.height))
     elif args.mode == 'imagedb':
         assert args.directory is not None
-        source = ImageBackground (args.directory, Size2d (args.width, args.height))
-        image = source.get ()
+        generator = ImageBackgroundGenerator (args.directory, Size2d (args.width, args.height))
+        
+    image = generator.generate ()
 
     utils.show_image ([utils.to_rgb (image), 'Generated background'])
