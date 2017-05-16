@@ -11,7 +11,6 @@ import numpy as np
 import common.utils as utils
 import generator.background as background 
 
-import skimage.filters
 import skimage.util
 
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d

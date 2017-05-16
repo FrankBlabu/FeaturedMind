@@ -20,10 +20,12 @@ from keras.layers import Input
 from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate
 from keras.models import Model
 from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
+from common.geometry import Size2d
 
 import common.losses
 import common.metrics
 import common.utils as utils
+import generator.background as background
 
 from generator.sheetmetal import SheetMetalGenerator
 
@@ -90,14 +92,14 @@ def create_model (width, height):
 #--------------------------------------------------------------------------
 # Generator
 #
-def sheet_metal_generator (width, height, batch_size):
+def sheet_metal_generator (width, height, batch_size, background_generator):
     while True:
         
         images = np.zeros ((batch_size, height, width, 1), dtype=np.float32)
         masks  = np.zeros ((batch_size, height, width, 1), dtype=np.float32)
         
         for i in range (batch_size):
-            sheet = SheetMetalGenerator (width, height)
+            sheet = SheetMetalGenerator (width, height, background_generator)
             
             image = utils.mean_center (sheet.image)
             image = image.reshape ((image.shape[0], image.shape[1], 1))
@@ -121,16 +123,18 @@ def sheet_metal_generator (width, height, batch_size):
 #
 parser = argparse.ArgumentParser ()
 
-parser.add_argument ('-x', '--width',               type=int, default=640,  help='Image width')
-parser.add_argument ('-y', '--height',              type=int, default=480,  help='Image height')
-parser.add_argument ('-s', '--steps',               type=int, default=1000, help='Steps per epoch')
-parser.add_argument ('-e', '--epochs',              type=int, default=10,   help='Number of epochs')
-parser.add_argument ('-b', '--batchsize',           type=int, default=5  ,  help='Number of samples per training batch')
-parser.add_argument ('-o', '--output',              type=str, default=None, help='Model output file name')
-parser.add_argument ('-l', '--log',                 type=str, default=None, help='Log file directory')
-parser.add_argument ('-t', '--tensorboard',         action='store_true', default=False, help='Open log in tensorboard')
-parser.add_argument ('-v', '--verbose',             action='store_true', default=False, help='Verbose output')
-parser.add_argument ('-i', '--intermediate-saving', action='store_true', default=False, help='Save intermediate model after each epoch')
+parser.add_argument ('-x', '--width',                type=int, default=640,  help='Image width')
+parser.add_argument ('-y', '--height',               type=int, default=480,  help='Image height')
+parser.add_argument ('-s', '--steps',                type=int, default=1000, help='Steps per epoch')
+parser.add_argument ('-e', '--epochs',               type=int, default=10,   help='Number of epochs')
+parser.add_argument ('-b', '--batchsize',            type=int, default=5  ,  help='Number of samples per training batch')
+parser.add_argument ('-o', '--output',               type=str, default=None, help='Model output file name')
+parser.add_argument ('-l', '--log',                  type=str, default=None, help='Log file directory')
+parser.add_argument ('-t', '--tensorboard',          action='store_true', default=False, help='Open log in tensorboard')
+parser.add_argument ('-v', '--verbose',              action='store_true', default=False, help='Verbose output')
+parser.add_argument ('-i', '--intermediate-saving',  action='store_true', default=False, help='Save intermediate model after each epoch')
+parser.add_argument ('-m', '--background_mode',      action='store', choices=['rects', 'imagedb'], default='rects', help='Background creation mode')
+parser.add_argument ('-d', '--background_directory', type=str, default=None, help='Directory for database based background generation')
 
 args = parser.parse_args ()
 
@@ -147,10 +151,11 @@ if args.log:
                 os.remove (os.path.join (root, name))
 
 print ('Training model...')
-print ('  Image size: {0}x{1}'.format (args.width, args.height))
-print ('  Steps     : {0}'.format (args.steps))
-print ('  Epochs    : {0}'.format (args.epochs))
-print ('  Batchsize : {0}'.format (args.batchsize))
+print ('  Image size     : {0}x{1}'.format (args.width, args.height))
+print ('  Steps          : {0}'.format (args.steps))
+print ('  Epochs         : {0}'.format (args.epochs))
+print ('  Batchsize      : {0}'.format (args.batchsize))
+print ('  Background mode: {0} ({1})'.format (args.background_mode, os.path.abspath (args.background_directory)))
 
 #
 # Setup callbacks
@@ -170,15 +175,21 @@ if args.intermediate_saving:
 
 callbacks.append (EarlyStopping (monitor='val_loss', min_delta=0, patience=1, verbose=args.verbose, mode='min'))
 
+if args.background_mode == 'rects':
+    background_generator = background.NoisyRectBackgroundGenerator (Size2d (args.width, args.height))
+elif args.background_mode == 'imagedb':
+    assert args.background_directory is not None
+    background_generator = background.ImageBackgroundGenerator (args.background_directory, Size2d (args.width, args.height))
+        
 #
 # Generate model and start fitting
 #    
 model = create_model (args.width, args.height)
 
-model.fit_generator (generator=sheet_metal_generator (args.width, args.height, args.batchsize),
+model.fit_generator (generator=sheet_metal_generator (args.width, args.height, args.batchsize, background_generator),
                      steps_per_epoch=args.steps, 
                      epochs=args.epochs, 
-                     validation_data=sheet_metal_generator (args.width, args.height, args.batchsize),
+                     validation_data=sheet_metal_generator (args.width, args.height, args.batchsize, background_generator),
                      validation_steps=int (args.steps / 10),
                      verbose=1 if args.verbose else 0, 
                      callbacks=callbacks)
