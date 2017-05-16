@@ -150,11 +150,6 @@ class ImageBackgroundGenerator:
         if blur < 4:
             image = skimage.filters.gaussian (image, sigma=blur)
 
-        #
-        # Adapt image value range
-        #
-        image = skimage.exposure.rescale_intensity (image)
-                    
         image = skimage.transform.resize (image, (int (self.size.height), int (self.size.width), 1), mode='reflect')
         return np.reshape (image, (image.shape[0], image.shape[1]))
         
@@ -203,7 +198,7 @@ if __name__ == '__main__':
     elif args.mode == 'imagedb':
         assert args.directory is not None
         generator = ImageBackgroundGenerator (args.directory, Size2d (args.width, args.height))
-        
+    
     image = generator.generate ()
 
     utils.show_image ([utils.to_rgb (image), 'Generated background'])
