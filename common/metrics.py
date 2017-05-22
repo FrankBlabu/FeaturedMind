@@ -8,7 +8,7 @@
 from keras import backend as K
 
 
-#--------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 # Compute precision metrics
 #
 # Precision := True positives / All positives guesses
@@ -18,14 +18,14 @@ from keras import backend as K
 def precision (y_true, y_pred):
     '''
     Precision metric.
-    
+
     Only computes a batch-wise average of precision.
     Computes the precision, a metric for multi-label classification of
     how many selected items are relevant.
     '''
     true_positives = K.sum (K.round (K.clip (y_true * y_pred, 0, 1)))
     predicted_positives = K.sum (K.round (K.clip (y_pred, 0, 1)))
-    
+
     return true_positives / (predicted_positives + K.epsilon ())
 
 
@@ -52,22 +52,20 @@ def recall (y_true, y_pred):
 def f1_score (y_true, y_pred):
     p = precision (y_true, y_pred)
     r = recall (y_true, y_pred)
-    
+
     return 2 * p * r / (p + r)
 
-smooth = 1.0
 
 #--------------------------------------------------------------------------
 # Sorensen-Dice coefficient computing (see https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient)
-#    
+#
 #    This is a method to measure similarities between two samples
 #
 def dice_coef (y_true, y_pred):
-    
+
     smooth = 1.0
-    
+
     y_true_f = K.flatten (y_true)
     y_pred_f = K.flatten (y_pred)
     intersection = K.sum (y_true_f * y_pred_f)
     return (2. * intersection + smooth) / (K.sum (y_true_f) + K.sum (y_pred_f) + smooth)
-

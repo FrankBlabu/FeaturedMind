@@ -18,7 +18,7 @@ from skimage.color import gray2rgb
 # @param image Image (PIL) to convert
 #
 def image_to_tf (image):
-    return image.reshape ((image.shape[0], image.shape[1], 1))
+    return image.reshape ((image.shape[0], image.shape[1], 3))
 
 
 #----------------------------------------------------------------------------
@@ -28,19 +28,19 @@ def image_to_tf (image):
 # @param overlay Overlay in RGBA format
 #
 def add_overlay_to_image (image, overlay):
-    
+
     assert len (image.shape) == 3
     assert len (overlay.shape) == 3
     assert image.shape[2] == 3
     assert overlay.shape[2] == 4
     assert image.shape[0] == overlay.shape[0]
     assert image.shape[1] == overlay.shape[1]
-    
+
     overlay_alpha = np.zeros ((overlay.shape[0], overlay.shape[1], 3))
     overlay_alpha[:,:,0] = overlay[:,:,3]
     overlay_alpha[:,:,1] = overlay[:,:,3]
     overlay_alpha[:,:,2] = overlay[:,:,3]
-    
+
     overlay_image = overlay[:,:,0:3]
 
     return (np.ones (image.shape) - overlay_alpha) * image + overlay_alpha * overlay_image
@@ -53,7 +53,7 @@ def add_overlay_to_image (image, overlay):
 # @param titles Image titles
 #
 def show_image (*args):
-    
+
     fig = plt.figure ()
 
     if len (args) == 1:
@@ -69,29 +69,30 @@ def show_image (*args):
 
     assert len (args) == len (partitions)
 
-    for arg, partition in zip (args, partitions):  
+    for arg, partition in zip (args, partitions):
         part = fig.add_subplot (partition[0], partition[1], partition[2])
         part.set_title (arg[1])
-        
+
         image = arg[0]
-        
+
         colormap = None
-        if len (image.shape) < 3 or image.shape[2] != 3:
-            image = image.reshape ((image.shape[0], image.shape[1]))
+
+        if len (image.shape) < 3:
+            image = image.reshape ((image.shape[0], image.shape[1], 1))
             colormap = 'CMRmap'
-        
+
         plt.imshow (arg[0], cmap=colormap)
-        
-        if not colormap is None:
+
+        if colormap is not None:
             plt.colorbar ()
-    
+
     fig.tight_layout ()
-    
+
     def onresize (event):
         plt.tight_layout ()
-        
+
     fig.canvas.mpl_connect ('resize_event', onresize)
-    
+
     plt.show ()
 
 
@@ -110,19 +111,16 @@ def mean_uncenter (image):
     '''
     if math.isclose (image.max (), image.min ()):
         return np.clip (image - image.min (), 0, 1)
-    
-    return np.clip ((image - image.min ()) / (image.max () - image.min ()), 0, 1) 
-    
+
+    return np.clip ((image - image.min ()) / (image.max () - image.min ()), 0, 1)
+
 def to_rgb (image):
     '''
     Convert numpy array representing an image into a RGB image of the right shape
-    ''' 
-    
+    '''
+
     image = mean_uncenter (image)
-    
-    if len (image.shape) > 2:
-        image = image.reshape ((image.shape[0], image.shape[1]))
-        
+
     return gray2rgb (image)
 
 
@@ -131,7 +129,7 @@ def to_rgb (image):
 #
 def cutout (image, area):
     r = area.as_tuple ()
-    result = image[r[1]:r[3]+1,r[0]:r[2]+1]    
+    result = image[r[1]:r[3]+1,r[0]:r[2]+1]
     return result.reshape ((result.shape[0], result.shape[1], 1))
 
 
@@ -142,14 +140,13 @@ def transform (image, size, scale, shear, rotation):
 
     scale_trans = skimage.transform.AffineTransform (scale=scale)
     image = skimage.transform.warp (image, scale_trans.inverse, output_shape=image.shape)
-    
+
     center_trans = skimage.transform.AffineTransform (translation=((1 - scale[0]) * size.width / 2, (1 - scale[1]) * size.height / 2))
     image = skimage.transform.warp (image, center_trans.inverse, output_shape=image.shape)
-    
+
     image = skimage.transform.rotate (image, angle=rotation * 180.0 / math.pi, resize=False, center=None)
 
     shear_trans = skimage.transform.AffineTransform (shear=shear)
     image = skimage.transform.warp (image, shear_trans.inverse, output_shape=image.shape)
-    
-    return image
 
+    return image
