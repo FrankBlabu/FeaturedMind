@@ -6,7 +6,6 @@
 #
 
 import argparse
-import copy
 import imghdr
 import random
 import math
@@ -73,12 +72,14 @@ class NoisyRectBackgroundGenerator:
                                           shear=random.uniform (0.0, 0.3),
                                           rotation=random.uniform (0.0, 2 * math.pi))
 
-            mask = rect_image[:,:,0] >= color[0]# or rect_image[:,:,1] >= color[1] or rect_image[:,:,2] >= color[2]
+            mask =  rect_image[:,:,0] >= color[0]
+            mask |= rect_image[:,:,1] >= color[1]
+            mask |= rect_image[:,:,2] >= color[2]
             image[mask] = rect_image[mask]
 
         image = skimage.exposure.rescale_intensity (image)
 
-        return skimage.filters.gaussian (image, sigma=3)
+        return skimage.filters.gaussian (image, sigma=3, multichannel=True)
 
 
 #--------------------------------------------------------------------------
