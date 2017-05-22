@@ -22,6 +22,32 @@ import skimage.util
 
 from common.geometry import Point2d, Size2d, Rect2d
 
+#--------------------------------------------------------------------------
+# Add args for background generator configuration to argument parser
+#
+def add_to_args_definition (parser):
+    parser.add_argument ('-m', '--background_mode',      action='store', choices=['rects', 'imagedb'], default='rects', help='Background creation mode')
+    parser.add_argument ('-d', '--background_directory', type=str, default=None, help='Directory for database based background generation')
+
+
+#--------------------------------------------------------------------------
+# Create background generator matching the command line arguments
+#
+def create_from_args (args):
+    if args.background_mode == 'rects':
+        background_generator = NoisyRectBackgroundGenerator (Size2d (args.width, args.height))
+    elif args.background_mode == 'imagedb':
+        if args.background_directory is None:
+            raise RuntimeError ('Directory must be specified when using mode \'imagedb\' (option -d)')
+
+        background_generator = ImageBackgroundGenerator (args.background_directory, Size2d (args.width, args.height))
+
+    else:
+        raise RuntimeError ('Unknown background generator name  \'{0}\''.arg (args.background_mode))
+
+    return background_generator
+
+
 
 #--------------------------------------------------------------------------
 # CLASS NoisyRectBackgroundGenerator
@@ -61,7 +87,7 @@ class NoisyRectBackgroundGenerator:
             rect = rect.move_to (Point2d (random.randint (int (-1 * self.size.width / 10), int (9 * self.size.width / 10)),
                                           random.randint (int (-1 * self.size.height / 10), int (9 * self.size.height / 10))))
 
-            color = (random.uniform (0.02, 0.1), random.uniform (0.02, 0.1), random.uniform (0.02, 0.1))
+            color = (random.uniform (0.1, 0.7), random.uniform (0.1, 0.7), random.uniform (0.1, 0.7))
             rect.draw (rect_image, color, fill=True)
 
             if random.randint (0, 3) == 0:
@@ -76,8 +102,6 @@ class NoisyRectBackgroundGenerator:
             mask |= rect_image[:,:,1] >= color[1]
             mask |= rect_image[:,:,2] >= color[2]
             image[mask] = rect_image[mask]
-
-        image = skimage.exposure.rescale_intensity (image)
 
         return skimage.filters.gaussian (image, sigma=3, multichannel=True)
 
@@ -178,25 +202,14 @@ if __name__ == '__main__':
     #
     parser = argparse.ArgumentParser ()
 
-    parser.add_argument ('-x', '--width', type=int, default=512,
-                         help='Width of the generated image')
-    parser.add_argument ('-y', '--height', type=int, default=512,
-                         help='Height of the generated image')
-    parser.add_argument ('-m', '--mode', action='store', choices=['rects', 'imagedb'], default='rects',
-                         help='Background creation mode')
-    parser.add_argument ('-d', '--directory', type=str, default=None,
-                         help='Directory for database based background generation')
+    parser.add_argument ('-x', '--width', type=int, default=512,  help='Width of the generated image')
+    parser.add_argument ('-y', '--height', type=int, default=512, help='Height of the generated image')
+
+    add_to_args_definition (parser)
 
     args = parser.parse_args ()
 
-    if args.mode == 'rects':
-        generator = NoisyRectBackgroundGenerator (Size2d (args.width, args.height))
-    elif args.mode == 'imagedb':
-        if args.directory is None:
-            raise RuntimeError ('Directory must be specified when using mode \'imagedb\' (option -d)')
-
-        generator = ImageBackgroundGenerator (args.directory, Size2d (args.width, args.height))
-
+    generator = create_from_args (args)
     image = generator.generate ()
 
     utils.show_image ([utils.to_rgb (image), 'Generated background'])

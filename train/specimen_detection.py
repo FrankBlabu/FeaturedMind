@@ -20,7 +20,7 @@ from keras.layers import Input
 from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate
 from keras.models import Model
 from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
-from common.geometry import Size2d
+from skimage.color import gray2rgb
 
 import common.losses
 import common.metrics
@@ -37,9 +37,9 @@ from generator.sheetmetal import SheetMetalGenerator
 # @param height Height of the image in pixels
 #
 def create_model (width, height):
-    
-    inputs = Input (shape=(height, width, 1), name='input')
-    
+
+    inputs = Input (shape=(height, width, 3), name='input')
+
     conv1 = Conv2D (32, (3, 3), activation='relu', padding='same') (inputs)
     conv1 = Conv2D (32, (3, 3), activation='relu', padding='same') (conv1)
     pool1 = MaxPooling2D (pool_size=(2, 2)) (conv1)
@@ -79,10 +79,10 @@ def create_model (width, height):
 
     model = Model (inputs=[inputs], outputs=[conv10])
     model.compile (optimizer=optimizers.Adam (lr=1e-5),
-                   loss=common.losses.dice_coef, 
-                   metrics=['accuracy', 
-                            common.metrics.precision, 
-                            common.metrics.recall, 
+                   loss=common.losses.dice_coef,
+                   metrics=['accuracy',
+                            common.metrics.precision,
+                            common.metrics.recall,
                             common.metrics.f1_score,
                             common.metrics.dice_coef])
 
@@ -94,26 +94,21 @@ def create_model (width, height):
 #
 def sheet_metal_generator (width, height, batch_size, background_generator):
     while True:
-        
-        images = np.zeros ((batch_size, height, width, 1), dtype=np.float32)
-        masks  = np.zeros ((batch_size, height, width, 1), dtype=np.float32)
-        
+
+        images = np.zeros ((batch_size, height, width, 3), dtype=np.float32)
+        masks  = np.zeros ((batch_size, height, width, 3), dtype=np.float32)
+
         for i in range (batch_size):
             sheet = SheetMetalGenerator (width, height, background_generator)
-            
-            image = utils.mean_center (sheet.image)
-            image = image.reshape ((image.shape[0], image.shape[1], 1))
-            images[i] = image
-            
-            mask = sheet.mask
-            mask = mask.reshape ((mask.shape[0], mask.shape[1], 1))
-            masks[i] = mask
-        
-        yield images, masks
-    
-    
 
-        
+            images[i] = utils.mean_center (sheet.image)
+            masks[i] = gray2rgb (sheet.mask)
+
+        yield images, masks
+
+
+
+
 #--------------------------------------------------------------------------
 # MAIN
 #
@@ -133,13 +128,15 @@ parser.add_argument ('-l', '--log',                  type=str, default=None, hel
 parser.add_argument ('-t', '--tensorboard',          action='store_true', default=False, help='Open log in tensorboard')
 parser.add_argument ('-v', '--verbose',              action='store_true', default=False, help='Verbose output')
 parser.add_argument ('-i', '--intermediate-saving',  action='store_true', default=False, help='Save intermediate model after each epoch')
-parser.add_argument ('-m', '--background_mode',      action='store', choices=['rects', 'imagedb'], default='rects', help='Background creation mode')
-parser.add_argument ('-d', '--background_directory', type=str, default=None, help='Directory for database based background generation')
+
+background.add_to_args_definition (parser)
 
 args = parser.parse_args ()
 
-assert not args.tensorboard or args.log
-assert not args.intermediate_saving or args.output != None
+if args.tensorboard and not args.log:
+    raise RuntimeError ('Tensorboard activated but no \'-l\' option given to specify log directory')
+if args.intermediate_saving and not args.output:
+    raise RuntimeError ('Intermediate saving activated but no \'-o\' option given to specify the output file name')
 
 #
 # Delete old log files
@@ -155,46 +152,46 @@ print ('  Image size     : {0}x{1}'.format (args.width, args.height))
 print ('  Steps          : {0}'.format (args.steps))
 print ('  Epochs         : {0}'.format (args.epochs))
 print ('  Batchsize      : {0}'.format (args.batchsize))
-print ('  Background mode: {0} ({1})'.format (args.background_mode, os.path.abspath (args.background_directory)))
+
+if args.background_directory:
+    print ('  Background mode: {0} ({1})'.format (args.background_mode, os.path.abspath (args.background_directory)))
+else:
+    print ('  Background mode: {0}'.format (args.background_mode))
 
 #
 # Setup callbacks
 #
 callbacks = []
 
-if args.log != None:
+if args.log is not None:
     callbacks.append (TensorBoard (os.path.abspath (args.log), histogram_freq=1, write_graph=True, write_images=True))
 
 if args.intermediate_saving:
-    callbacks.append (ModelCheckpoint (args.output, 
-                                       monitor='dice_coef', 
-                                       verbose=0, 
-                                       save_best_only=True, 
-                                       save_weights_only=False, 
+    callbacks.append (ModelCheckpoint (args.output,
+                                       monitor='dice_coef',
+                                       verbose=0,
+                                       save_best_only=True,
+                                       save_weights_only=False,
                                        mode='max'))
 
 callbacks.append (EarlyStopping (monitor='val_loss', min_delta=0, patience=1, verbose=args.verbose, mode='min'))
+background_generator = background.create_from_args (args)
 
-if args.background_mode == 'rects':
-    background_generator = background.NoisyRectBackgroundGenerator (Size2d (args.width, args.height))
-elif args.background_mode == 'imagedb':
-    assert args.background_directory is not None
-    background_generator = background.ImageBackgroundGenerator (args.background_directory, Size2d (args.width, args.height))
-        
+
 #
 # Generate model and start fitting
-#    
+#
 model = create_model (args.width, args.height)
 
 model.fit_generator (generator=sheet_metal_generator (args.width, args.height, args.batchsize, background_generator),
-                     steps_per_epoch=args.steps, 
-                     epochs=args.epochs, 
+                     steps_per_epoch=args.steps,
+                     epochs=args.epochs,
                      validation_data=sheet_metal_generator (args.width, args.height, args.batchsize, background_generator),
                      validation_steps=int (args.steps / 10),
-                     verbose=1 if args.verbose else 0, 
+                     verbose=1 if args.verbose else 0,
                      callbacks=callbacks)
 
-if args.output != None:
+if args.output is not None:
     model.save (os.path.abspath (args.output))
 
 #
@@ -210,4 +207,3 @@ if args.tensorboard:
 # Tensorflow termination bug workaround
 #
 gc.collect ()
-

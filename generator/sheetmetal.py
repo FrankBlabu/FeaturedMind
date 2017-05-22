@@ -386,17 +386,11 @@ if __name__ == '__main__':
 
     parser.add_argument ('-x', '--width',     type=int, default=640,  help='Width of the generated images')
     parser.add_argument ('-y', '--height',    type=int, default=480,  help='Height of the generated images')
-    parser.add_argument ('-d', '--directory', type=str, default=None, help='Directory for database based background generation')
-    parser.add_argument ('-m', '--mode',  action='store', choices=['rects', 'imagedb'], default='rects', help='Background creation mode')
+    background.add_to_args_definition (parser)
 
     args = parser.parse_args ()
 
-    if args.mode == 'rects':
-        background_generator = background.NoisyRectBackgroundGenerator (Size2d (args.width, args.height))
-    elif args.mode == 'imagedb':
-        assert args.directory is not None
-        background_generator = background.ImageBackgroundGenerator (args.directory, Size2d (args.width, args.height))
-
+    background_generator = background.create_from_args (args)
     image = SheetMetalGenerator (args.width, args.height, background_generator)
 
     utils.show_image ([utils.to_rgb (image.image), 'Sheet metal'],
