@@ -13,7 +13,6 @@ import gc
 import os
 import subprocess
 import webbrowser
-import numpy as np
 
 from keras import optimizers
 from keras.layers import Input
@@ -23,10 +22,9 @@ from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
 
 import common.losses
 import common.metrics
-import common.utils as utils
 import generator.background as background
 
-from generator.sheetmetal import SheetMetalGenerator
+from generator.sheetmetal import sheet_metal_generator
 
 
 #--------------------------------------------------------------------------
@@ -86,24 +84,6 @@ def create_model (width, height):
                             common.metrics.dice_coef])
 
     return model
-
-
-#--------------------------------------------------------------------------
-# Generator
-#
-def sheet_metal_generator (width, height, batch_size, background_generator):
-    while True:
-
-        images = np.zeros ((batch_size, height, width, 3), dtype=np.float32)
-        masks  = np.zeros ((batch_size, height, width, 1), dtype=np.float32)
-
-        for i in range (batch_size):
-            sheet = SheetMetalGenerator (width, height, background_generator)
-
-            images[i] = utils.mean_center (sheet.image)
-            masks[i] = np.reshape (sheet.mask, (sheet.mask.shape[0], sheet.mask.shape[1], 1))
-
-        yield images, masks
 
 
 

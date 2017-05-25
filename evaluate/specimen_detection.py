@@ -13,10 +13,11 @@ import numpy as np
 import common.losses as losses
 import common.metrics as metrics
 import common.utils as utils
+import generator.background as background
 import skimage.filters
 
 from keras.models import load_model
-from generator.sheetmetal import SheetMetalGenerator
+from generator.sheetmetal import sheet_metal_generator
 
 
 
@@ -38,6 +39,8 @@ parser.add_argument ('-l', '--log',         type=str,                           
 parser.add_argument ('-p', '--performance', type=int,                           help='Do performance measurement runs')
 parser.add_argument ('-v', '--verbose',     action='store_true', default=False, help='Verbose output')
 
+background.add_to_args_definition (parser)
+
 args = parser.parse_args ()
 
 assert args.width < 4096
@@ -47,34 +50,29 @@ assert args.height < 4096
 # Load and construct model
 #
 model = load_model (args.model, custom_objects={'dice_coef': losses.dice_coef,
-                                                'precision': metrics.precision, 
+                                                'precision': metrics.precision,
                                                 'recall'   : metrics.recall,
                                                 'f1_score' : metrics.f1_score})
 
 #
 # Create test specimen and setup input tensors
 #
-sheet = SheetMetalGenerator (args.width, args.height)
+background_generator = background.create_from_args (args)
+images, masks = sheet_metal_generator (args.width, args.height, 1, background_generator).__next__ ()
 
-image = utils.mean_center (sheet.image)
-image = image.reshape (1, args.height, args.width, 1)
-
-mask = sheet.mask
-mask = mask.reshape (1, args.height, args.width, 1)
-        
 #
 # Run border detection network
 #
-scores = model.evaluate (image, mask, verbose=args.verbose)
+scores = model.evaluate (images, masks, verbose=args.verbose)
 
 for score in zip (scores, model.metrics_names):
     print ('{0}: {1:.02f}'.format (score[1], score[0]))
 
 if args.performance:
     start_time = time.process_time ()
-    
-    for _ in range (args.performance):
-        model.predict (image)
+
+    images, masks = sheet_metal_generator (args.width, args.height, args.performance, background_generator)
+    model.predict (images)
 
     elapsed_time = (time.process_time () - start_time) / (10 * args.performance)
 
@@ -82,7 +80,7 @@ if args.performance:
 
 start_time = time.process_time ()
 
-result = model.predict (image)[0]
+result = model.predict (images)[0]
 
 print ('Duration: {0:.4f}s'.format ((time.process_time () - start_time) / 10))
 
@@ -91,8 +89,8 @@ result[result < 0.5] = 0.0
 edges = result.reshape ((result.shape[0], result.shape[1]))
 edges = skimage.filters.sobel (edges)
 
-utils.show_image ([utils.to_rgb (image[0]), 'Generated image'], 
-                  [utils.to_rgb (edges),    'Predicted specimen borders'])
+utils.show_image ([utils.to_rgb (images[0]), 'Generated image'],
+                  [utils.to_rgb (edges),     'Predicted specimen borders'])
 
 
 
@@ -100,4 +98,3 @@ utils.show_image ([utils.to_rgb (image[0]), 'Generated image'],
 # Tensorflow termination bug workaround
 #
 gc.collect ()
-
