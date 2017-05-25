@@ -129,8 +129,8 @@ def to_rgb (image):
 #
 def cutout (image, area):
     r = area.as_tuple ()
-    result = image[r[1]:r[3]+1,r[0]:r[2]+1]
-    return result.reshape ((result.shape[0], result.shape[1], 1))
+    result = image[r[1]:r[3] + 1,r[0]:r[2] + 1, image.shape[2]]
+    return result.reshape ((result.shape[0], result.shape[1], result.shape[2]))
 
 
 #--------------------------------------------------------------------------

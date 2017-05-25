@@ -20,7 +20,6 @@ from keras.layers import Input
 from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate
 from keras.models import Model
 from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
-from skimage.color import gray2rgb
 
 import common.losses
 import common.metrics
@@ -96,13 +95,13 @@ def sheet_metal_generator (width, height, batch_size, background_generator):
     while True:
 
         images = np.zeros ((batch_size, height, width, 3), dtype=np.float32)
-        masks  = np.zeros ((batch_size, height, width, 3), dtype=np.float32)
+        masks  = np.zeros ((batch_size, height, width, 1), dtype=np.float32)
 
         for i in range (batch_size):
             sheet = SheetMetalGenerator (width, height, background_generator)
 
             images[i] = utils.mean_center (sheet.image)
-            masks[i] = gray2rgb (sheet.mask)
+            masks[i] = np.reshape (sheet.mask, (sheet.mask.shape[0], sheet.mask.shape[1], 1))
 
         yield images, masks
 
@@ -112,6 +111,7 @@ def sheet_metal_generator (width, height, batch_size, background_generator):
 #--------------------------------------------------------------------------
 # MAIN
 #
+
 
 #
 # Parse command line arguments

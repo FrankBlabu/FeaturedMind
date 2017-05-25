@@ -247,7 +247,7 @@ class SheetMetalGenerator:
         self.mask[self.mask <= 0.5] = 0.0
         self.mask[self.mask > 0.5] = 1.0
         self.image[self.mask > 0.5] = self.specimen[self.mask > 0.5]
-
+        
 
     #--------------------------------------------------------------------------
     # Draw rectangular feature
