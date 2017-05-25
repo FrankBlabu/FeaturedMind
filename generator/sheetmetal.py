@@ -10,6 +10,8 @@ import random
 import numpy as np
 import common.utils as utils
 import generator.background as background
+import cProfile
+import pstats
 
 import skimage.util
 
@@ -247,7 +249,7 @@ class SheetMetalGenerator:
         self.mask[self.mask <= 0.5] = 0.0
         self.mask[self.mask > 0.5] = 1.0
         self.image[self.mask > 0.5] = self.specimen[self.mask > 0.5]
-        
+
 
     #--------------------------------------------------------------------------
     # Draw rectangular feature
@@ -384,14 +386,25 @@ if __name__ == '__main__':
     #
     parser = argparse.ArgumentParser ()
 
-    parser.add_argument ('-x', '--width',     type=int, default=640,  help='Width of the generated images')
-    parser.add_argument ('-y', '--height',    type=int, default=480,  help='Height of the generated images')
+    parser.add_argument ('-x', '--width',   type=int, default=640,              help='Width of the generated images')
+    parser.add_argument ('-y', '--height',  type=int, default=480,              help='Height of the generated images')
+    parser.add_argument ('-p', '--profile', action='store_true', default=False, help='Profile execution')
     background.add_to_args_definition (parser)
 
     args = parser.parse_args ()
 
+    if args.profile:
+        profiler = cProfile.Profile()
+        profiler.enable()
+
     background_generator = background.create_from_args (args)
     image = SheetMetalGenerator (args.width, args.height, background_generator)
+
+    if args.profile:
+        profiler.disable()
+        stats = pstats.Stats (profiler).sort_stats ('time')
+        stats.print_stats ('skimage')
+        #stats.print_callers ('skimage')
 
     utils.show_image ([utils.to_rgb (image.image), 'Sheet metal'],
                       [utils.to_rgb (image.mask),  'Specimen mask'])

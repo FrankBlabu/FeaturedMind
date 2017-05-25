@@ -123,7 +123,8 @@ class ImageBackgroundGenerator:
         path = os.path.abspath (path)
 
         self.files = [os.path.join (path, file) for file in os.listdir (path) if self.is_image (os.path.join (path, file))]
-        self.size = size
+        self.width = int (size.width)
+        self.height = int (size.height)
 
     #
     # Generate single inage
@@ -136,14 +137,21 @@ class ImageBackgroundGenerator:
         image = skimage.io.imread (random.choice (self.files))
 
         #
-        # If possible (image larger than desired size), crop a part
+        # If possible (image larger than desired size), crop a reasonable part
         #
-        factor = random.uniform (0.5, 1.0)
+        shrink = max (int (self.height / image.shape[0]), int (self.width / image.shape[1]))
+        if shrink < 1.0:
+            factor = random.uniform (max (shrink, 0.5), 1.0)
 
-        offset_y = random.randint (0, image.shape[0] - int (image.shape[0] * factor))
-        offset_x = random.randint (0, image.shape[1] - int (image.shape[1] * factor))
+            crop_width = int (image.shape[1] * factor)
+            crop_height = int (image.shape[0] * factor)
 
-        image = image[offset_y:offset_y + int (image.shape[1] * factor), offset_x:offset_x + int (image.shape[0] * factor),:]
+            crop_offset_x = random.randint (0, image.shape[1] - crop_width)
+            crop_offset_y = random.randint (0, image.shape[0] - crop_height)
+
+            image = image[crop_offset_y:crop_offset_y + crop_height, crop_offset_x:crop_offset_x + crop_width,:]
+
+        image = skimage.transform.resize (image, (self.height, self.width, image.shape[2]), mode='reflect')
 
         #
         # Randomly rotate image
@@ -166,11 +174,10 @@ class ImageBackgroundGenerator:
         #
         # Blur image
         #
-        blur = random.randint (0, 6)
-        if blur < 4:
+        blur = random.randint (0, 4)
+        if blur < 2:
             image = skimage.filters.gaussian (image, sigma=blur, multichannel=True)
 
-        image = skimage.transform.resize (image, (int (self.size.height), int (self.size.width), image.shape[2]), mode='reflect')
         return np.reshape (image, (image.shape[0], image.shape[1], image.shape[2]))
 
 
