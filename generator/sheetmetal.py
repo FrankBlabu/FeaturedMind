@@ -386,8 +386,8 @@ if __name__ == '__main__':
     #
     parser = argparse.ArgumentParser ()
 
-    parser.add_argument ('-x', '--width',   type=int, default=640,              help='Width of the generated images')
-    parser.add_argument ('-y', '--height',  type=int, default=480,              help='Height of the generated images')
+    parser.add_argument ('-x', '--width',   type=int, default=512,              help='Width of the generated images')
+    parser.add_argument ('-y', '--height',  type=int, default=512,              help='Height of the generated images')
     parser.add_argument ('-p', '--profile', action='store_true', default=False, help='Profile execution')
     background.add_to_args_definition (parser)
 
