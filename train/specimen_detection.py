@@ -18,6 +18,7 @@ from keras import optimizers
 from keras.layers import Input
 from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate
 from keras.models import Model
+from keras.models import load_model
 from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
 
 import common.losses
@@ -108,6 +109,7 @@ parser.add_argument ('-l', '--log',                  type=str, default=None, hel
 parser.add_argument ('-t', '--tensorboard',          action='store_true', default=False, help='Open log in tensorboard')
 parser.add_argument ('-v', '--verbose',              action='store_true', default=False, help='Verbose output')
 parser.add_argument ('-i', '--intermediate-saving',  action='store_true', default=False, help='Save intermediate model after each epoch')
+parser.add_argument ('-c', '--continue-training',    type=str, default=None, help='Continue training of existing model')
 
 background.add_to_args_definition (parser)
 
@@ -138,6 +140,9 @@ if args.background_directory:
 else:
     print ('  Background mode: {0}'.format (args.background_mode))
 
+if args.continue_training:
+    print ('    Continue training of model \'{0}\''.format (args.continue_training))
+
 #
 # Setup callbacks
 #
@@ -161,7 +166,13 @@ background_generator = background.create_from_args (args)
 #
 # Generate model and start fitting
 #
-model = create_model (args.width, args.height)
+if args.continue_training:
+    model = load_model (args.continue_training, custom_objects={'dice_coef': common.losses.dice_coef,
+                                                                'precision': common.metrics.precision,
+                                                                'recall'   : common.metrics.recall,
+                                                                'f1_score' : common.metrics.f1_score})
+else:
+    model = create_model (args.width, args.height)
 
 model.fit_generator (generator=sheet_metal_generator (args.width, args.height, args.batchsize, background_generator),
                      steps_per_epoch=args.steps,
