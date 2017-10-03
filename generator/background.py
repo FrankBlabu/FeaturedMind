@@ -148,52 +148,40 @@ class ImageBackgroundGenerator:
         #
         image = skimage.io.imread (random.choice (self.files))
 
-        print ('Original image size: {width} / {height}'.format (width=image.shape[1], height=image.shape[0]))
-
         #
         # Randomly rotate image
         #
         rotation = random.choice ([0, 90, 180, 270])
-        print ('Rotation: {angle}'.format (angle=rotation))
-
         if rotation > 0:
-            image = skimage.transform.rotate (image, rotation)
-
-        print ('Rotated image size: {width} / {height}'.format (width=image.shape[1], height=image.shape[0]))
+            image = skimage.transform.rotate (image, angle=rotation, resize=True)
 
         #
         # If possible (image larger than desired size), crop a reasonable part
         #
         scale = min (image.shape[0] / float (self.height), image.shape[1] / float (self.width))
 
-        print ('Scale: {scale}'.format (scale=scale))
+        if scale > 1.0:
+            scale = random.uniform (max (1.0, scale / 2), scale)
 
-        crop_size = (int (self.height * min (scale, 1.0)), int (self.width * min (scale, 1.0)))
-
-        print ('Crop size: {width} / {height}'.format (width=crop_size[1], height=crop_size[0]))
+        crop_size = (int (self.height * scale), int (self.width * scale))
 
         crop_offset_y = random.randint (0, image.shape[0] - crop_size[0])
         crop_offset_x = random.randint (0, image.shape[1] - crop_size[1])
 
-        print ('Random offset: {x} / {y}'.format (width=crop_offset_x, height=crop_offset_y))
-
         image = image[crop_offset_y:crop_offset_y + crop_size[0], crop_offset_x:crop_offset_x + crop_size[1],:]
 
-        print ('Cropped image size: {width} / {height}'.format (width=image.shape[1], height=image.shape[0]))
-
         image = skimage.transform.resize (image, (self.height, self.width, image.shape[2]), mode='reflect')
-
 
         #
         # Make some noise
         #
-        if False and random.uniform (0, 1) > 0.5:
+        if random.uniform (0, 1) > 0.5:
             image = skimage.util.random_noise (image, mode='gaussian', seed=None, clip=True, mean=0.5, var=random.uniform (0, 0.00025))
 
         #
         # Blur image
         #
-        if False and random.uniform (0, 1) > 0.5:
+        if random.uniform (0, 1) > 0.5:
             image = skimage.filters.gaussian (image, sigma=random.uniform (0, 1), multichannel=True)
 
         return np.reshape (image, (image.shape[0], image.shape[1], image.shape[2]))
