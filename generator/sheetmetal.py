@@ -406,7 +406,7 @@ if __name__ == '__main__':
     parser.add_argument ('-x', '--width',   type=int, default=512,              help='Width of the generated images')
     parser.add_argument ('-y', '--height',  type=int, default=512,              help='Height of the generated images')
     parser.add_argument ('-p', '--profile', action='store_true', default=False, help='Profile execution')
-    background.add_to_args_definition (parser)
+    background.BackgroundGenerator.add_to_args_definition (parser)
 
     args = parser.parse_args ()
 
@@ -414,7 +414,7 @@ if __name__ == '__main__':
         profiler = cProfile.Profile()
         profiler.enable()
 
-    background_generator = background.create_from_args (args)
+    background_generator = background.BackgroundGenerator.create (args)
     image = SheetMetalGenerator (args.width, args.height, background_generator)
 
     if args.profile:

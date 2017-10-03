@@ -39,7 +39,7 @@ parser.add_argument ('-l', '--log',         type=str,                           
 parser.add_argument ('-p', '--performance', type=int,                           help='Do performance measurement runs')
 parser.add_argument ('-v', '--verbose',     action='store_true', default=False, help='Verbose output')
 
-background.add_to_args_definition (parser)
+background.BackgroundGenerator.add_to_args_definition (parser)
 
 args = parser.parse_args ()
 
@@ -57,7 +57,7 @@ model = load_model (args.model, custom_objects={'dice_coef': losses.dice_coef,
 #
 # Create test specimen and setup input tensors
 #
-background_generator = background.create_from_args (args)
+background_generator = background.BackgroundGenerator.create (args)
 images, masks = sheet_metal_generator (args.width, args.height, 1, background_generator).__next__ ()
 
 #

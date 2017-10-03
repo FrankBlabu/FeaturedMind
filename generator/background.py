@@ -24,32 +24,47 @@ import skimage.io
 import skimage.transform
 import skimage.util
 
+from abc import ABC, abstractmethod
 from common.geometry import Point2d, Size2d, Rect2d
 
-#--------------------------------------------------------------------------
-# Add args for background generator configuration to argument parser
-#
-def add_to_args_definition (parser):
-    parser.add_argument ('-m', '--background_mode', action='store', choices=[NoisyRectBackgroundGenerator.TYPE, ImageBackgroundGenerator.TYPE],
-                         default=NoisyRectBackgroundGenerator.TYPE, help='Background creation mode')
-    parser.add_argument ('-d', '--background_directory', type=str, default=None, help='Directory for database based background generation')
-
 
 #--------------------------------------------------------------------------
-# Create background generator matching the command line arguments
+# CLASS BackgroundGenerator
 #
-def create_from_args (args):
+# Abstract base class for background generators
+#
+class BackgroundGenerator (ABC):
 
-    if args.background_mode == NoisyRectBackgroundGenerator.TYPE:
-        background_generator = NoisyRectBackgroundGenerator (args)
+    @abstractmethod
+    def generate (self):
+        pass
 
-    elif args.background_mode == ImageBackgroundGenerator.TYPE:
-        background_generator = ImageBackgroundGenerator (args)
+    #--------------------------------------------------------------------------
+    # Add args for background generator configuration to argument parser
+    #
+    @staticmethod
+    def add_to_args_definition (parser):
+        parser.add_argument ('-m', '--background_mode', action='store', choices=[NoisyRectBackgroundGenerator.TYPE, ImageBackgroundGenerator.TYPE],
+                             default=NoisyRectBackgroundGenerator.TYPE, help='Background creation mode')
+        parser.add_argument ('-d', '--background_directory', type=str, default=None, help='Directory for database based background generation')
 
-    else:
-        raise RuntimeError ('Unknown background generator name \'{name}\''.arg (name=args.background_mode))
 
-    return background_generator
+    #--------------------------------------------------------------------------
+    # Create background generator matching the command line arguments
+    #
+    @staticmethod
+    def create (args):
+
+        if args.background_mode == NoisyRectBackgroundGenerator.TYPE:
+            background_generator = NoisyRectBackgroundGenerator (args)
+
+        elif args.background_mode == ImageBackgroundGenerator.TYPE:
+            background_generator = ImageBackgroundGenerator (args)
+
+        else:
+            raise RuntimeError ('Unknown background generator name \'{name}\''.arg (name=args.background_mode))
+
+        return background_generator
 
 
 
@@ -61,7 +76,7 @@ def create_from_args (args):
 # This class will generate an image background consisting of random, blurred,
 # noisy and variated rectangles
 #
-class NoisyRectBackgroundGenerator:
+class NoisyRectBackgroundGenerator (BackgroundGenerator):
 
     TYPE = 'rects'
 
@@ -118,7 +133,7 @@ class NoisyRectBackgroundGenerator:
 #
 # Background generator using a file based image database
 #
-class ImageBackgroundGenerator:
+class ImageBackgroundGenerator (BackgroundGenerator):
 
     TYPE = 'imagedb'
 
@@ -224,14 +239,14 @@ if __name__ == '__main__':
     parser.add_argument ('-y', '--height',  type=int,            default=512,   help='Height of the generated image')
     parser.add_argument ('-p', '--profile', action='store_true', default=False, help='Profile run')
 
-    add_to_args_definition (parser)
+    BackgroundGenerator.add_to_args_definition (parser)
 
     args = parser.parse_args ()
 
     #
     # Instantiate generator class from command line arguments
     #
-    generator = create_from_args (args)
+    generator = BackgroundGenerator.create (args)
 
     if args.profile:
         pr = cProfile.Profile ()

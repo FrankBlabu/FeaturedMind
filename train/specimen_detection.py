@@ -111,7 +111,7 @@ parser.add_argument ('-v', '--verbose',              action='store_true', defaul
 parser.add_argument ('-i', '--intermediate-saving',  action='store_true', default=False, help='Save intermediate model after each epoch')
 parser.add_argument ('-c', '--continue-training',    type=str, default=None, help='Continue training of existing model')
 
-background.add_to_args_definition (parser)
+background.BackgroundGenerator.add_to_args_definition (parser)
 
 args = parser.parse_args ()
 
@@ -160,7 +160,7 @@ if args.intermediate_saving:
                                        mode='max'))
 
 callbacks.append (EarlyStopping (monitor='val_loss', min_delta=0, patience=1, verbose=args.verbose, mode='min'))
-background_generator = background.create_from_args (args)
+background_generator = background.BackgroundGenerator.create (args)
 
 
 #
