@@ -156,10 +156,14 @@ class ImageBackgroundGenerator:
             image = skimage.transform.rotate (image, angle=rotation, resize=True)
 
         #
-        # If possible (image larger than desired size), crop a reasonable part
+        # Scale desired target image size so that it fits into the source image in all cases.
         #
         scale = min (image.shape[0] / float (self.height), image.shape[1] / float (self.width))
 
+        #
+        # If the target image size is smaller than the source image, scale it up randomly so that
+        # we do not get small image fragments only.
+        #
         if scale > 1.0:
             scale = random.uniform (max (1.0, scale / 2), scale)
 
@@ -173,7 +177,7 @@ class ImageBackgroundGenerator:
         image = skimage.transform.resize (image, (self.height, self.width, image.shape[2]), mode='reflect')
 
         #
-        # Make some noise
+        # Make some (random) noise
         #
         if random.uniform (0, 1) > 0.5:
             image = skimage.util.random_noise (image, mode='gaussian', seed=None, clip=True, mean=0.5, var=random.uniform (0, 0.00025))
