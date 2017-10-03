@@ -7,10 +7,13 @@
 
 import argparse
 import imghdr
+import io
 import random
 import math
 import numpy as np
 import os
+import cProfile
+import pstats
 import common.utils as utils
 
 import skimage.color
@@ -209,14 +212,30 @@ if __name__ == '__main__':
     #
     parser = argparse.ArgumentParser ()
 
-    parser.add_argument ('-x', '--width', type=int, default=512,  help='Width of the generated image')
-    parser.add_argument ('-y', '--height', type=int, default=512, help='Height of the generated image')
+    parser.add_argument ('-x', '--width',   type=int,            default=512,   help='Width of the generated image')
+    parser.add_argument ('-y', '--height',  type=int,            default=512,   help='Height of the generated image')
+    parser.add_argument ('-p', '--profile', action='store_true', default=False, help='Profile run')
 
     add_to_args_definition (parser)
 
     args = parser.parse_args ()
 
     generator = create_from_args (args)
+
+    if args.profile:
+        pr = cProfile.Profile ()
+        pr.enable ()
+
     image = generator.generate ()
+
+    if args.profile:
+        pr.disable ()
+
+        s = io.StringIO ()
+        sortby = 'cumulative'
+        stats = pstats.Stats (pr, stream=s).sort_stats ('cumulative')
+        stats.print_stats ()
+
+        print (s.getvalue ())
 
     utils.show_image ([utils.to_rgb (image), 'Generated background'])

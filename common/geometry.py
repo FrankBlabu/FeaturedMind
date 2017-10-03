@@ -392,7 +392,7 @@ class TestGeometry (unittest.TestCase):
         self.assertEqual (Size2d (5, 6).as_tuple (), (5, 6))
 
     def test_Line2d (self):
-        self.assertEqual (Line2d (Point2d (5, 5), Point2d (7, 10)).length (), math.sqrt ((3*3 + 6*6)))
+        self.assertEqual (Line2d (Point2d (5, 5), Point2d (7, 10)).length (), math.sqrt ((3 * 3 + 6 * 6)))
         self.assertEqual (Line2d (Point2d (0, 0), Point2d (5, 5)).orthogonal (), Line2d (Point2d (0, 0), Point2d (-5, 5)))
         self.assertEqual (Line2d (Point2d (2, 3), Point2d (5, 5)).orthogonal (), Line2d (Point2d (2, 3), Point2d (2 + -2, 3 + 3)))
 
