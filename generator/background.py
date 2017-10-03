@@ -7,13 +7,14 @@
 
 import argparse
 import imghdr
-import io
 import random
 import math
 import numpy as np
 import os
 import cProfile
 import pstats
+import sys
+
 import common.utils as utils
 
 import skimage.color
@@ -29,7 +30,8 @@ from common.geometry import Point2d, Size2d, Rect2d
 # Add args for background generator configuration to argument parser
 #
 def add_to_args_definition (parser):
-    parser.add_argument ('-m', '--background_mode',      action='store', choices=['rects', 'imagedb'], default='rects', help='Background creation mode')
+    parser.add_argument ('-m', '--background_mode', action='store', choices=[NoisyRectBackgroundGenerator.TYPE, ImageBackgroundGenerator.TYPE],
+                         default=NoisyRectBackgroundGenerator.TYPE, help='Background creation mode')
     parser.add_argument ('-d', '--background_directory', type=str, default=None, help='Directory for database based background generation')
 
 
@@ -37,16 +39,15 @@ def add_to_args_definition (parser):
 # Create background generator matching the command line arguments
 #
 def create_from_args (args):
-    if args.background_mode == 'rects':
-        background_generator = NoisyRectBackgroundGenerator (Size2d (args.width, args.height))
-    elif args.background_mode == 'imagedb':
-        if args.background_directory is None:
-            raise RuntimeError ('Directory must be specified when using mode \'imagedb\' (option -d)')
 
-        background_generator = ImageBackgroundGenerator (args.background_directory, Size2d (args.width, args.height))
+    if args.background_mode == NoisyRectBackgroundGenerator.TYPE:
+        background_generator = NoisyRectBackgroundGenerator (args)
+
+    elif args.background_mode == ImageBackgroundGenerator.TYPE:
+        background_generator = ImageBackgroundGenerator (args)
 
     else:
-        raise RuntimeError ('Unknown background generator name  \'{0}\''.arg (args.background_mode))
+        raise RuntimeError ('Unknown background generator name \'{name}\''.arg (name=args.background_mode))
 
     return background_generator
 
@@ -62,33 +63,36 @@ def create_from_args (args):
 #
 class NoisyRectBackgroundGenerator:
 
+    TYPE = 'rects'
+
     #
     # Constructor
     #
-    # @param size Desired size
+    # @param args Command line arguments
     #
-    def __init__ (self, size):
-        self.size = size
+    def __init__ (self, args):
+        self.width = args.width
+        self.height = args.height
 
     #
     # Generate single image
     #
     def generate (self):
-        shape = (int (self.size.height), int (self.size.width), 3)
+
+        shape = (int (self.height), int (self.width), 3)
 
         image = np.zeros (shape, dtype=np.float32)
         image = skimage.util.random_noise (image, mode='gaussian', seed=None, clip=True, mean=0.2, var=0.0001)
 
-        number_of_shapes = random.randint (30, 80)
-        for _ in range (number_of_shapes):
+        for _ in range (random.randint (30, 80)):
 
             rect_image = np.zeros (shape, dtype=np.float32)
 
-            rect = Rect2d (Point2d (2 * self.size.width / 10, 4.5 * self.size.height / 10),
-                           Point2d (8 * self.size.width / 10, 5.5 * self.size.height / 10))
+            rect = Rect2d (Point2d (.2 * self.width, .45 * self.height),
+                           Point2d (.8 * self.width, .55 * self.height))
 
-            rect = rect.move_to (Point2d (random.randint (int (-1 * self.size.width / 10), int (9 * self.size.width / 10)),
-                                          random.randint (int (-1 * self.size.height / 10), int (9 * self.size.height / 10))))
+            rect = rect.move_to (Point2d (random.randint (int (-.1 * self.width), int (.9 * self.width)),
+                                          random.randint (int (-.1 * self.height), int (.9 * self.height))))
 
             color = (random.uniform (0.1, 0.7), random.uniform (0.1, 0.7), random.uniform (0.1, 0.7))
             rect.draw (rect_image, color, fill=True)
@@ -96,7 +100,7 @@ class NoisyRectBackgroundGenerator:
             if random.randint (0, 3) == 0:
                 rect_image = skimage.util.random_noise (rect_image, mode='gaussian', seed=None, clip=True, mean=color, var=0.005)
 
-            rect_image = utils.transform (rect_image, self.size,
+            rect_image = utils.transform (rect_image, Size2d (self.width, self.height),
                                           scale=(random.uniform (0.3, 1.4), random.uniform (0.8, 1.2)),
                                           shear=random.uniform (0.0, 0.3),
                                           rotation=random.uniform (0.0, 2 * math.pi))
@@ -116,18 +120,23 @@ class NoisyRectBackgroundGenerator:
 #
 class ImageBackgroundGenerator:
 
+    TYPE = 'imagedb'
+
     #
     # Constructor
     #
-    # @param path Path containing a set of images
+    # @param args Command line arguments
     #
-    def __init__ (self, path, size):
+    def __init__ (self, args):
 
-        path = os.path.abspath (path)
+        if args.background_directory is None:
+            raise RuntimeError ('Directory must be specified when using mode \'imagedb\' (option -d)')
+
+        path = os.path.abspath (args.background_directory)
 
         self.files = [os.path.join (path, file) for file in os.listdir (path) if self.is_image (os.path.join (path, file))]
-        self.width = int (size.width)
-        self.height = int (size.height)
+        self.width = args.width
+        self.height = args.height
 
     #
     # Generate single inage
@@ -159,27 +168,21 @@ class ImageBackgroundGenerator:
         #
         # Randomly rotate image
         #
-        flip_mode = random.randint (0, 3)
-        if flip_mode == 1:
-            image = skimage.transform.rotate (image, 90)
-        elif flip_mode == 2:
-            image = skimage.transform.rotate (image, 180)
-        elif flip_mode == 3:
-            image = skimage.transform.rotate (image, 270)
+        rotation = random.choice ([0, 90, 180, 270])
+        if rotation > 0:
+            image = skimage.transform.rotate (image, rotation)
 
         #
         # Make some noise
         #
-        noise = random.randint (1, 6)
-        if noise < 3:
-            image = skimage.util.random_noise (image, mode='gaussian', seed=None, clip=True, mean=0.5, var=0.0001 * noise)
+        if random.uniform (0, 1) > 0.5:
+            image = skimage.util.random_noise (image, mode='gaussian', seed=None, clip=True, mean=0.5, var=random.uniform (0, 0.00025))
 
         #
         # Blur image
         #
-        blur = random.randint (0, 4)
-        if blur < 2:
-            image = skimage.filters.gaussian (image, sigma=blur, multichannel=True)
+        if random.uniform (0, 1) > 0.5:
+            image = skimage.filters.gaussian (image, sigma=random.uniform (0, 1), multichannel=True)
 
         return np.reshape (image, (image.shape[0], image.shape[1], image.shape[2]))
 
@@ -188,6 +191,7 @@ class ImageBackgroundGenerator:
     # Check if the given file is a valid image file
     #
     def is_image (self, file):
+        
         if not os.path.isfile (file):
             return False
 
@@ -220,22 +224,24 @@ if __name__ == '__main__':
 
     args = parser.parse_args ()
 
+    #
+    # Instantiate generator class from command line arguments
+    #
     generator = create_from_args (args)
 
     if args.profile:
         pr = cProfile.Profile ()
         pr.enable ()
 
+    #
+    # Generate image probe
+    #
     image = generator.generate ()
 
     if args.profile:
         pr.disable ()
 
-        s = io.StringIO ()
-        sortby = 'cumulative'
-        stats = pstats.Stats (pr, stream=s).sort_stats ('cumulative')
+        stats = pstats.Stats (pr, stream=sys.stdout).sort_stats ('cumulative')
         stats.print_stats ()
-
-        print (s.getvalue ())
 
     utils.show_image ([utils.to_rgb (image), 'Generated background'])
