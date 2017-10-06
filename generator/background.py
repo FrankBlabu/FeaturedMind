@@ -191,18 +191,6 @@ class ImageBackgroundGenerator (BackgroundGenerator):
 
         image = skimage.transform.resize (image, (self.height, self.width, image.shape[2]), mode='reflect')
 
-        #
-        # Make some (random) noise
-        #
-        if random.uniform (0, 1) > 0.5:
-            image = skimage.util.random_noise (image, mode='gaussian', seed=None, clip=True, mean=0.5, var=random.uniform (0, 0.00025))
-
-        #
-        # Blur image
-        #
-        if random.uniform (0, 1) > 0.5:
-            image = skimage.filters.gaussian (image, sigma=random.uniform (0, 1), multichannel=True)
-
         return np.reshape (image, (image.shape[0], image.shape[1], image.shape[2]))
 
 
