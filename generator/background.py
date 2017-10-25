@@ -6,7 +6,6 @@
 #
 
 import argparse
-import imghdr
 import random
 import math
 import numpy as np
@@ -149,7 +148,7 @@ class ImageBackgroundGenerator (BackgroundGenerator):
 
         path = os.path.abspath (args.background_directory)
 
-        self.files = [os.path.join (path, file) for file in os.listdir (path) if self.is_image (os.path.join (path, file))]
+        self.files = [os.path.join (path, file) for file in os.listdir (path) if utils.is_image (os.path.join (path, file))]
         self.width = args.width
         self.height = args.height
 
@@ -169,6 +168,15 @@ class ImageBackgroundGenerator (BackgroundGenerator):
         rotation = random.choice ([0, 90, 180, 270])
         if rotation > 0:
             image = skimage.transform.rotate (image, angle=rotation, resize=True)
+
+        #
+        # Randomly flip image
+        #
+        flip = random.choice (['none', 'horizontal', 'vertical'])
+        if flip == 'horizontal':
+            image = np.fliplr (image)
+        elif flip == 'vertical':
+            image = np.flipud (image)
 
         #
         # Scale desired target image size so that it fits into the source image in all cases.
@@ -193,21 +201,6 @@ class ImageBackgroundGenerator (BackgroundGenerator):
 
         return np.reshape (image, (image.shape[0], image.shape[1], image.shape[2]))
 
-
-    #
-    # Check if the given file is a valid image file
-    #
-    def is_image (self, file):
-
-        if not os.path.isfile (file):
-            return False
-
-        file_type = imghdr.what (file)
-
-        if file_type != 'png' and file_type != 'jpeg' and file_type != 'bmp' and file_type != 'tiff':
-            return False
-
-        return True
 
 
 

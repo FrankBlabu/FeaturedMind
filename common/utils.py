@@ -5,8 +5,10 @@
 # Frank Blankenburg, Apr. 2017
 #
 
+import imghdr
 import math
 import numpy as np
+import os
 import skimage.transform
 
 from matplotlib import pyplot as plt
@@ -19,6 +21,21 @@ from skimage.color import gray2rgb
 #
 def image_to_tf (image):
     return image.reshape ((image.shape[0], image.shape[1], 3))
+
+#
+# Check if the given file is a valid image file
+#
+def is_image (file):
+
+    if not os.path.isfile (file):
+        return False
+
+    file_type = imghdr.what (file)
+
+    if file_type != 'png' and file_type != 'jpeg' and file_type != 'bmp' and file_type != 'tiff':
+        return False
+
+    return True
 
 
 #----------------------------------------------------------------------------
