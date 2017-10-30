@@ -119,7 +119,7 @@ class NoisyRectBackgroundGenerator (BackgroundGenerator):
                                           shear=random.uniform (0.0, 0.3),
                                           rotation=random.uniform (0.0, 2 * math.pi))
 
-            mask =  rect_image[:,:,0] >= color[0]
+            mask = rect_image[:,:,0] >= color[0]
             mask |= rect_image[:,:,1] >= color[1]
             mask |= rect_image[:,:,2] >= color[2]
             image[mask] = rect_image[mask]
@@ -195,7 +195,7 @@ class ImageBackgroundGenerator (BackgroundGenerator):
         crop_offset_y = random.randint (0, image.shape[0] - crop_size[0])
         crop_offset_x = random.randint (0, image.shape[1] - crop_size[1])
 
-        image = image[crop_offset_y:crop_offset_y + crop_size[0], crop_offset_x:crop_offset_x + crop_size[1],:]
+        image = image[crop_offset_y:crop_offset_y + crop_size[0], crop_offset_x:crop_offset_x + crop_size[1], :]
 
         image = skimage.transform.resize (image, (self.height, self.width, image.shape[2]), mode='reflect')
 

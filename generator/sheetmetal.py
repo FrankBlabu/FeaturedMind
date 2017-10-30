@@ -10,29 +10,10 @@ import random
 import numpy as np
 import common.utils as utils
 import generator.background as background
-import cProfile
-import pstats
 
 import skimage.util
 
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
-
-#--------------------------------------------------------------------------
-# Generator function for sheet metal/mask pairs
-#
-def sheet_metal_generator (width, height, batch_size, background_generator):
-    while True:
-
-        images = np.zeros ((batch_size, height, width, 3), dtype=np.float32)
-        masks  = np.zeros ((batch_size, height, width, 1), dtype=np.float32)
-
-        for i in range (batch_size):
-            sheet = SheetMetalGenerator (width, height, background_generator)
-
-            images[i] = utils.mean_center (sheet.image)
-            masks[i] = np.reshape (sheet.mask, (sheet.mask.shape[0], sheet.mask.shape[1], 1))
-
-        yield images, masks
 
 
 #--------------------------------------------------------------------------
@@ -217,7 +198,7 @@ class SheetMetalGenerator:
         border = Polygon2d (border)
 
         specimen_image = np.zeros (self.specimen.shape, dtype=np.float32)
-        specimen_image.fill (0.6)
+        specimen_image.fill (0.7)
         specimen_image = skimage.util.random_noise (specimen_image, mode='speckle', seed=None, clip=True, mean=0.0, var=0.005)
 
         specimen_mask = np.zeros (self.specimen.shape, dtype=np.float32)
@@ -263,8 +244,6 @@ class SheetMetalGenerator:
         #
         # Step 5: Combine image and background
         #
-        self.mask[self.mask <= 0.5] = 0.0
-        self.mask[self.mask > 0.5] = 1.0
         self.image[self.mask > 0.5] = self.specimen[self.mask > 0.5]
 
 
@@ -403,25 +382,15 @@ if __name__ == '__main__':
     #
     parser = argparse.ArgumentParser ()
 
-    parser.add_argument ('-x', '--width',   type=int, default=512,              help='Width of the generated images')
-    parser.add_argument ('-y', '--height',  type=int, default=512,              help='Height of the generated images')
-    parser.add_argument ('-p', '--profile', action='store_true', default=False, help='Profile execution')
-    background.BackgroundGenerator.add_to_args_definition (parser)
+    parser.add_argument ('-x', '--width',     type=int, default=640,  help='Width of the generated images')
+    parser.add_argument ('-y', '--height',    type=int, default=480,  help='Height of the generated images')
 
+    background.BackgroundGenerator.add_to_args_definition (parser)
     args = parser.parse_args ()
 
-    if args.profile:
-        profiler = cProfile.Profile()
-        profiler.enable()
-
     background_generator = background.BackgroundGenerator.create (args)
-    image = SheetMetalGenerator (args.width, args.height, background_generator)
 
-    if args.profile:
-        profiler.disable()
-        stats = pstats.Stats (profiler).sort_stats ('time')
-        stats.print_stats ('skimage')
-        #stats.print_callers ('skimage')
+    image = SheetMetalGenerator (args.width, args.height, background_generator)
 
     utils.show_image ([utils.to_rgb (image.image), 'Sheet metal'],
                       [utils.to_rgb (image.mask),  'Specimen mask'])
