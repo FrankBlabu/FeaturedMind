@@ -44,7 +44,7 @@ class StackedGenerator (Generator):
     def generate (self):
 
         image = np.zeros ((self.height, self.width, 3), dtype=np.float32)
-        mask  = np.zeros ((self.height, self.width), dtype=np.float32)
+        mask  = np.zeros ((self.height, self.width), dtype=np.int32)
         step = 0
 
         for generator in self.generators:
@@ -61,8 +61,8 @@ class StackedGenerator (Generator):
             if step_mask is None:
                 image = step_image
             else:
-                image[step_mask > 0.5] = step_image[step_mask > 0.5]
-                mask[step_mask > 0.5] = step
+                image[step_mask > 0] = step_image[step_mask > 0]
+                mask[step_mask > 0] = step
 
             step += 1
 

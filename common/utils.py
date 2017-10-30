@@ -153,6 +153,10 @@ def cutout (image, area):
 #--------------------------------------------------------------------------
 # Transform image
 #
+# The image must have a float compatible data type (np.float32, usually !). Otherwise
+# the value range is destroyed. The skimage parameter 'preserve_range' would prevent that,
+# but generate visible object borders.
+#
 def transform (image, size, scale, shear, rotation):
 
     scale_trans = skimage.transform.AffineTransform (scale=scale)

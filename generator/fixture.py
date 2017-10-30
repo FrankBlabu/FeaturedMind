@@ -10,7 +10,6 @@ import random
 import math
 import numpy as np
 import common.utils as utils
-import generator.background as background
 
 import skimage.util
 
@@ -47,7 +46,7 @@ class FixtureGenerator (Generator):
         # Generale image as RGB with some background noise
         #
         image = np.zeros ((self.height, self.width, 3), dtype=np.float32)
-        mask  = np.zeros ((self.height, self.width), dtype=np.float32)
+        mask  = np.zeros ((self.height, self.width), dtype=np.int32)
 
         #
         # We are adding 1-2 fixtures per image
@@ -150,11 +149,11 @@ class FixtureGenerator (Generator):
         source_image.fill (0.1)
         source_image = skimage.util.random_noise (source_image, mode='speckle', seed=None, clip=True, mean=0.0, var=0.005)
 
-        source_mask = np.zeros ((image.shape[0], image.shape[1]), dtype=np.float32)
+        source_mask = np.zeros ((image.shape[0], image.shape[1]), dtype=np.int32)
         polygon.draw (source_mask, 1.0, True)
 
-        image[source_mask > 0.5] = source_image[source_mask > 0.5]
-        mask[source_mask > 0.5] = 1.0
+        image[source_mask > 0] = source_image[source_mask > 0]
+        mask[source_mask > 0] = 1
 
 
 #--------------------------------------------------------------------------

@@ -213,11 +213,8 @@ class SheetMetalGenerator (generator.Generator):
         specimen_image.fill (0.7)
         specimen_image = skimage.util.random_noise (specimen_image, mode='speckle', seed=None, clip=True, mean=0.0, var=0.005)
 
-        specimen_mask = np.zeros (specimen.shape, dtype=np.float32)
-        border.draw (specimen_mask, 1.0, fill=True)
-
-        specimen[specimen_mask != 0] = specimen_image[specimen_mask != 0]
         border.draw (mask, 1.0, fill=True)
+        specimen[mask > 0.5] = specimen_image[mask > 0.5]
 
         #
         # Step 2: Add some features to the available areas
@@ -248,7 +245,10 @@ class SheetMetalGenerator (generator.Generator):
         specimen = utils.transform (specimen, self.size, scale=scale, shear=shear, rotation=rotation)
         mask = utils.transform (mask, self.size, scale=scale, shear=shear, rotation=rotation)
 
-        return specimen, mask
+        int_mask = np.zeros (mask.shape, dtype=np.int32)
+        int_mask[mask > 0.5] = 1
+
+        return specimen, int_mask
 
 
     #--------------------------------------------------------------------------
