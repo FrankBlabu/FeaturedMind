@@ -255,4 +255,4 @@ if __name__ == '__main__':
         stats = pstats.Stats (pr, stream=sys.stdout).sort_stats ('cumulative')
         stats.print_stats ()
 
-    utils.show_image ([utils.to_rgb (image), 'Generated background'])
+    utils.show_image ([image, 'Generated background'])

@@ -396,5 +396,5 @@ if __name__ == '__main__':
 
     image = SheetMetalGenerator (args.width, args.height, background_generator)
 
-    utils.show_image ([utils.to_rgb (image.image), 'Sheet metal'],
-                      [utils.to_rgb (image.mask),  'Specimen mask'])
+    utils.show_image ([image.image, 'Sheet metal'],
+                      [image.mask,  'Specimen mask'])
