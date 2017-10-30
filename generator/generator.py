@@ -5,6 +5,8 @@
 # Frank Blankenburg, Oct. 2017
 #
 
+import numpy as np
+
 from abc import ABC, abstractmethod
 
 
@@ -25,3 +27,43 @@ class Generator (ABC):
     @abstractmethod
     def generate (self):
         pass
+
+
+#----------------------------------------------------------------------------------------------------------------------
+# CLASS StackedGenerator
+#
+# Generator class using multiple other generators to generate a combined image and mask output
+#
+class StackedGenerator (Generator):
+
+    def __init__ (self, width, height, generators):
+        self.width = width
+        self.height = height
+        self.generators = generators
+
+    def generate (self):
+
+        image = np.zeros ((self.height, self.width, 3), dtype=np.float32)
+        mask  = np.zeros ((self.height, self.width), dtype=np.float32)
+        step = 0
+
+        for generator in self.generators:
+
+            step_image, step_mask = generator.generate ()
+
+            assert step_image.shape[0] == self.height
+            assert step_image.shape[1] == self.width
+            assert step_image.shape[2] == 3
+
+            assert step_mask is None or step_mask.shape[0] == self.height
+            assert step_mask is None or step_mask.shape[1] == self.width
+
+            if step_mask is None:
+                image = step_image
+            else:
+                image[step_mask > 0.5] = step_image[step_mask > 0.5]
+                mask[step_mask > 0.5] = step
+
+            step += 1
+
+        return image, mask

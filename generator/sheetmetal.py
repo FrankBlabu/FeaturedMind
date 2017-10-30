@@ -10,12 +10,12 @@ import random
 import numpy as np
 import common.utils as utils
 import generator.background as background
+import generator.generator as generator
 import generator.fixture as fixture
 
 import skimage.util
 
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
-from generator.generator import Generator
 
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -24,12 +24,11 @@ from generator.generator import Generator
 # This class will generate an image containing a simulated sheet metal like part inclucing some features like drilled
 # or punched holes together with a mask marking the location of the pixels belonging to the sheet metal part.
 #
-class SheetMetalGenerator (Generator):
+class SheetMetalGenerator (generator.Generator):
 
     #--------------------------------------------------------------------------
     # Configuration
     #
-
 
     #
     # Spacing used for distance to border, distance of the generated features, ...
@@ -369,17 +368,14 @@ if __name__ == '__main__':
     background.BackgroundGenerator.add_to_args_definition (parser)
     args = parser.parse_args ()
 
-    background_generator = background.BackgroundGenerator.create (args)
-    image, mask = background_generator.generate ()
-
-    sheet_generator = SheetMetalGenerator (args.width, args.height)
-    sheet, mask = sheet_generator.generate ()
-    image[mask > 0.5] = sheet[mask > 0.5]
+    parts = [background.BackgroundGenerator.create (args),
+             SheetMetalGenerator (args.width, args.height)]
 
     if args.fixture:
-        fixture_generator = fixture.FixtureGenerator (args.width, args.height)
-        fixture, mask = fixture_generator.generate ()
-        image[mask > 0.5] = fixture[mask > 0.5]
+        parts.append (fixture.FixtureGenerator (args.width, args.height))
+
+    generator = generator.StackedGenerator (args.width, args.height, parts)
+    image, mask = generator.generate ()
 
     utils.show_image ([image, 'Sheet metal'],
                       [mask,  'Specimen mask'])

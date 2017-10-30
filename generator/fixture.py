@@ -47,7 +47,7 @@ class FixtureGenerator (Generator):
         # Generale image as RGB with some background noise
         #
         image = np.zeros ((self.height, self.width, 3), dtype=np.float32)
-        mask  = np.zeros ((self.height, self.width, 3), dtype=np.float32)
+        mask  = np.zeros ((self.height, self.width), dtype=np.float32)
 
         #
         # We are adding 1-2 fixtures per image

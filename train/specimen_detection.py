@@ -103,7 +103,7 @@ parser.add_argument ('-x', '--width',                type=int, default=640,  hel
 parser.add_argument ('-y', '--height',               type=int, default=480,  help='Image height')
 parser.add_argument ('-s', '--steps',                type=int, default=1000, help='Steps per epoch')
 parser.add_argument ('-e', '--epochs',               type=int, default=10,   help='Number of epochs')
-parser.add_argument ('-b', '--batchsize',            type=int, default=5  ,  help='Number of samples per training batch')
+parser.add_argument ('-b', '--batchsize',            type=int, default=5,    help='Number of samples per training batch')
 parser.add_argument ('-o', '--output',               type=str, default=None, help='Model output file name')
 parser.add_argument ('-l', '--log',                  type=str, default=None, help='Log file directory')
 parser.add_argument ('-t', '--tensorboard',          action='store_true', default=False, help='Open log in tensorboard')
