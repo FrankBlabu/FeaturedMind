@@ -282,7 +282,7 @@ class Ellipse2d:
     # Move center to a position without changing the ellipses size
     #
     # @param pos Position to move the top left corner of the rectangle to
-    # @return Rectangle at new position
+    # @return Ellipse at new position
     #
     def move_to (self, pos):
         return Ellipse2d (pos, self.radius)
@@ -364,6 +364,14 @@ class Polygon2d:
             image[rr, cc] = value
         else:
             image[rr, cc, :] = value
+
+    #--------------------------------------------------------------------------
+    # Move center to this position without changing the polygons geometry
+    #
+    # @param pos Position to move the top left corner of the polygon coordinate system to
+    #
+    def move_to (self, pos):
+        self.points = [point + pos for point in self.points]
 
     def as_tuple (self):
         return [point.as_tuple () for point in self.points]

@@ -27,7 +27,7 @@ from abc import ABC, abstractmethod
 from common.geometry import Point2d, Size2d, Rect2d
 
 
-#--------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------------
 # CLASS BackgroundGenerator
 #
 # Abstract base class for background generators
@@ -67,13 +67,12 @@ class BackgroundGenerator (ABC):
 
 
 
-#--------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------------
 # CLASS NoisyRectBackgroundGenerator
 #
 # Generate pattern based background
 #
-# This class will generate an image background consisting of random, blurred,
-# noisy and variated rectangles
+# This class will generate an image background consisting of random, blurred, noisy and variated rectangles
 #
 class NoisyRectBackgroundGenerator (BackgroundGenerator):
 
@@ -127,13 +126,19 @@ class NoisyRectBackgroundGenerator (BackgroundGenerator):
         return skimage.filters.gaussian (image, sigma=3, multichannel=True)
 
 
-#--------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------------
 # CLASS ImageBackgroundGenerator
 #
 # Background generator using a file based image database
 #
+# This generator class reads images from a database directory, selects appropriate parts matching the desired target
+# resolution and transforms the results to get a larger base for the training set.
+#
 class ImageBackgroundGenerator (BackgroundGenerator):
 
+    #
+    # Type id for command line arguments
+    #
     TYPE = 'imagedb'
 
     #
@@ -153,24 +158,24 @@ class ImageBackgroundGenerator (BackgroundGenerator):
         self.height = args.height
 
     #
-    # Generate single inage
+    # Generate single image matching the given command line argument parameters
     #
     def generate (self):
 
         #
-        # Read image and convert it into grayscale
+        # Read image
         #
         image = skimage.io.imread (random.choice (self.files))
 
         #
-        # Randomly rotate image
+        # Randomly rotate image in 90 degree steps
         #
         rotation = random.choice ([0, 90, 180, 270])
         if rotation > 0:
             image = skimage.transform.rotate (image, angle=rotation, resize=True)
 
         #
-        # Randomly flip image
+        # Randomly flip image around the horizontal/vertical axis
         #
         flip = random.choice (['none', 'horizontal', 'vertical'])
         if flip == 'horizontal':
@@ -179,17 +184,20 @@ class ImageBackgroundGenerator (BackgroundGenerator):
             image = np.flipud (image)
 
         #
-        # Scale desired target image size so that it fits into the source image in all cases.
+        # Compute scale factor needed to squeeze / enlarge the source image to the target image size
         #
         scale = min (image.shape[0] / float (self.height), image.shape[1] / float (self.width))
 
         #
-        # If the target image size is smaller than the source image, scale it up randomly so that
-        # we do not get small image fragments only.
+        # If the source image is larger than the target image, scale it down randomly so that we do not get small
+        # image fragments only.
         #
         if scale > 1.0:
             scale = random.uniform (max (1.0, scale / 2), scale)
 
+        #
+        # Compute crop area and extract image part
+        #
         crop_size = (int (self.height * scale), int (self.width * scale))
 
         crop_offset_y = random.randint (0, image.shape[0] - crop_size[0])
@@ -197,6 +205,9 @@ class ImageBackgroundGenerator (BackgroundGenerator):
 
         image = image[crop_offset_y:crop_offset_y + crop_size[0], crop_offset_x:crop_offset_x + crop_size[1], :]
 
+        #
+        # The cropped image part can still be smaller that the target image and has to be scaled up accordingly
+        #
         image = skimage.transform.resize (image, (self.height, self.width, image.shape[2]), mode='reflect')
 
         return np.reshape (image, (image.shape[0], image.shape[1], image.shape[2]))
@@ -204,7 +215,7 @@ class ImageBackgroundGenerator (BackgroundGenerator):
 
 
 
-#--------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------------
 # MAIN
 #
 if __name__ == '__main__':

@@ -16,17 +16,21 @@ import skimage.util
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
 
 
-#--------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------------
 # CLASS SheetMetalGenerator
 #
-# This class will generate an image containing a simulated sheet metal like
-# part inclucing some features like drilled or pounded holes together
-# with a set of masks marking the location of the involved elements.
+# This class will generate an image containing a simulated sheet metal like part inclucing some features like drilled
+# or punched holes together with a mask marking the location of the pixels belonging to the sheet metal part.
 #
 class SheetMetalGenerator:
 
     #--------------------------------------------------------------------------
     # Configuration
+    #
+
+
+    #
+    # Spacing used for distance to border, distance of the generated features, ...
     #
     spacing = Size2d (32, 32)
 
