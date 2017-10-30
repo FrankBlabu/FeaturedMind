@@ -83,8 +83,7 @@ class EmptyBackgroundGenerator (BackgroundGenerator):
     # @param args Command line arguments
     #
     def __init__ (self, args):
-        self.width = args.width
-        self.height = args.height
+        super ().__init__ (args.width, args.height)
 
     #
     # Generate single image
@@ -110,8 +109,7 @@ class NoisyRectBackgroundGenerator (BackgroundGenerator):
     # @param args Command line arguments
     #
     def __init__ (self, args):
-        self.width = args.width
-        self.height = args.height
+        super ().__init__ (args.width, args.height)
 
     #
     # Generate single image
@@ -173,6 +171,7 @@ class ImageBackgroundGenerator (BackgroundGenerator):
     # @param args Command line arguments
     #
     def __init__ (self, args):
+        super ().__init__ (args.width, args.height)
 
         if args.background_directory is None:
             raise RuntimeError ('Directory must be specified when using mode \'imagedb\' (option -d)')
@@ -180,8 +179,6 @@ class ImageBackgroundGenerator (BackgroundGenerator):
         path = os.path.abspath (args.background_directory)
 
         self.files = [os.path.join (path, file) for file in os.listdir (path) if utils.is_image (os.path.join (path, file))]
-        self.width = args.width
-        self.height = args.height
 
     #
     # Generate single image matching the given command line argument parameters

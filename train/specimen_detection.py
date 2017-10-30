@@ -14,6 +14,8 @@ import os
 import subprocess
 import webbrowser
 
+import numpy as np
+
 from keras import optimizers
 from keras.layers import Input
 from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate
@@ -23,12 +25,14 @@ from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
 
 import common.losses
 import common.metrics
-import generator.background as background
 
-from generator.sheetmetal import sheet_metal_generator
+import generator.background
+import generator.fixture
+import generator.generator
+import generator.sheetmetal
 
 
-#--------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------------
 # Generate model
 #
 # @param width  Width of the image in pixels
@@ -87,12 +91,29 @@ def create_model (width, height):
     return model
 
 
+#----------------------------------------------------------------------------------------------------------------------
+# Generator for training batches
+#
+def batch_generator (generator, batch_size):
+
+    batch_x = np.zeros ((batch_size, generator.width, generator.height, 3))
+    batch_y = np.zeros ((batch_size, generator.width, generator.height, 1))
+
+    while True:
+
+        for i in range (batch_size):
+            image, mask = generator.generate ()
+            mask = mask.reshape ((mask.shape[0], mask.shape[1], 1))
+
+            batch_x[i] = image
+            batch_y[i] = mask
+
+        yield batch_x, batch_y
 
 
-#--------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------------
 # MAIN
 #
-
 
 #
 # Parse command line arguments
@@ -111,7 +132,7 @@ parser.add_argument ('-v', '--verbose',              action='store_true', defaul
 parser.add_argument ('-i', '--intermediate-saving',  action='store_true', default=False, help='Save intermediate model after each epoch')
 parser.add_argument ('-c', '--continue-training',    type=str, default=None, help='Continue training of existing model')
 
-background.BackgroundGenerator.add_to_args_definition (parser)
+generator.background.BackgroundGenerator.add_to_args_definition (parser)
 
 args = parser.parse_args ()
 
@@ -129,6 +150,9 @@ if args.log:
             if name.startswith ('events'):
                 os.remove (os.path.join (root, name))
 
+#
+# Print some startup information
+#
 print ('Training model...')
 print ('  Image size     : {0}x{1}'.format (args.width, args.height))
 print ('  Steps          : {0}'.format (args.steps))
@@ -144,7 +168,7 @@ if args.continue_training:
     print ('    Continue training of model \'{0}\''.format (args.continue_training))
 
 #
-# Setup callbacks
+# Setup training callbacks
 #
 callbacks = []
 
@@ -160,8 +184,15 @@ if args.intermediate_saving:
                                        mode='max'))
 
 callbacks.append (EarlyStopping (monitor='val_loss', min_delta=0, patience=1, verbose=args.verbose, mode='min'))
-background_generator = background.BackgroundGenerator.create (args)
 
+#
+# Setup generator
+#
+generators = [ generator.background.BackgroundGenerator.create (args),
+               generator.sheetmetal.SheetMetalGenerator (args.width, args.height),
+               generator.fixture.FixtureGenerator (args.width, args.height) ]
+
+generator = generator.generator.StackedGenerator (args.width, args.height, generators)
 
 #
 # Generate model and start fitting
@@ -174,10 +205,10 @@ if args.continue_training:
 else:
     model = create_model (args.width, args.height)
 
-model.fit_generator (generator=sheet_metal_generator (args.width, args.height, args.batchsize, background_generator),
+model.fit_generator (generator=batch_generator (generator, args.batchsize),
                      steps_per_epoch=args.steps,
                      epochs=args.epochs,
-                     validation_data=sheet_metal_generator (args.width, args.height, args.batchsize, background_generator),
+                     validation_data=batch_generator (generator, args.batchsize),
                      validation_steps=int (args.steps / 10),
                      verbose=1 if args.verbose else 0,
                      callbacks=callbacks)

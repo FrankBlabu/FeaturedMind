@@ -43,10 +43,8 @@ class SheetMetalGenerator (generator.Generator):
     # @param height Overall image height
     #
     def __init__ (self, width, height):
-
+        super ().__init__ (width, height)
         self.size = Size2d (width, height)
-        self.width = width
-        self.height = height
 
 
     #--------------------------------------------------------------------------

@@ -17,6 +17,10 @@ from abc import ABC, abstractmethod
 #
 class Generator (ABC):
 
+    def __init__ (self, width, height):
+        self.width = width
+        self.height = height
+
     #
     # Generate a new image instance
     #
@@ -37,8 +41,7 @@ class Generator (ABC):
 class StackedGenerator (Generator):
 
     def __init__ (self, width, height, generators):
-        self.width = width
-        self.height = height
+        super ().__init__ (width, height)
         self.generators = generators
 
     def generate (self):

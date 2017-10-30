@@ -32,10 +32,8 @@ class FixtureGenerator (Generator):
     # @param height Overall image height
     #
     def __init__ (self, width, height):
-
+        super ().__init__ (width, height)
         self.size = Size2d (width, height)
-        self.width = width
-        self.height = height
 
     #
     # Generate single image containing a fixture like setup
@@ -66,7 +64,7 @@ class FixtureGenerator (Generator):
         #
         fixture_size = Size2d (
             width  = random.uniform  (self.size.width * 0.5, self.size.width * 0.8),
-            height = random.randint (self.size.height * 0.5, self.size.height * 0.8)
+            height = random.uniform (self.size.height * 0.5, self.size.height * 0.8)
         )
 
         fixture_thickness = Size2d (
