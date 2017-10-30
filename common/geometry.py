@@ -384,12 +384,12 @@ class Polygon2d:
             image[rr, cc, :] = value
 
     #--------------------------------------------------------------------------
-    # Move center to this position without changing the polygons geometry
+    # Move points relatively without changing the polygons geometry
     #
-    # @param pos Position to move the top left corner of the polygon coordinate system to
+    # @param delta Offset to move the points around
     #
-    def move_to (self, pos):
-        self.points = [point + pos for point in self.points]
+    def move (self, delta):
+        self.points = [point + delta for point in self.points]
 
     #--------------------------------------------------------------------------
     # Rotate this point around a pivot point
