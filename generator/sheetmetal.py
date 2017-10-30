@@ -10,10 +10,12 @@ import random
 import numpy as np
 import common.utils as utils
 import generator.background as background
+import generator.fixture as fixture
 
 import skimage.util
 
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
+from generator.generator import Generator
 
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -22,7 +24,7 @@ from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
 # This class will generate an image containing a simulated sheet metal like part inclucing some features like drilled
 # or punched holes together with a mask marking the location of the pixels belonging to the sheet metal part.
 #
-class SheetMetalGenerator:
+class SheetMetalGenerator (Generator):
 
     #--------------------------------------------------------------------------
     # Configuration
@@ -38,23 +40,30 @@ class SheetMetalGenerator:
     #--------------------------------------------------------------------------
     # Constructor
     #
-    # @param width                Overall image width
-    # @param height               Overall image height
-    # @param background_generator Background generator class
+    # @param width  Overall image width
+    # @param height Overall image height
     #
-    def __init__ (self, width, height, background_generator):
+    def __init__ (self, width, height):
 
         self.size = Size2d (width, height)
+        self.width = width
+        self.height = height
+
+
+    #--------------------------------------------------------------------------
+    # Generate image
+    #
+    def generate (self):
 
         #
         # Generale image as RGB with some background noise
         #
-        self.specimen = np.zeros ((height, width, 3), dtype=np.float32)
+        specimen = np.zeros ((self.height, self.width, 3), dtype=np.float32)
 
         #
         # Mask marking the area covered by the sheet
         #
-        self.mask = np.zeros ((height, width), dtype=np.float32)
+        mask = np.zeros ((self.height, self.width), dtype=np.float32)
 
         #
         # Step 1: Compute area used for the specimen border
@@ -201,15 +210,15 @@ class SheetMetalGenerator:
         #
         border = Polygon2d (border)
 
-        specimen_image = np.zeros (self.specimen.shape, dtype=np.float32)
+        specimen_image = np.zeros (specimen.shape, dtype=np.float32)
         specimen_image.fill (0.7)
         specimen_image = skimage.util.random_noise (specimen_image, mode='speckle', seed=None, clip=True, mean=0.0, var=0.005)
 
-        specimen_mask = np.zeros (self.specimen.shape, dtype=np.float32)
+        specimen_mask = np.zeros (specimen.shape, dtype=np.float32)
         border.draw (specimen_mask, 1.0, fill=True)
 
-        self.specimen[specimen_mask != 0] = specimen_image[specimen_mask != 0]
-        border.draw (self.mask, 1.0, fill=True)
+        specimen[specimen_mask != 0] = specimen_image[specimen_mask != 0]
+        border.draw (mask, 1.0, fill=True)
 
         #
         # Step 2: Add some features to the available areas
@@ -228,7 +237,7 @@ class SheetMetalGenerator:
                         area = area.expanded (self.get_segment_rect (border_rect, (x, y + 1)))
                         available[x][y + 1] = False
 
-                    self.create_feature_set (area)
+                    self.create_feature_set (specimen, mask, area)
 
         #
         # Step 3: Apply some transformations to the specimen
@@ -237,47 +246,18 @@ class SheetMetalGenerator:
         shear = random.uniform (0.0, 0.2)
         rotation = random.uniform (-1.0, 1.0)
 
-        self.specimen = utils.transform (self.specimen, self.size, scale=scale, shear=shear, rotation=rotation)
-        self.mask = utils.transform (self.mask, self.size, scale=scale, shear=shear, rotation=rotation)
+        specimen = utils.transform (specimen, self.size, scale=scale, shear=shear, rotation=rotation)
+        mask = utils.transform (mask, self.size, scale=scale, shear=shear, rotation=rotation)
 
-        #
-        # Step 4: Setup random background pattern
-        #
-        self.image = background_generator.generate ()
-
-        #
-        # Step 5: Combine image and background
-        #
-        self.image[self.mask > 0.5] = self.specimen[self.mask > 0.5]
-
-
-    #--------------------------------------------------------------------------
-    # Draw rectangular feature
-    #
-    # @param rect Rectangle used for the feature
-    #
-    def draw_rectangular_feature (self, rect):
-        rect.draw (self.specimen, 0.0, fill=True)
-        rect.draw (self.mask, 0.0, fill=True)
-
-
-    #--------------------------------------------------------------------------
-    # Draw circular feature
-    #
-    # @param ellipse Ellipse of the feature
-    #
-    def draw_circular_feature (self, ellipse):
-        ellipse.draw (self.specimen, 0.0, fill=True)
-        ellipse.draw (self.mask, 0.0, fill=True)
+        return specimen, mask
 
 
     #--------------------------------------------------------------------------
     # Generate feature set in the given area
     #
-    # @param image Image to draw into
-    # @param area  Area the feature may occupy
+    # @param area Area the feature may occupy
     #
-    def create_feature_set (self, area):
+    def create_feature_set (self, specimen, mask, area):
 
         split_scenarios = []
         split_scenarios.append ([area])
@@ -313,7 +293,7 @@ class SheetMetalGenerator:
         split = split_scenarios[random.randint (0, len (split_scenarios) - 1)]
 
         for area in split:
-            self.create_feature (area)
+            self.create_feature (specimen, mask, area)
 
 
     #--------------------------------------------------------------------------
@@ -322,7 +302,7 @@ class SheetMetalGenerator:
     # @param image Image to draw into
     # @param area  Area the feature may occupy
     #
-    def create_feature (self, area):
+    def create_feature (self, specimen, mask, area):
         inner_rect = Rect2d (area.p0 + SheetMetalGenerator.spacing / 2, area.p2 - SheetMetalGenerator.spacing / 2)
 
         if inner_rect.size ().width > SheetMetalGenerator.spacing.width and inner_rect.size ().height > SheetMetalGenerator.spacing.height:
@@ -337,20 +317,16 @@ class SheetMetalGenerator:
             # Feature type 1: Rectangle
             #
             if feature_type == 0:
-                self.draw_rectangular_feature (feature_rect)
+                feature_rect.draw (specimen, 0.0, fill=True)
+                feature_rect.draw (mask, 0.0, fill=True)
 
             #
             # Feature type 2: Circle
             #
             elif feature_type == 1:
-                self.draw_circular_feature (Ellipse2d (feature_rect).to_circle ())
-
-
-    #--------------------------------------------------------------------------
-    # Generate a numpy array matching the given size
-    #
-    def create_array (self, size):
-        return np.zeros ((int (round (size.height)), int (round (size.width))), dtype=np.float32)
+                circle = Ellipse2d (feature_rect).to_circle ()
+                circle.draw (specimen, 0.0, fill=True)
+                circle.draw (mask, 0.0, fill=True)
 
 
     #--------------------------------------------------------------------------
@@ -386,15 +362,24 @@ if __name__ == '__main__':
     #
     parser = argparse.ArgumentParser ()
 
-    parser.add_argument ('-x', '--width',     type=int, default=640,  help='Width of the generated images')
-    parser.add_argument ('-y', '--height',    type=int, default=480,  help='Height of the generated images')
+    parser.add_argument ('-x', '--width',   type=int, default=640,  help='Width of the generated images')
+    parser.add_argument ('-y', '--height',  type=int, default=480,  help='Height of the generated images')
+    parser.add_argument ('-f', '--fixture', action='store_true', default=False, help='Add fixture')
 
     background.BackgroundGenerator.add_to_args_definition (parser)
     args = parser.parse_args ()
 
     background_generator = background.BackgroundGenerator.create (args)
+    image, mask = background_generator.generate ()
 
-    image = SheetMetalGenerator (args.width, args.height, background_generator)
+    sheet_generator = SheetMetalGenerator (args.width, args.height)
+    sheet, mask = sheet_generator.generate ()
+    image[mask > 0.5] = sheet[mask > 0.5]
 
-    utils.show_image ([image.image, 'Sheet metal'],
-                      [image.mask,  'Specimen mask'])
+    if args.fixture:
+        fixture_generator = fixture.FixtureGenerator (args.width, args.height)
+        fixture, mask = fixture_generator.generate ()
+        image[mask > 0.5] = fixture[mask > 0.5]
+
+    utils.show_image ([image, 'Sheet metal'],
+                      [mask,  'Specimen mask'])

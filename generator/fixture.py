@@ -47,19 +47,20 @@ class FixtureGenerator (Generator):
         # Generale image as RGB with some background noise
         #
         image = np.zeros ((self.height, self.width, 3), dtype=np.float32)
+        mask  = np.zeros ((self.height, self.width, 3), dtype=np.float32)
 
         #
         # We are adding 1-2 fixtures per image
         #
         for _ in range (random.choice ([1, 2])):
-            self.add_fixture (image)
+            self.add_fixture (image, mask)
 
-        return image
+        return image, mask
 
     #
     # Add single fixture structure to image
     #
-    def add_fixture (self, image):
+    def add_fixture (self, image, mask):
 
         #
         # Randomly determine fixture size in relation to the target image size
@@ -149,10 +150,11 @@ class FixtureGenerator (Generator):
         source_image.fill (0.1)
         source_image = skimage.util.random_noise (source_image, mode='speckle', seed=None, clip=True, mean=0.0, var=0.005)
 
-        mask = np.zeros ((image.shape[0], image.shape[1]), dtype=np.float32)
-        polygon.draw (mask, 1.0, True)
+        source_mask = np.zeros ((image.shape[0], image.shape[1]), dtype=np.float32)
+        polygon.draw (source_mask, 1.0, True)
 
-        image[mask > 0.5] = source_image[mask > 0.5]
+        image[source_mask > 0.5] = source_image[source_mask > 0.5]
+        mask[source_mask > 0.5] = 1.0
 
 
 #--------------------------------------------------------------------------
@@ -167,11 +169,12 @@ if __name__ == '__main__':
     #
     parser = argparse.ArgumentParser ()
 
-    parser.add_argument ('-x', '--width',     type=int, default=640,  help='Width of the generated images')
-    parser.add_argument ('-y', '--height',    type=int, default=480,  help='Height of the generated images')
+    parser.add_argument ('-x', '--width',   type=int, default=640,  help='Width of the generated images')
+    parser.add_argument ('-y', '--height',  type=int, default=480,  help='Height of the generated images')
 
     args = parser.parse_args ()
 
     generator = FixtureGenerator (args.width, args.height)
+    image, mask = generator.generate ()
 
-    utils.show_image ([generator.generate (), 'Fixture'])
+    utils.show_image ([image, 'Fixture'], [mask, 'Mask'])

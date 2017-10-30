@@ -90,7 +90,7 @@ class EmptyBackgroundGenerator (BackgroundGenerator):
     # Generate single image
     #
     def generate (self):
-        return np.zeros ((self.height, self.width, 3), dtype=np.float32)
+        return np.zeros ((self.height, self.width, 3), dtype=np.float32), None
 
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -149,7 +149,7 @@ class NoisyRectBackgroundGenerator (BackgroundGenerator):
             mask |= rect_image[:,:,2] >= color[2]
             image[mask] = rect_image[mask]
 
-        return skimage.filters.gaussian (image, sigma=3, multichannel=True)
+        return skimage.filters.gaussian (image, sigma=3, multichannel=True), None
 
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -236,7 +236,7 @@ class ImageBackgroundGenerator (BackgroundGenerator):
         #
         image = skimage.transform.resize (image, (self.height, self.width, image.shape[2]), mode='reflect')
 
-        return np.reshape (image, (image.shape[0], image.shape[1], image.shape[2]))
+        return np.reshape (image, (image.shape[0], image.shape[1], image.shape[2])), None
 
 
 
@@ -273,7 +273,8 @@ if __name__ == '__main__':
     #
     # Generate image probe
     #
-    image = generator.generate ()
+    image, mask = generator.generate ()
+    assert mask is None
 
     if args.profile:
         pr.disable ()
