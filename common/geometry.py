@@ -11,7 +11,7 @@ import unittest
 
 import skimage.draw
 
-#--------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------------
 # CLASS Point2d
 #
 # Two dimensional point
@@ -25,6 +25,25 @@ class Point2d:
         else:
             self.x = float (x)
             self.y = float (y)
+
+    #--------------------------------------------------------------------------
+    # Rotate this point around a pivot point
+    #
+    # @param center Rotation center
+    # @param angle  Rotation angle (in radiant)
+    # @return Rotated point
+    #
+    def rotate (self, center, angle):
+        s = math.sin (angle)
+        c = math.cos (angle)
+
+        x = self.x - center.x
+        y = self.y - center.y
+
+        xnew = x * c - y * s
+        ynew = x * s + y * c
+
+        return Point2d (xnew + center.x, ynew + center.y)
 
     def __add__ (self, other):
         return Point2d (self.x + other.x, self.y + other.y) if type (other) is Point2d else Point2d (self.x + other.width, self.y + other.height)
@@ -58,7 +77,7 @@ class Point2d:
         return (int (round (self.x)), int (round (self.y)))
 
 
-#--------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------------
 # CLASS Size2d
 #
 # Two dimensional size
@@ -97,7 +116,7 @@ class Size2d:
         return (int (round (self.width)), int (round (self.height)))
 
 
-#--------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------------------------------------
 # CLASS Line2d
 #
 # Two dimensional line
@@ -135,7 +154,6 @@ class Line2d:
     def as_tuple (self):
         return (self.p0.as_tuple (), self.p1.as_tuple ())
 
-
     #--------------------------------------------------------------------------
     # Return othogonal variant of this line
     #
@@ -160,7 +178,7 @@ class Line2d:
         return angle
 
 
-#--------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------------
 # CLASS Rect2d
 #
 # Two dimensional rectangle
@@ -261,7 +279,7 @@ class Rect2d:
 
 
 
-#--------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------------
 # CLASS Ellipse2d
 #
 # Two dimensional ellipse
@@ -334,7 +352,7 @@ class Ellipse2d:
         return self.rect ().as_tuple ()
 
 
-#--------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------------
 # CLASS Polygon2d
 #
 # Two dimensional polygon
@@ -373,6 +391,16 @@ class Polygon2d:
     def move_to (self, pos):
         self.points = [point + pos for point in self.points]
 
+    #--------------------------------------------------------------------------
+    # Rotate this point around a pivot point
+    #
+    # @param center Rotation center
+    # @param angle  Rotation angle (in radiant)
+    # @return Rotated point
+    #
+    def rotate (self, center, angle):
+        self.points = [point.rotate (center, angle) for point in self.points]
+
     def as_tuple (self):
         return [point.as_tuple () for point in self.points]
 
@@ -380,17 +408,36 @@ class Polygon2d:
         return 'Polygon2d (points={0})'.format (str (self.points))
 
 
+#----------------------------------------------------------------------------------------------------------------------
+# CLASS TestGeometr
 #
 # Unittest for the geometry classes
 #
 class TestGeometry (unittest.TestCase):
 
     def test_Point2d (self):
+
+        # Basic operations
         self.assertEqual (Point2d (1, 2) + Point2d (5, 6), Point2d (1 + 5, 2 + 6))
         self.assertEqual (Point2d (1, 2) - Point2d (5, 6), Point2d (1 - 5, 2 - 6))
         self.assertEqual (Point2d (1, 2) * 4, Point2d (1 * 4, 2 * 4))
         self.assertEqual (Point2d (1, 2) / 4, Point2d (1 / 4, 2 / 4))
+
+        # Conversions
         self.assertEqual (Point2d (5, 6).as_tuple (), (5, 6))
+
+        # Rotations
+        self.assertAlmostEqual (Point2d (3, 2).rotate (Point2d (0, 0), math.pi / 2).x, -2, delta=0.0001)
+        self.assertAlmostEqual (Point2d (3, 2).rotate (Point2d (0, 0), math.pi / 2).y,  3, delta=0.0001)
+
+        self.assertAlmostEqual (Point2d (3, 2).rotate (Point2d (0, 0), math.pi).x, -3, delta=0.0001)
+        self.assertAlmostEqual (Point2d (3, 2).rotate (Point2d (0, 0), math.pi).y, -2, delta=0.0001)
+
+        self.assertAlmostEqual (Point2d (3, 2).rotate (Point2d (0, 0), 1.5 * math.pi).x,  2, delta=0.0001)
+        self.assertAlmostEqual (Point2d (3, 2).rotate (Point2d (0, 0), 1.5 * math.pi).y, -3, delta=0.0001)
+
+        self.assertAlmostEqual (Point2d (4, 4).rotate (Point2d (1, 2), math.pi / 2).x, -1, delta=0.0001)
+        self.assertAlmostEqual (Point2d (4, 4).rotate (Point2d (1, 2), math.pi / 2).y,  5, delta=0.0001)
 
     def test_Size2d (self):
         self.assertEqual (Size2d (1, 2) + Size2d (5, 6), Size2d (1 + 5, 2 + 6))
