@@ -23,8 +23,8 @@ import skimage.io
 import skimage.transform
 import skimage.util
 
-from abc import ABC, abstractmethod
 from common.geometry import Point2d, Size2d, Rect2d
+from generator.generator import Generator
 
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -32,18 +32,16 @@ from common.geometry import Point2d, Size2d, Rect2d
 #
 # Abstract base class for background generators
 #
-class BackgroundGenerator (ABC):
-
-    @abstractmethod
-    def generate (self):
-        pass
+class BackgroundGenerator (Generator):
 
     #--------------------------------------------------------------------------
     # Add args for background generator configuration to argument parser
     #
     @staticmethod
     def add_to_args_definition (parser):
-        parser.add_argument ('-m', '--background_mode', action='store', choices=[NoisyRectBackgroundGenerator.TYPE, ImageBackgroundGenerator.TYPE],
+        parser.add_argument ('-m', '--background_mode', action='store', choices=[NoisyRectBackgroundGenerator.TYPE,
+                                                                                 ImageBackgroundGenerator.TYPE,
+                                                                                 EmptyBackgroundGenerator.TYPE],
                              default=NoisyRectBackgroundGenerator.TYPE, help='Background creation mode')
         parser.add_argument ('-d', '--background_directory', type=str, default=None, help='Directory for database based background generation')
 
@@ -54,17 +52,45 @@ class BackgroundGenerator (ABC):
     @staticmethod
     def create (args):
 
-        if args.background_mode == NoisyRectBackgroundGenerator.TYPE:
-            background_generator = NoisyRectBackgroundGenerator (args)
+        if args.background_mode == EmptyBackgroundGenerator.TYPE:
+            generator = EmptyBackgroundGenerator (args)
+
+        elif args.background_mode == NoisyRectBackgroundGenerator.TYPE:
+            generator = NoisyRectBackgroundGenerator (args)
 
         elif args.background_mode == ImageBackgroundGenerator.TYPE:
-            background_generator = ImageBackgroundGenerator (args)
+            generator = ImageBackgroundGenerator (args)
 
         else:
             raise RuntimeError ('Unknown background generator name \'{name}\''.arg (name=args.background_mode))
 
-        return background_generator
+        return generator
 
+
+
+#----------------------------------------------------------------------------------------------------------------------
+# CLASS EmptyBackgroundGenerator
+#
+# Generate empty background
+#
+class EmptyBackgroundGenerator (BackgroundGenerator):
+
+    TYPE = 'none'
+
+    #
+    # Constructor
+    #
+    # @param args Command line arguments
+    #
+    def __init__ (self, args):
+        self.width = args.width
+        self.height = args.height
+
+    #
+    # Generate single image
+    #
+    def generate (self):
+        return np.zeros ((self.height, self.width, 3), dtype=np.float32)
 
 
 #----------------------------------------------------------------------------------------------------------------------

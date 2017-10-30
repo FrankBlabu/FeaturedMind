@@ -15,6 +15,7 @@ import generator.background as background
 import skimage.util
 
 from common.geometry import Point2d, Size2d, Polygon2d
+from generator.generator import Generator
 
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -23,7 +24,7 @@ from common.geometry import Point2d, Size2d, Polygon2d
 # This class will generate an image containing a simulated fixture like object together with a mask marking
 # its pixel positions.
 #
-class FixtureGenerator:
+class FixtureGenerator (Generator):
 
     #--------------------------------------------------------------------------
     # Constructor
@@ -169,10 +170,7 @@ if __name__ == '__main__':
     parser.add_argument ('-x', '--width',     type=int, default=640,  help='Width of the generated images')
     parser.add_argument ('-y', '--height',    type=int, default=480,  help='Height of the generated images')
 
-    background.BackgroundGenerator.add_to_args_definition (parser)
     args = parser.parse_args ()
-
-    background_generator = background.BackgroundGenerator.create (args)
 
     generator = FixtureGenerator (args.width, args.height)
 
