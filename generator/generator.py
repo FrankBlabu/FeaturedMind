@@ -17,9 +17,10 @@ from abc import ABC, abstractmethod
 #
 class Generator (ABC):
 
-    def __init__ (self, width, height):
+    def __init__ (self, width, height, depth):
         self.width = width
         self.height = height
+        self.depth = depth
 
     #
     # Return if this generator creates an active layer which must be detected as a separate image segmentation class
@@ -47,8 +48,8 @@ class Generator (ABC):
 #
 class StackedGenerator (Generator):
 
-    def __init__ (self, width, height, generators):
-        super ().__init__ (width, height)
+    def __init__ (self, width, height, depth, generators):
+        super ().__init__ (width, height, depth)
         self.generators = generators
 
     #
@@ -59,7 +60,7 @@ class StackedGenerator (Generator):
 
     def generate (self):
 
-        image = np.zeros ((self.height, self.width, 3), dtype=np.float32)
+        image = np.zeros ((self.height, self.width, self.depth), dtype=np.float32)
         mask  = np.zeros ((self.height, self.width), dtype=np.int32)
         step = 0
 
@@ -69,7 +70,7 @@ class StackedGenerator (Generator):
 
             assert step_image.shape[0] == self.height
             assert step_image.shape[1] == self.width
-            assert step_image.shape[2] == 3
+            assert step_image.shape[2] == self.depth
 
             assert step_mask is None or step_mask.shape[0] == self.height
             assert step_mask is None or step_mask.shape[1] == self.width
@@ -84,3 +85,15 @@ class StackedGenerator (Generator):
             step += 1
 
         return image, mask
+
+    #
+    # Return the number of classes generated
+    #
+    def get_number_of_classes (self):
+
+        n = 0
+        for generator in self.generators:
+            if generator.is_active_layer ():
+                n += 1
+
+        return n

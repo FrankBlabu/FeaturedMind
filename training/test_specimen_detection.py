@@ -16,14 +16,14 @@ import training.specimen_detection
 #
 # Unittest for the specimen detection functions
 class TestGenerator (generator.Generator):
-    def __init__ (self, width, height):
-        super ().__init__ (width, height)
+    def __init__ (self, width, height, depth):
+        super ().__init__ (width, height, depth)
 
     def is_active_layer (self):
         return False
 
     def generate (self):
-        image = np.random.rand (self.height, self.width, 3)
+        image = np.random.rand (self.height, self.width, self.depth)
         mask = np.ones ((self.height, self.width), dtype=np.int32)
 
         return image, mask
@@ -40,7 +40,7 @@ class TestSpecimenDetection (unittest.TestCase):
         #
         # Single element batch
         #
-        generator = TestGenerator (4, 2)
+        generator = TestGenerator (width=4, height=2, depth=3)
         batches = training.specimen_detection.batch_generator (generator, 1)
 
         for _ in range (10):

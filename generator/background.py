@@ -34,6 +34,9 @@ from generator.generator import Generator
 #
 class BackgroundGenerator (Generator):
 
+    def __init__ (self, args):
+        super ().__init__ (args.width, args.height, 3)
+
     #--------------------------------------------------------------------------
     # Return if this generator creates an active layer which must be detected as a separate image segmentation class
     #
@@ -90,7 +93,7 @@ class EmptyBackgroundGenerator (BackgroundGenerator):
     # @param args Command line arguments
     #
     def __init__ (self, args):
-        super ().__init__ (args.width, args.height)
+        super ().__init__ (args)
 
     #
     # Generate single image
@@ -116,7 +119,7 @@ class NoisyRectBackgroundGenerator (BackgroundGenerator):
     # @param args Command line arguments
     #
     def __init__ (self, args):
-        super ().__init__ (args.width, args.height)
+        super ().__init__ (args)
 
     #
     # Generate single image
@@ -178,7 +181,7 @@ class ImageBackgroundGenerator (BackgroundGenerator):
     # @param args Command line arguments
     #
     def __init__ (self, args):
-        super ().__init__ (args.width, args.height)
+        super ().__init__ (args)
 
         if args.background_directory is None:
             raise RuntimeError ('Directory must be specified when using mode \'imagedb\' (option -d)')

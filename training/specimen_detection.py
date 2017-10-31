@@ -4,7 +4,8 @@
 #
 # Frank Blankenburg, Mar. 2017
 #
-# See https://people.eecs.berkeley.edu/~jonlong/long_shelhamer_fcn.pd
+# See https://github.com/aurora95/Keras-FCN/blob/master/models.py
+#     https://people.eecs.berkeley.edu/~jonlong/long_shelhamer_fcn.pd
 #     https://github.com/fchollet/keras/issues/2526
 #
 
@@ -37,13 +38,11 @@ import generator.sheetmetal
 #
 # This function generates a CNN keras model for pixel wise segmentation of an image of a given width / height
 #
-# @param width   Width of the image to be segmented in pixels
-# @param height  Height of the image to be segmented in pixels
-# @param classes Number of classes to detect
+# @param generator Generator object creating the training/validation/test batches
 #
-def create_model (width, height, classes):
+def create_model (shape):
 
-    inputs = Input (shape=(height, width, 3), name='input')
+    inputs = Input (shape=shape, name='input')
 
     #
     # Downsampling
@@ -86,7 +85,7 @@ def create_model (width, height, classes):
     conv9 = Conv2D (32, (3, 3), activation='relu', padding='same') (up9)
     conv9 = Conv2D (32, (3, 3), activation='relu', padding='same') (conv9)
 
-    conv10 = Conv2D (classes, (1, 1), activation='sigmoid') (conv9)
+    conv10 = Conv2D (generator.get_number_of_classes (), (1, 1), activation='sigmoid') (conv9)
 
     model = Model (inputs=[inputs], outputs=[conv10])
     model.compile (optimizer=optimizers.Adam (lr=1e-5),
@@ -161,23 +160,6 @@ def train ():
                     os.remove (os.path.join (root, name))
 
     #
-    # Print some startup information
-    #
-    print ('Training model...')
-    print ('  Image size     : {0}x{1}'.format (args.width, args.height))
-    print ('  Steps          : {0}'.format (args.steps))
-    print ('  Epochs         : {0}'.format (args.epochs))
-    print ('  Batchsize      : {0}'.format (args.batchsize))
-
-    if args.background_directory:
-        print ('  Background mode: {0} ({1})'.format (args.background_mode, os.path.abspath (args.background_directory)))
-    else:
-        print ('  Background mode: {0}'.format (args.background_mode))
-
-    if args.continue_training:
-        print ('    Continue training of model \'{0}\''.format (args.continue_training))
-
-    #
     # Setup training callbacks
     #
     callbacks = []
@@ -202,7 +184,26 @@ def train ():
                    generator.sheetmetal.SheetMetalGenerator (args.width, args.height),
                    generator.fixture.FixtureGenerator (args.width, args.height) ]
 
-    generator = generator.generator.StackedGenerator (args.width, args.height, generators)
+    data = generator.generator.StackedGenerator (args.width, args.height, 3, generators)
+
+
+    #
+    # Print some startup information
+    #
+    print ('Training model...')
+    print ('  Image size       : {width}x{height}'.format (width=args.width, height=args.height))
+    print ('  Steps            : {steps}'.format (steps=args.steps))
+    print ('  Epochs           : {epochs}'.format (epochs=args.epochs))
+    print ('  Batchsize        : {batches}'.format (batches=args.batchsize))
+    print ('  Number of classes: {classes}'.format (classes=data.get_number_of_classes ()))
+
+    if args.background_directory:
+        print ('  Background mode  : {mode} ({directory})'.format (mode=args.background_mode, directory=os.path.abspath (args.background_directory)))
+    else:
+        print ('  Background mode  : {mode}'.format (mode=args.background_mode))
+
+    if args.continue_training:
+        print ('    Continue training of model \'{model}\''.format (model=args.continue_training))
 
     #
     # Generate model and start fitting
@@ -213,12 +214,12 @@ def train ():
                                                                     'recall'   : common.metrics.recall,
                                                                     'f1_score' : common.metrics.f1_score})
     else:
-        model = create_model (args.width, args.height)
+        model = create_model (shape=(args.batchsize, data.height, data.width, data.depth))
 
-    model.fit_generator (generator=batch_generator (generator, args.batchsize),
+    model.fit_generator (generator=batch_generator (data, args.batchsize),
                          steps_per_epoch=args.steps,
                          epochs=args.epochs,
-                         validation_data=batch_generator (generator, args.batchsize),
+                         validation_data=batch_generator (data, args.batchsize),
                          validation_steps=int (args.steps / 10),
                          verbose=1 if args.verbose else 0,
                          callbacks=callbacks)
