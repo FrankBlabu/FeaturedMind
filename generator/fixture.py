@@ -35,7 +35,13 @@ class FixtureGenerator (Generator):
         super ().__init__ (width, height)
         self.size = Size2d (width, height)
 
+    #--------------------------------------------------------------------------
+    # Return if this generator creates an active layer which must be detected as a separate image segmentation class
     #
+    def is_active_layer (self):
+        return True
+
+    #--------------------------------------------------------------------------
     # Generate single image containing a fixture like setup
     #
     def generate (self):

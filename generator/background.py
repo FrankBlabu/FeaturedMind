@@ -35,6 +35,13 @@ from generator.generator import Generator
 class BackgroundGenerator (Generator):
 
     #--------------------------------------------------------------------------
+    # Return if this generator creates an active layer which must be detected as a separate image segmentation class
+    #
+    def is_active_layer (self):
+        return False
+
+
+    #--------------------------------------------------------------------------
     # Add args for background generator configuration to argument parser
     #
     @staticmethod

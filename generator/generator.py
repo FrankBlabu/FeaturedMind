@@ -22,6 +22,13 @@ class Generator (ABC):
         self.height = height
 
     #
+    # Return if this generator creates an active layer which must be detected as a separate image segmentation class
+    #
+    @abstractmethod
+    def is_active_layer (self):
+        pass
+
+    #
     # Generate a new image instance
     #
     # @return Tuple consisting of the image itself and a mask marking all relevant image points. The second
@@ -60,6 +67,7 @@ class StackedGenerator (Generator):
 
             assert step_mask is None or step_mask.shape[0] == self.height
             assert step_mask is None or step_mask.shape[1] == self.width
+            assert step_mask is None or len (step_mask.shape) == 2
 
             if step_mask is None:
                 image = step_image
