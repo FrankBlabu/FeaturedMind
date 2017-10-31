@@ -12,7 +12,6 @@ import argparse
 import gc
 import os
 import subprocess
-import unittest
 import webbrowser
 
 import numpy as np
@@ -106,8 +105,8 @@ def create_model (width, height, classes):
 #
 def batch_generator (generator, batch_size):
 
-    batch_x = np.zeros ((batch_size, generator.width, generator.height, 3))
-    batch_y = np.zeros ((batch_size, generator.width, generator.height, 1))
+    batch_x = np.zeros ((batch_size, generator.height, generator.width, 3))
+    batch_y = np.zeros ((batch_size, generator.height, generator.width, 1))
 
     while True:
 
@@ -240,18 +239,6 @@ def train ():
     # Tensorflow termination bug workaround
     #
     gc.collect ()
-
-
-#----------------------------------------------------------------------------------------------------------------------
-# CLASS TestSpecimenDetection
-#
-# Unittest for the specimen detection functions
-#
-class TestSpecimenDetection (unittest.TestCase):
-
-    def test_batch_generator (self):
-        self.assertEqual (23, 23)
-
 
 if __name__ == '__main__':
     train ()

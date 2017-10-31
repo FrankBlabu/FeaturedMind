@@ -409,7 +409,7 @@ class Polygon2d:
 
 
 #----------------------------------------------------------------------------------------------------------------------
-# CLASS TestGeometr
+# CLASS TestGeometry
 #
 # Unittest for the geometry classes
 #

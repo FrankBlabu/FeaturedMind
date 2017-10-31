@@ -51,6 +51,12 @@ class StackedGenerator (Generator):
         super ().__init__ (width, height)
         self.generators = generators
 
+    #
+    # Return if this generator creates an active layer which must be detected as a separate image segmentation class
+    #
+    def is_active_layer (self):
+        raise RuntimeError ('Stacked generator class cannot be used as a layer generator')
+
     def generate (self):
 
         image = np.zeros ((self.height, self.width, 3), dtype=np.float32)
