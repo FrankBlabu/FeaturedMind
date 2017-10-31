@@ -19,7 +19,7 @@ import numpy as np
 
 from keras import optimizers
 from keras.layers import Input
-from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate
+from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate, Dropout
 from keras.models import Model
 from keras.models import load_model
 from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
@@ -66,10 +66,12 @@ def create_model (generator):
     conv5 = Conv2D (512, (3, 3), activation='relu', padding='same') (pool4)
     conv5 = Conv2D (512, (3, 3), activation='relu', padding='same') (conv5)
 
+    drop5 = Dropout (0.1) (conv5)
+
     #
     # Upsampling
     #
-    up6 = concatenate ([UpSampling2D (size=(2, 2)) (conv5), conv4], axis=3)
+    up6 = concatenate ([UpSampling2D (size=(2, 2)) (drop5), conv4], axis=3)
     conv6 = Conv2D (256, (3, 3), activation='relu', padding='same') (up6)
     conv6 = Conv2D (256, (3, 3), activation='relu', padding='same') (conv6)
 
