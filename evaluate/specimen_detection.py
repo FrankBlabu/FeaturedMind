@@ -16,7 +16,7 @@ import common.utils as utils
 import generator.background as background
 import skimage.filters
 
-from keras.models import load_model
+from tf.keras.models import load_model
 from generator.sheetmetal import sheet_metal_generator
 
 

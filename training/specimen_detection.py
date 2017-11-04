@@ -16,13 +16,14 @@ import subprocess
 import webbrowser
 
 import numpy as np
+import tensorflow as tf
 
-from keras import optimizers
-from keras.layers import Input
-from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate, Dropout
-from keras.models import Model
-from keras.models import load_model
-from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
+#from tf.keras import optimizers
+#from tf.keras.layers import Input
+#from tf.keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate, Dropout
+#from tf.keras.models import Model
+#from tf.keras.models import load_model
+#from tf.keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
 
 import common.losses
 import common.metrics
@@ -36,61 +37,61 @@ import generator.sheetmetal
 #----------------------------------------------------------------------------------------------------------------------
 # Generate model
 #
-# This function generates a CNN keras model for pixel wise segmentation of an image of a given width / height
+# This function generates a tensorflow CNN model for pixel wise segmentation of an image of a given width / height
 #
 # @param generator Generator object creating the training/validation/test batches
 #
 def create_model (generator):
 
-    inputs = Input (shape=(generator.height, generator.width, generator.depth), name='input')
+    inputs = tf.keras.layers.Input (shape=(generator.height, generator.width, generator.depth), name='input')
 
     #
     # Downsampling
     #
-    conv1 = Conv2D (32, (3, 3), activation='relu', padding='same') (inputs)
-    conv1 = Conv2D (32, (3, 3), activation='relu', padding='same') (conv1)
-    pool1 = MaxPooling2D (pool_size=(2, 2)) (conv1)
+    conv1 = tf.keras.layers.Conv2D (32, (3, 3), activation='relu', padding='same') (inputs)
+    conv1 = tf.keras.layers.Conv2D (32, (3, 3), activation='relu', padding='same') (conv1)
+    pool1 = tf.keras.layers.MaxPooling2D (pool_size=(2, 2)) (conv1)
 
-    conv2 = Conv2D (64, (3, 3), activation='relu', padding='same') (pool1)
-    conv2 = Conv2D (64, (3, 3), activation='relu', padding='same') (conv2)
-    pool2 = MaxPooling2D (pool_size=(2, 2)) (conv2)
+    conv2 = tf.keras.layers.Conv2D (64, (3, 3), activation='relu', padding='same') (pool1)
+    conv2 = tf.keras.layers.Conv2D (64, (3, 3), activation='relu', padding='same') (conv2)
+    pool2 = tf.keras.layers.MaxPooling2D (pool_size=(2, 2)) (conv2)
 
-    conv3 = Conv2D (128, (3, 3), activation='relu', padding='same') (pool2)
-    conv3 = Conv2D (128, (3, 3), activation='relu', padding='same') (conv3)
-    pool3 = MaxPooling2D (pool_size=(2, 2)) (conv3)
+    conv3 = tf.keras.layers.Conv2D (128, (3, 3), activation='relu', padding='same') (pool2)
+    conv3 = tf.keras.layers.Conv2D (128, (3, 3), activation='relu', padding='same') (conv3)
+    pool3 = tf.keras.layers.MaxPooling2D (pool_size=(2, 2)) (conv3)
 
-    conv4 = Conv2D (256, (3, 3), activation='relu', padding='same') (pool3)
-    conv4 = Conv2D (256, (3, 3), activation='relu', padding='same') (conv4)
-    pool4 = MaxPooling2D (pool_size=(2, 2)) (conv4)
+    conv4 = tf.keras.layers.Conv2D (256, (3, 3), activation='relu', padding='same') (pool3)
+    conv4 = tf.keras.layers.Conv2D (256, (3, 3), activation='relu', padding='same') (conv4)
+    pool4 = tf.keras.layers.MaxPooling2D (pool_size=(2, 2)) (conv4)
 
-    conv5 = Conv2D (512, (3, 3), activation='relu', padding='same') (pool4)
-    conv5 = Conv2D (512, (3, 3), activation='relu', padding='same') (conv5)
+    conv5 = tf.keras.layers.Conv2D (512, (3, 3), activation='relu', padding='same') (pool4)
+    conv5 = tf.keras.layers.Conv2D (512, (3, 3), activation='relu', padding='same') (conv5)
 
-    drop5 = Dropout (0.1) (conv5)
+    drop5 = tf.keras.layers.Dropout (0.1) (conv5)
 
     #
     # Upsampling
     #
-    up6 = concatenate ([UpSampling2D (size=(2, 2)) (drop5), conv4], axis=3)
-    conv6 = Conv2D (256, (3, 3), activation='relu', padding='same') (up6)
-    conv6 = Conv2D (256, (3, 3), activation='relu', padding='same') (conv6)
+    up6 = tf.keras.layers.concatenate ([tf.keras.layers.UpSampling2D (size=(2, 2)) (drop5), conv4], axis=3)
+    conv6 = tf.keras.layers.Conv2D (256, (3, 3), activation='relu', padding='same') (up6)
+    conv6 = tf.keras.layers.Conv2D (256, (3, 3), activation='relu', padding='same') (conv6)
 
-    up7 = concatenate ([UpSampling2D (size=(2, 2)) (conv6), conv3], axis=3)
-    conv7 = Conv2D (128, (3, 3), activation='relu', padding='same') (up7)
-    conv7 = Conv2D (128, (3, 3), activation='relu', padding='same') (conv7)
+    up7 = tf.keras.layers.concatenate ([tf.keras.layers.UpSampling2D (size=(2, 2)) (conv6), conv3], axis=3)
+    conv7 = tf.keras.layers.Conv2D (128, (3, 3), activation='relu', padding='same') (up7)
+    conv7 = tf.keras.layers.Conv2D (128, (3, 3), activation='relu', padding='same') (conv7)
 
-    up8 = concatenate ([UpSampling2D (size=(2, 2)) (conv7), conv2], axis=3)
-    conv8 = Conv2D (64, (3, 3), activation='relu', padding='same') (up8)
-    conv8 = Conv2D (64, (3, 3), activation='relu', padding='same') (conv8)
+    up8 = tf.keras.layers.concatenate ([tf.keras.layers.UpSampling2D (size=(2, 2)) (conv7), conv2], axis=3)
+    conv8 = tf.keras.layers.Conv2D (64, (3, 3), activation='relu', padding='same') (up8)
+    conv8 = tf.keras.layers.Conv2D (64, (3, 3), activation='relu', padding='same') (conv8)
 
-    up9 = concatenate ([UpSampling2D (size=(2, 2)) (conv8), conv1], axis=3)
-    conv9 = Conv2D (32, (3, 3), activation='relu', padding='same') (up9)
-    conv9 = Conv2D (32, (3, 3), activation='relu', padding='same') (conv9)
+    up9 = tf.keras.layers.concatenate ([tf.keras.layers.UpSampling2D (size=(2, 2)) (conv8), conv1], axis=3)
+    conv9 = tf.keras.layers.Conv2D (32, (3, 3), activation='relu', padding='same') (up9)
+    conv9 = tf.keras.layers.Conv2D (32, (3, 3), activation='relu', padding='same') (conv9)
 
-    conv10 = Conv2D (generator.get_number_of_classes (), (1, 1), activation='sigmoid') (conv9)
+    conv10 = tf.keras.layers.Conv2D (generator.get_number_of_classes (), (1, 1), activation='sigmoid') (conv9)
 
-    model = Model (inputs=[inputs], outputs=[conv10])
-    model.compile (optimizer=optimizers.Adam (lr=1e-5),
+    model = tf.keras.models.Model (inputs=[inputs], outputs=[conv10])
+    model.compile (optimizer=tf.keras.optimizers.Adam (lr=1e-5),
                    loss=common.losses.dice_coef,
                    metrics=['accuracy',
                             common.metrics.precision,
@@ -179,17 +180,18 @@ def train ():
     callbacks = []
 
     if args.log is not None:
-        callbacks.append (TensorBoard (os.path.abspath (args.log), histogram_freq=1, write_graph=True, write_images=True))
+        callbacks.append (tf.keras.callbacks.TensorBoard (os.path.abspath (args.log), write_graph=True, write_images=True))
 
     if args.intermediate_saving:
-        callbacks.append (ModelCheckpoint (args.output,
-                                           monitor='dice_coef',
-                                           verbose=0,
-                                           save_best_only=True,
-                                           save_weights_only=False,
-                                           mode='max'))
+        callbacks.append (tf.keras.callbacks.ModelCheckpoint
+        (args.output,
+         monitor='dice_coef',
+         verbose=0,
+         save_best_only=True,
+         save_weights_only=False,
+         mode='max'))
 
-    callbacks.append (EarlyStopping (monitor='val_loss', min_delta=0, patience=1, verbose=args.verbose, mode='min'))
+    callbacks.append (tf.keras.callbacks.EarlyStopping (monitor='val_loss', min_delta=0, patience=1, verbose=args.verbose, mode='min'))
 
     #
     # Setup generator
@@ -217,16 +219,19 @@ def train ():
         print ('  Background mode  : {mode}'.format (mode=args.background_mode))
 
     if args.continue_training:
-        print ('    Continue training of model \'{model}\''.format (model=args.continue_training))
+        print ('  Continue training of model \'{model}\''.format (model=args.continue_training))
+
+    if args.log:
+        print ('  Log directory    : {log}'.format (log=args.log))
 
     #
     # Generate model and start fitting
     #
     if args.continue_training:
-        model = load_model (args.continue_training, custom_objects={'dice_coef': common.losses.dice_coef,
-                                                                    'precision': common.metrics.precision,
-                                                                    'recall'   : common.metrics.recall,
-                                                                    'f1_score' : common.metrics.f1_score})
+        model = tf.keras.models.load_model (args.continue_training, custom_objects={'dice_coef': common.losses.dice_coef,
+                                                                                    'precision': common.metrics.precision,
+                                                                                    'recall'   : common.metrics.recall,
+                                                                                    'f1_score' : common.metrics.f1_score})
     else:
         model = create_model (generator=data)
 

@@ -13,8 +13,8 @@ import tensorflow as tf
 import common.losses as losses
 import common.metrics as metrics
 
-from keras.models import load_model
-from keras import backend as K
+from tf.keras.models import load_model
+from tf.keras import backend as K
 
 
 #--------------------------------------------------------------------------
@@ -35,7 +35,7 @@ args = parser.parse_args ()
 # Load and construct model
 #
 model = load_model (args.model, custom_objects={'dice_coef': losses.dice_coef,
-                                                'precision': metrics.precision, 
+                                                'precision': metrics.precision,
                                                 'recall'   : metrics.recall,
                                                 'f1_score' : metrics.f1_score})
 
@@ -47,5 +47,3 @@ saver.save (K.get_session (), os.path.abspath (args.output))
 # Tensorflow termination bug workaround
 #
 gc.collect ()
-
-

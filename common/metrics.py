@@ -5,7 +5,7 @@
 # Frank Blankenburg, Mar. 2017
 #
 
-from keras import backend as K
+import tensorflow as tf
 
 
 # --------------------------------------------------------------------------
@@ -23,6 +23,8 @@ def precision (y_true, y_pred):
     Computes the precision, a metric for multi-label classification of
     how many selected items are relevant.
     '''
+    K = tf.keras.backend
+
     true_positives = K.sum (K.round (K.clip (y_true * y_pred, 0, 1)))
     predicted_positives = K.sum (K.round (K.clip (y_pred, 0, 1)))
 
@@ -37,8 +39,11 @@ def precision (y_true, y_pred):
 # Meaning: How many of the actual present features did we find ?
 #
 def recall (y_true, y_pred):
+    K = tf.keras.backend
+
     true_positives = K.sum (K.round (K.clip (y_true * y_pred, 0, 1)))
     all_positives = K.sum (K.round (K.clip (y_true, 0, 1)))
+
     return true_positives / (all_positives + K.epsilon ())
 
 
@@ -62,6 +67,8 @@ def f1_score (y_true, y_pred):
 #    This is a method to measure similarities between two samples
 #
 def dice_coef (y_true, y_pred):
+
+    K = tf.keras.backend
 
     smooth = 1.0
 

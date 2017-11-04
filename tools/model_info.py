@@ -11,7 +11,7 @@ import gc
 import common.losses as losses
 import common.metrics as metrics
 
-from keras.models import load_model
+from tf.keras.models import load_model
 
 
 
@@ -32,7 +32,7 @@ args = parser.parse_args ()
 # Load and construct model
 #
 model = load_model (args.model, custom_objects={'dice_coef': losses.dice_coef,
-                                                'precision': metrics.precision, 
+                                                'precision': metrics.precision,
                                                 'recall'   : metrics.recall,
                                                 'f1_score' : metrics.f1_score})
 
@@ -45,4 +45,3 @@ model.summary ()
 # Tensorflow termination bug workaround
 #
 gc.collect ()
-
