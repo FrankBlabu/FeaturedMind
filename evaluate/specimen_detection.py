@@ -14,11 +14,14 @@ import common.losses as losses
 import common.metrics as metrics
 import common.utils as utils
 import generator.background as background
+import skimage.color
 import skimage.filters
+import tensorflow as tf
 
-from tf.keras.models import load_model
-from generator.sheetmetal import sheet_metal_generator
-
+import generator.background
+import generator.fixture
+import generator.generator
+import generator.sheetmetal
 
 
 #--------------------------------------------------------------------------
@@ -49,16 +52,22 @@ assert args.height < 4096
 #
 # Load and construct model
 #
-model = load_model (args.model, custom_objects={'dice_coef': losses.dice_coef,
-                                                'precision': metrics.precision,
-                                                'recall'   : metrics.recall,
-                                                'f1_score' : metrics.f1_score})
+model = tf.keras.models.load_model (args.model, custom_objects={
+    'dice_coef': losses.dice_coef,
+    'precision': metrics.precision,
+    'recall'   : metrics.recall,
+    'f1_score' : metrics.f1_score})
 
 #
 # Create test specimen and setup input tensors
 #
-background_generator = background.BackgroundGenerator.create (args)
-images, masks = sheet_metal_generator (args.width, args.height, 1, background_generator).__next__ ()
+generators = [ generator.background.BackgroundGenerator.create (args),
+               generator.sheetmetal.SheetMetalGenerator (args.width, args.height),
+               generator.fixture.FixtureGenerator (args.width, args.height) ]
+
+data = generator.generator.batch_generator (generator.generator.StackedGenerator (args.width, args.height, 3, generators), 10)
+
+images, masks = next (data)
 
 #
 # Run border detection network
@@ -71,7 +80,7 @@ for score in zip (scores, model.metrics_names):
 if args.performance:
     start_time = time.process_time ()
 
-    images, masks = sheet_metal_generator (args.width, args.height, args.performance, background_generator)
+    images, masks = next (data.generate)
     model.predict (images)
 
     elapsed_time = (time.process_time () - start_time) / (10 * args.performance)
@@ -84,13 +93,18 @@ result = model.predict (images)[0]
 
 print ('Duration: {0:.4f}s'.format ((time.process_time () - start_time) / 10))
 
-result[result < 0.5] = 0.0
+#result[result < 0.5] = 0.0
 
-edges = result.reshape ((result.shape[0], result.shape[1]))
-edges = skimage.filters.sobel (edges)
+mask = np.zeros (result.shape[0:2])
 
-utils.show_image ([utils.to_rgb (images[0]), 'Generated image'],
-                  [utils.to_rgb (edges),     'Predicted specimen borders'])
+mask[result[:,:,0] > 0.5] = 255
+#mask[result[:,:,1] > 0.5] = 1.0
+
+#edges = result.reshape ((result.shape[0], result.shape[1]))
+#edges = skimage.filters.sobel (edges)
+
+utils.show_image ([images[0],                     'Generated image'],
+                  [skimage.color.gray2rgb (mask), 'Predicted specimen features'])
 
 
 

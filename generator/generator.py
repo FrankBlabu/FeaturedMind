@@ -97,3 +97,35 @@ class StackedGenerator (Generator):
                 n += 1
 
         return n
+
+
+#----------------------------------------------------------------------------------------------------------------------
+# Generator for training batches
+#
+def batch_generator (generator, batch_size):
+
+    classes = generator.get_number_of_classes ()
+
+    batch_x = np.zeros ((batch_size, generator.height, generator.width, 3))
+    batch_y = np.zeros ((batch_size, generator.height, generator.width, classes))
+
+    while True:
+
+        for i in range (batch_size):
+            image, mask = generator.generate ()
+
+            assert len (image.shape) == 3
+            assert image.shape[0] == generator.height
+            assert image.shape[1] == generator.width
+            assert image.shape[2] == generator.depth
+
+            assert len (mask.shape) == 2
+            assert mask.shape[0] == image.shape[0]
+            assert mask.shape[1] == image.shape[1]
+
+            batch_x[i] = image
+
+            for layer in range (classes):
+                batch_y[i,:,:,layer][mask == layer + 1] = 1
+
+        yield batch_x, batch_y

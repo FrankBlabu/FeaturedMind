@@ -102,37 +102,6 @@ def create_model (generator):
     return model
 
 
-#----------------------------------------------------------------------------------------------------------------------
-# Generator for training batches
-#
-def batch_generator (generator, batch_size):
-
-    classes = generator.get_number_of_classes ()
-
-    batch_x = np.zeros ((batch_size, generator.height, generator.width, 3))
-    batch_y = np.zeros ((batch_size, generator.height, generator.width, classes))
-
-    while True:
-
-        for i in range (batch_size):
-            image, mask = generator.generate ()
-
-            assert len (image.shape) == 3
-            assert image.shape[0] == generator.height
-            assert image.shape[1] == generator.width
-            assert image.shape[2] == generator.depth
-
-            assert len (mask.shape) == 2
-            assert mask.shape[0] == image.shape[0]
-            assert mask.shape[1] == image.shape[1]
-
-            batch_x[i] = image
-
-            for layer in range (classes):
-                batch_y[i,:,:,layer][mask == layer + 1] = 1
-
-        yield batch_x, batch_y
-
 
 #----------------------------------------------------------------------------------------------------------------------
 # Train specimen detection CNN
@@ -235,10 +204,10 @@ def train ():
     else:
         model = create_model (generator=data)
 
-    model.fit_generator (generator=batch_generator (data, args.batchsize),
+    model.fit_generator (generator=generator.batch_generator (data, args.batchsize),
                          steps_per_epoch=args.steps,
                          epochs=args.epochs,
-                         validation_data=batch_generator (data, args.batchsize),
+                         validation_data=generator.batch_generator (data, args.batchsize),
                          validation_steps=int (args.steps / 10),
                          verbose=1 if args.verbose else 0,
                          callbacks=callbacks)
