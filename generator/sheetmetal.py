@@ -377,7 +377,7 @@ if __name__ == '__main__':
     if args.fixture:
         parts.append (fixture.FixtureGenerator (args.width, args.height))
 
-    generator = generator.StackedGenerator (args.width, args.height, parts)
+    generator = generator.StackedGenerator (args.width, args.height, 3, parts)
     image, mask = generator.generate ()
 
     utils.show_image ([image, 'Sheet metal'],

@@ -6,8 +6,28 @@
 #
 
 import numpy as np
+import queue
+import threading
 
 from abc import ABC, abstractmethod
+
+#----------------------------------------------------------------------------------------------------------------------
+# CLASS GeneratorThread
+#
+class GeneratorThread (threading.Thread):
+
+    def __init__ (self, generator, number, result):
+        super ().__init__ ()
+        self.generator = generator
+        self.number = number
+        self.result = result
+
+    def run (self):
+
+        for _ in range (self.number):
+            (image, mask) = self.generator.generate ()
+            self.result.put ((image, mask))
+
 
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -17,6 +37,13 @@ from abc import ABC, abstractmethod
 #
 class Generator (ABC):
 
+    #
+    # Create generator
+    #
+    # @param width  Width of the generated image in pixels
+    # @param height Height of the generated image in pixels
+    # @param depth  Depth of the generated image in channels
+    #
     def __init__ (self, width, height, depth):
         self.width = width
         self.height = height
@@ -64,9 +91,16 @@ class StackedGenerator (Generator):
         mask  = np.zeros ((self.height, self.width), dtype=np.int32)
         step = 0
 
-        for generator in self.generators:
+        results = []
+        threads = []
 
-            step_image, step_mask = generator.generate ()
+        for generator in self.generators:
+            results.append (queue.Queue ())
+            threads.append (GeneratorThread (generator, 1,results[-1]))
+            threads[-1].start ()
+
+        for result in results:
+            step_image, step_mask = result.get ()
 
             assert step_image.shape[0] == self.height
             assert step_image.shape[1] == self.width
@@ -83,6 +117,9 @@ class StackedGenerator (Generator):
                 mask[step_mask > 0] = step
 
             step += 1
+
+        for thread in threads:
+            thread.join ()
 
         return image, mask
 

@@ -15,7 +15,6 @@ import os
 import subprocess
 import webbrowser
 
-import numpy as np
 import tensorflow as tf
 
 #from tf.keras import optimizers
@@ -28,6 +27,7 @@ import tensorflow as tf
 import common.losses
 import common.metrics
 
+import generator.generator
 import generator.background
 import generator.fixture
 import generator.generator
@@ -204,10 +204,10 @@ def train ():
     else:
         model = create_model (generator=data)
 
-    model.fit_generator (generator=generator.batch_generator (data, args.batchsize),
+    model.fit_generator (generator=generator.generator.batch_generator (data, args.batchsize),
                          steps_per_epoch=args.steps,
                          epochs=args.epochs,
-                         validation_data=generator.batch_generator (data, args.batchsize),
+                         validation_data=generator.generator.batch_generator (data, args.batchsize),
                          validation_steps=int (args.steps / 10),
                          verbose=1 if args.verbose else 0,
                          callbacks=callbacks)
