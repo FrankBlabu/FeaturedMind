@@ -158,7 +158,8 @@ class FixtureGenerator (Generator):
         copy_mask = skimage.filters.gaussian (source_mask, sigma=1, mode='nearest')
         copy_mask = np.dstack ((copy_mask, copy_mask, copy_mask))
 
-        image = (1 - copy_mask) * image + copy_mask * source_image
+        blended = (1 - copy_mask) * image + copy_mask * source_image
+        image[source_image > 0] = blended[source_image > 0]
         mask[source_mask > 0] = source_mask[source_mask > 0]
 
         return image, mask

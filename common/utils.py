@@ -69,7 +69,7 @@ def add_overlay_to_image (image, overlay):
 # @param images Images to show
 # @param titles Image titles
 #
-def show_image (*args):
+def show_image (*args, show_legend=False):
 
     fig = plt.figure ()
 
@@ -100,7 +100,7 @@ def show_image (*args):
 
         plt.imshow (arg[0], cmap=colormap)
 
-        if colormap is not None:
+        if colormap is not None and show_legend:
             plt.colorbar ()
 
     fig.tight_layout ()
