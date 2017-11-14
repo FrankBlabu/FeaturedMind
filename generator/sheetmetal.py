@@ -16,6 +16,7 @@ import generator.fixture as fixture
 import skimage.util
 
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
+from generator.tools import create_metal_texture
 
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -56,11 +57,6 @@ class SheetMetalGenerator (generator.Generator):
     # Generate image
     #
     def generate (self):
-
-        #
-        # Generale image as RGB with some background noise
-        #
-        specimen = np.zeros ((self.height, self.width, 3), dtype=np.float32)
 
         #
         # Mask marking the area covered by the sheet
@@ -211,13 +207,12 @@ class SheetMetalGenerator (generator.Generator):
         # Step 2: Draw border
         #
         border = Polygon2d (border)
-
-        specimen_image = np.zeros (specimen.shape, dtype=np.float32)
-        specimen_image.fill (0.7)
-        specimen_image = skimage.util.random_noise (specimen_image, mode='speckle', seed=None, clip=True, mean=0.0, var=0.005)
-
         border.draw (mask, 1.0, fill=True)
-        specimen[mask > 0.5] = specimen_image[mask > 0.5]
+
+        specimen_image = create_metal_texture (self.width, self.height, color=0.5, shine=0.1)
+
+        copy_mask = np.dstack ((mask, mask, mask))
+        specimen = copy_mask * specimen_image
 
         #
         # Step 2: Add some features to the available areas
@@ -248,10 +243,7 @@ class SheetMetalGenerator (generator.Generator):
         specimen = utils.transform (specimen, self.size, scale=scale, shear=shear, rotation=rotation)
         mask = utils.transform (mask, self.size, scale=scale, shear=shear, rotation=rotation)
 
-        int_mask = np.zeros (mask.shape, dtype=np.int32)
-        int_mask[mask > 0.5] = 1
-
-        return specimen, int_mask
+        return specimen, mask
 
 
     #--------------------------------------------------------------------------

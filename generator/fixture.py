@@ -16,31 +16,8 @@ import skimage.util
 
 from common.geometry import Point2d, Size2d, Polygon2d
 from generator.generator import Generator
+from generator.tools import create_metal_texture
 
-#----------------------------------------------------------------------------------------------------------------------
-# Create a metal texture
-#
-# See http://www.jhlabs.com/ip/brushed_metal.html for the algorithm
-#
-def create_metal_texture (width, height, color, shine):
-
-    image = np.zeros ((height * 2, width * 2, 1), dtype=np.float32)
-    image[:,:] = color
-
-    image = skimage.util.random_noise (image, mode='gaussian', mean=0, var=0.005)
-    image = skimage.filters.gaussian (image, sigma=[0, 12, 0], mode='nearest')
-
-    offset = np.random.uniform ()
-
-    for y in range (image.shape[0]):
-        for x in range (image.shape[1]):
-            factor = shine * math.sin (x * math.pi / width - math.pi * offset / 2)
-            image[y,x] += factor
-
-    image = skimage.transform.rotate (image, np.random.uniform (0, 90.0), resize=False)
-    image = image[height - int (height / 2):height + int (height / 2),width - int (width / 2):width + int (width / 2),:]
-
-    return np.dstack ((image, image, image))
 
 #----------------------------------------------------------------------------------------------------------------------
 # CLASS FixtureGenerator
@@ -75,7 +52,7 @@ class FixtureGenerator (Generator):
         # Generale image as RGB with some background noise
         #
         image = np.zeros ((self.height, self.width, 3), dtype=np.float32)
-        mask  = np.zeros ((self.height, self.width), dtype=np.int32)
+        mask  = np.zeros ((self.height, self.width), dtype=np.float32)
 
         #
         # We are adding 1-2 fixtures per image
@@ -177,8 +154,8 @@ class FixtureGenerator (Generator):
 
         source_mask = np.zeros ((source_image.shape[0], source_image.shape[1]), dtype=np.float32)
         polygon.draw (source_mask, 1.0, True)
-        copy_mask = skimage.filters.gaussian (source_mask, sigma=1, mode='nearest')
 
+        copy_mask = skimage.filters.gaussian (source_mask, sigma=1, mode='nearest')
         copy_mask = np.dstack ((copy_mask, copy_mask, copy_mask))
 
         image = (1 - copy_mask) * image + copy_mask * source_image
