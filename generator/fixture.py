@@ -11,11 +11,34 @@ import math
 import numpy as np
 import common.utils as utils
 
+import skimage.filters
 import skimage.util
 
 from common.geometry import Point2d, Size2d, Polygon2d
 from generator.generator import Generator
 
+#----------------------------------------------------------------------------------------------------------------------
+# Create an image with metal texture
+#
+# See http://www.jhlabs.com/ip/brushed_metal.html for the algorithm
+#
+def create_metal_image (width, height, color, shine):
+
+    image = np.zeros ((height, width, 1), dtype=np.float32)
+    image[:,:] = color
+
+    image = skimage.util.random_noise (image, mode='gaussian', mean=0, var=0.005)
+    image = skimage.filters.gaussian (image, sigma=[0, 12, 0], mode='nearest')
+
+    for y in range (height):
+        for x in range (width):
+            factor = shine * math.sin (x * math.pi / width)
+            image[y,x] += factor
+
+    rgb = np.zeros ((height, width, 3), dtype=np.float32)
+    rgb[:,:,:] = image
+
+    return rgb
 
 #----------------------------------------------------------------------------------------------------------------------
 # CLASS FixtureGenerator
@@ -177,7 +200,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args ()
 
-    generator = FixtureGenerator (args.width, args.height)
-    image, mask = generator.generate ()
+    if False:
+        generator = FixtureGenerator (args.width, args.height)
+        image, mask = generator.generate ()
 
-    utils.show_image ([image, 'Fixture'], [mask, 'Mask'])
+        utils.show_image ([image, 'Fixture'], [mask, 'Mask'])
+
+    image = create_metal_image (800, 600, color=0.2, shine=0.1)
+    utils.show_image ([image, 'Metal texture'])
