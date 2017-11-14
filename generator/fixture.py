@@ -18,27 +18,29 @@ from common.geometry import Point2d, Size2d, Polygon2d
 from generator.generator import Generator
 
 #----------------------------------------------------------------------------------------------------------------------
-# Create an image with metal texture
+# Create a metal texture
 #
 # See http://www.jhlabs.com/ip/brushed_metal.html for the algorithm
 #
-def create_metal_image (width, height, color, shine):
+def create_metal_texture (width, height, color, shine):
 
-    image = np.zeros ((height, width, 1), dtype=np.float32)
+    image = np.zeros ((height * 2, width * 2, 1), dtype=np.float32)
     image[:,:] = color
 
     image = skimage.util.random_noise (image, mode='gaussian', mean=0, var=0.005)
     image = skimage.filters.gaussian (image, sigma=[0, 12, 0], mode='nearest')
 
-    for y in range (height):
-        for x in range (width):
-            factor = shine * math.sin (x * math.pi / width)
+    offset = np.random.uniform ()
+
+    for y in range (image.shape[0]):
+        for x in range (image.shape[1]):
+            factor = shine * math.sin (x * math.pi / width - math.pi * offset / 2)
             image[y,x] += factor
 
-    rgb = np.zeros ((height, width, 3), dtype=np.float32)
-    rgb[:,:,:] = image
+    image = skimage.transform.rotate (image, np.random.uniform (0, 90.0), resize=False)
+    image = image[height - int (height / 2):height + int (height / 2),width - int (width / 2):width + int (width / 2),:]
 
-    return rgb
+    return np.dstack ((image, image, image))
 
 #----------------------------------------------------------------------------------------------------------------------
 # CLASS FixtureGenerator
@@ -79,7 +81,7 @@ class FixtureGenerator (Generator):
         # We are adding 1-2 fixtures per image
         #
         for _ in range (random.choice ([1, 2])):
-            self.add_fixture (image, mask)
+            image, mask = self.add_fixture (image, mask)
 
         return image, mask
 
@@ -169,18 +171,20 @@ class FixtureGenerator (Generator):
         polygon.move (delta)
 
         #
-        # Create color source with some random noise and copy the part determined by the polygon into
-        # the target image
+        # Create metal texture color source and copy the part determined by the polygon into the target image
         #
-        source_image = np.zeros (image.shape, dtype=np.float32)
-        source_image.fill (0.1)
-        source_image = skimage.util.random_noise (source_image, mode='speckle', seed=None, clip=True, mean=0.0, var=0.005)
+        source_image = create_metal_texture (image.shape[1], image.shape[0], color=0.2, shine=0.1)
 
-        source_mask = np.zeros ((image.shape[0], image.shape[1]), dtype=np.int32)
+        source_mask = np.zeros ((source_image.shape[0], source_image.shape[1]), dtype=np.float32)
         polygon.draw (source_mask, 1.0, True)
+        copy_mask = skimage.filters.gaussian (source_mask, sigma=1, mode='nearest')
 
-        image[source_mask > 0] = source_image[source_mask > 0]
-        mask[source_mask > 0] = 1
+        copy_mask = np.dstack ((copy_mask, copy_mask, copy_mask))
+
+        image = (1 - copy_mask) * image + copy_mask * source_image
+        mask[source_mask > 0] = source_mask[source_mask > 0]
+
+        return image, mask
 
 
 #--------------------------------------------------------------------------
@@ -200,11 +204,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args ()
 
-    if False:
+    if True:
         generator = FixtureGenerator (args.width, args.height)
         image, mask = generator.generate ()
 
         utils.show_image ([image, 'Fixture'], [mask, 'Mask'])
 
-    image = create_metal_image (800, 600, color=0.2, shine=0.1)
-    utils.show_image ([image, 'Metal texture'])
+    else:
+        image = create_metal_texture (args.width, args.height, color=0.3, shine=0.1)
+        utils.show_image ([image, 'Metal texture'])
