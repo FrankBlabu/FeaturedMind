@@ -14,9 +14,12 @@ import common.utils as utils
 import skimage.filters
 import skimage.util
 
+import generator.background
+import generator.generator
+import generator.fixture
+import generator.tools
+
 from common.geometry import Point2d, Size2d, Polygon2d
-from generator.generator import Generator
-from generator.tools import create_metal_texture
 
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -25,7 +28,7 @@ from generator.tools import create_metal_texture
 # This class will generate an image containing a simulated fixture like object together with a mask marking
 # its pixel positions.
 #
-class FixtureGenerator (Generator):
+class FixtureGenerator (generator.generator.Generator):
 
     #--------------------------------------------------------------------------
     # Constructor
@@ -150,7 +153,7 @@ class FixtureGenerator (Generator):
         #
         # Create metal texture color source and copy the part determined by the polygon into the target image
         #
-        source_image = create_metal_texture (image.shape[1], image.shape[0], color=0.2, shine=0.1)
+        source_image = generator.tools.create_metal_texture (image.shape[1], image.shape[0], color=0.2, shine=0.1)
 
         source_mask = np.zeros ((source_image.shape[0], source_image.shape[1]), dtype=np.float32)
         polygon.draw (source_mask, 1.0, True)
@@ -180,14 +183,14 @@ if __name__ == '__main__':
     parser.add_argument ('-x', '--width',   type=int, default=640,  help='Width of the generated images')
     parser.add_argument ('-y', '--height',  type=int, default=480,  help='Height of the generated images')
 
+    generator.background.BackgroundGenerator.add_to_args_definition (parser)
+
     args = parser.parse_args ()
 
-    if True:
-        generator = FixtureGenerator (args.width, args.height)
-        image, mask = generator.generate ()
+    parts = [generator.background.BackgroundGenerator.create (args),
+             generator.fixture.FixtureGenerator (args.width, args.height)]
 
-        utils.show_image ([image, 'Fixture'], [mask, 'Mask'])
+    source = generator.generator.StackedGenerator (args.width, args.height, 3, parts)
+    image, mask = source.generate ()
 
-    else:
-        image = create_metal_texture (args.width, args.height, color=0.3, shine=0.1)
-        utils.show_image ([image, 'Metal texture'])
+    utils.show_image ([image, 'Fixture'], [mask, 'Mask'])

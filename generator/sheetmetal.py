@@ -9,14 +9,12 @@ import argparse
 import random
 import numpy as np
 import common.utils as utils
-import generator.background as background
-import generator.generator as generator
-import generator.fixture as fixture
-
-import skimage.util
+import generator.background
+import generator.generator
+import generator.fixture
+import generator.tools
 
 from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
-from generator.tools import create_metal_texture
 
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -25,7 +23,7 @@ from generator.tools import create_metal_texture
 # This class will generate an image containing a simulated sheet metal like part inclucing some features like drilled
 # or punched holes together with a mask marking the location of the pixels belonging to the sheet metal part.
 #
-class SheetMetalGenerator (generator.Generator):
+class SheetMetalGenerator (generator.generator.Generator):
 
     #--------------------------------------------------------------------------
     # Configuration
@@ -209,7 +207,7 @@ class SheetMetalGenerator (generator.Generator):
         border = Polygon2d (border)
         border.draw (mask, 1.0, fill=True)
 
-        specimen_image = create_metal_texture (self.width, self.height, color=0.5, shine=0.1)
+        specimen_image = generator.tools.create_metal_texture (self.width, self.height, color=0.5, shine=0.1)
 
         copy_mask = np.dstack ((mask, mask, mask))
         specimen = copy_mask * specimen_image
@@ -360,17 +358,17 @@ if __name__ == '__main__':
     parser.add_argument ('-y', '--height',  type=int, default=480,  help='Height of the generated images')
     parser.add_argument ('-f', '--fixture', action='store_true', default=False, help='Add fixture')
 
-    background.BackgroundGenerator.add_to_args_definition (parser)
+    generator.background.BackgroundGenerator.add_to_args_definition (parser)
     args = parser.parse_args ()
 
-    parts = [background.BackgroundGenerator.create (args),
+    parts = [generator.background.BackgroundGenerator.create (args),
              SheetMetalGenerator (args.width, args.height)]
 
     if args.fixture:
-        parts.append (fixture.FixtureGenerator (args.width, args.height))
+        parts.append (generator.fixture.FixtureGenerator (args.width, args.height))
 
-    generator = generator.StackedGenerator (args.width, args.height, 3, parts)
-    image, mask = generator.generate ()
+    source = generator.generator.StackedGenerator (args.width, args.height, 3, parts)
+    image, mask = source.generate ()
 
     utils.show_image ([image, 'Sheet metal'],
                       [mask,  'Specimen mask'])

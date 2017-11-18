@@ -9,6 +9,8 @@ import numpy as np
 import queue
 import threading
 
+import skimage.filters
+
 from abc import ABC, abstractmethod
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -113,7 +115,10 @@ class StackedGenerator (Generator):
             if step_mask is None:
                 image = step_image
             else:
-                copy_mask = np.dstack ((step_mask, step_mask, step_mask))
+
+                copy_mask = skimage.filters.gaussian (step_mask, sigma=0.5, mode='nearest')
+                copy_mask = np.dstack ((copy_mask, copy_mask, copy_mask))
+
                 image = (1 - copy_mask) * image + copy_mask * step_image
                 mask[step_mask > 0] = step
 

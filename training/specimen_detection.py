@@ -17,13 +17,6 @@ import webbrowser
 
 import tensorflow as tf
 
-#from tf.keras import optimizers
-#from tf.keras.layers import Input
-#from tf.keras.layers import Conv2D, MaxPooling2D, UpSampling2D, concatenate, Dropout
-#from tf.keras.models import Model
-#from tf.keras.models import load_model
-#from tf.keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
-
 import common.losses
 import common.metrics
 
