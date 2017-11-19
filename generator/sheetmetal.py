@@ -25,6 +25,8 @@ from common.geometry import Point2d, Size2d, Rect2d, Ellipse2d, Polygon2d
 #
 class SheetMetalGenerator (generator.generator.Generator):
 
+    TYPE = 'sheetmetal'
+
     #--------------------------------------------------------------------------
     # Configuration
     #
@@ -38,12 +40,9 @@ class SheetMetalGenerator (generator.generator.Generator):
     #--------------------------------------------------------------------------
     # Constructor
     #
-    # @param width  Overall image width
-    # @param height Overall image height
-    #
-    def __init__ (self, width, height):
-        super ().__init__ (width, height, 3)
-        self.size = Size2d (width, height)
+    def __init__ (self, args):
+        super ().__init__ (args)
+        self.size = Size2d (args.width, args.height)
 
     #--------------------------------------------------------------------------
     # Return if this generator creates an active layer which must be detected as a separate image segmentation class
@@ -362,12 +361,12 @@ if __name__ == '__main__':
     args = parser.parse_args ()
 
     parts = [generator.background.BackgroundGenerator.create (args),
-             SheetMetalGenerator (args.width, args.height)]
+             SheetMetalGenerator (args)]
 
     if args.fixture:
-        parts.append (generator.fixture.FixtureGenerator (args.width, args.height))
+        parts.append (generator.fixture.FixtureGenerator (args))
 
-    source = generator.generator.StackedGenerator (args.width, args.height, 3, parts)
+    source = generator.generator.StackedGenerator (args, parts)
     image, mask = source.generate ()
 
     utils.show_image ([image, 'Sheet metal'],

@@ -17,6 +17,7 @@ import webbrowser
 
 import tensorflow as tf
 
+import common.constants
 import common.losses
 import common.metrics
 
@@ -197,11 +198,17 @@ def train ():
     else:
         model = create_model (generator=data)
 
+    #metadata = {'ImageWidth': args.width,
+    #            'ImageHeight': args.height,
+    #            'Steps': args.steps,
+    #            'Epochs': args.epochs,
+    #            'Batches': args.batchsize}
+
     model.fit_generator (generator=generator.generator.batch_generator (data, args.batchsize),
                          steps_per_epoch=args.steps,
                          epochs=args.epochs,
                          validation_data=generator.generator.batch_generator (data, args.batchsize),
-                         validation_steps=int (args.steps / 10),
+                         validation_steps=int (args.steps / 10) if args.steps >= 10 else 1,
                          verbose=1 if args.verbose else 0,
                          callbacks=callbacks)
 

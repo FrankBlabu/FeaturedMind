@@ -30,15 +30,14 @@ from common.geometry import Point2d, Size2d, Polygon2d
 #
 class FixtureGenerator (generator.generator.Generator):
 
+    TYPE = 'fixture'
+
     #--------------------------------------------------------------------------
     # Constructor
     #
-    # @param width  Overall image width
-    # @param height Overall image height
-    #
-    def __init__ (self, width, height):
-        super ().__init__ (width, height, 3)
-        self.size = Size2d (width, height)
+    def __init__ (self, args):
+        super ().__init__ (args)
+        self.size = Size2d (args.width, args.height)
 
     #--------------------------------------------------------------------------
     # Return if this generator creates an active layer which must be detected as a separate image segmentation class
@@ -54,7 +53,7 @@ class FixtureGenerator (generator.generator.Generator):
         #
         # Generale image as RGB with some background noise
         #
-        image = np.zeros ((self.height, self.width, 3), dtype=np.float32)
+        image = np.zeros ((self.height, self.width, self.depth), dtype=np.float32)
         mask  = np.zeros ((self.height, self.width), dtype=np.float32)
 
         #
@@ -188,9 +187,9 @@ if __name__ == '__main__':
     args = parser.parse_args ()
 
     parts = [generator.background.BackgroundGenerator.create (args),
-             generator.fixture.FixtureGenerator (args.width, args.height)]
+             generator.fixture.FixtureGenerator (args)]
 
-    source = generator.generator.StackedGenerator (args.width, args.height, 3, parts)
+    source = generator.generator.StackedGenerator (args, parts)
     image, mask = source.generate ()
 
     utils.show_image ([image, 'Fixture'], [mask, 'Mask'])

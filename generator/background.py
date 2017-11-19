@@ -34,8 +34,10 @@ from generator.generator import Generator
 #
 class BackgroundGenerator (Generator):
 
+    TYPE = 'background'
+
     def __init__ (self, args):
-        super ().__init__ (args.width, args.height, 3)
+        super ().__init__ (args)
 
     #--------------------------------------------------------------------------
     # Return if this generator creates an active layer which must be detected as a separate image segmentation class

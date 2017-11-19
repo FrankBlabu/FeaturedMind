@@ -42,14 +42,12 @@ class Generator (ABC):
     #
     # Create generator
     #
-    # @param width  Width of the generated image in pixels
-    # @param height Height of the generated image in pixels
-    # @param depth  Depth of the generated image in channels
+    # @param args Arguments used to create the generator
     #
-    def __init__ (self, width, height, depth):
-        self.width = width
-        self.height = height
-        self.depth = depth
+    def __init__ (self, args):
+        self.width = args.width
+        self.height = args.height
+        self.depth = 3
 
     #
     # Return if this generator creates an active layer which must be detected as a separate image segmentation class
@@ -77,8 +75,8 @@ class Generator (ABC):
 #
 class StackedGenerator (Generator):
 
-    def __init__ (self, width, height, depth, generators):
-        super ().__init__ (width, height, depth)
+    def __init__ (self, args, generators):
+        super ().__init__ (args)
         self.generators = generators
 
     #
