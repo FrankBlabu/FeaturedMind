@@ -9,37 +9,82 @@ import argparse
 import random
 import math
 import numpy as np
+import time
 
 import common.utils as utils
 
 import skimage.filters
 import skimage.util
 
+#----------------------------------------------------------------------------------------------------------------------
+# DECORATOR @timeit
+#
+# Decorator used to measure execution time of a method
+def timeit (func):
+
+    def timed (*args, **kw):
+        start_time = time.time ()
+        result = func (*args, **kw)
+        end_time = time.time ()
+
+        print ('Execution time of \'{funcname}\': {time} ms'.format (funcname=func.__name__, time=int ((end_time - start_time) * 1000)))
+
+        return result
+
+    return timed
 
 #----------------------------------------------------------------------------------------------------------------------
-# Create a metal texture
+# CLASS MetalTextureCreator
 #
-# See http://www.jhlabs.com/ip/brushed_metal.html for the algorithm
+# Generator for metal textures
 #
-def create_metal_texture (width, height, color, shine):
+# The textures are cached for faster reusing.
+#
+class MetalTextureCreator:
 
-    image = np.zeros ((height * 2, width * 2, 1), dtype=np.float32)
-    image[:,:] = color
+    def __init__ (self, width, height, color, shine):
+        self.width = width
+        self.height = height
+        self.color = color
+        self.shine = shine
 
-    image = skimage.util.random_noise (image, mode='gaussian', mean=0, var=0.005)
-    image = skimage.filters.gaussian (image, sigma=[0, 12, 0], mode='nearest')
+        self.cache = {}
 
-    offset = np.random.uniform ()
+    #------------------------------------------------------------------------------------------------------------------
+    # Create a metal texture
+    #
+    # See http://www.jhlabs.com/ip/brushed_metal.html for the algorithm
+    #
+    def create (self):
 
-    for y in range (image.shape[0]):
-        for x in range (image.shape[1]):
-            factor = shine * math.sin (x * math.pi / width - math.pi * offset / 2)
-            image[y,x] += factor
+        rotation = np.random.uniform (0, 90.0 / 15.0) * 15.0
+        offset = np.random.uniform (0, 1 / 0.25) * 0.25 * math.pi / 2
 
-    image = skimage.transform.rotate (image, np.random.uniform (0, 90.0), resize=False)
-    image = image[height - int (height / 2):height + int (height / 2),width - int (width / 2):width + int (width / 2),:]
+        key = (rotation, offset)
 
-    return np.dstack ((image, image, image))
+        if key not in self.cache:
+
+            image = np.zeros ((self.height * 2, self.width * 2, 1), dtype=np.float32)
+            image[:,:] = self.color
+
+            image = skimage.util.random_noise (image, mode='gaussian', mean=0, var=0.005)
+            image = skimage.filters.gaussian (image, sigma=[0, 12, 0], mode='nearest')
+
+            offset = np.random.uniform ()
+
+            for y in range (image.shape[0]):
+                for x in range (image.shape[1]):
+                    factor = self.shine * math.sin (x * math.pi / self.width - offset)
+                    image[y,x] += factor
+
+            image = skimage.transform.rotate (image, rotation, resize=False)
+            image = image[self.height - int (self.height / 2) : self.height + int (self.height / 2),
+                          self.width  - int (self.width / 2)  : self.width  + int (self.width / 2),
+                          :]
+
+            self.cache[key] = np.dstack ((image, image, image))
+
+        return self.cache[key]
 
 
 #--------------------------------------------------------------------------
@@ -61,5 +106,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args ()
 
-    image = create_metal_texture (width=args.width, height=args.height, color=args.color, shine=args.shine)
+    texture_creator = MetalTextureCreator (args.width, args.height, args.color, args.shine)
+    image = texture_creator.create ()
     utils.show_image ([image, 'Metal texture'])

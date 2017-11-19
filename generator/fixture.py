@@ -37,7 +37,9 @@ class FixtureGenerator (generator.generator.Generator):
     #
     def __init__ (self, args):
         super ().__init__ (args)
+
         self.size = Size2d (args.width, args.height)
+        self.texture_creator = generator.tools.MetalTextureCreator (width=args.width, height=args.height, color=0.2, shine=0.1)
 
     #--------------------------------------------------------------------------
     # Return if this generator creates an active layer which must be detected as a separate image segmentation class
@@ -152,7 +154,7 @@ class FixtureGenerator (generator.generator.Generator):
         #
         # Create metal texture color source and copy the part determined by the polygon into the target image
         #
-        source_image = generator.tools.create_metal_texture (image.shape[1], image.shape[0], color=0.2, shine=0.1)
+        source_image = self.texture_creator.create ()
 
         source_mask = np.zeros ((source_image.shape[0], source_image.shape[1]), dtype=np.float32)
         polygon.draw (source_mask, 1.0, True)

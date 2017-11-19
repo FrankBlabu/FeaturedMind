@@ -44,6 +44,8 @@ class SheetMetalGenerator (generator.generator.Generator):
         super ().__init__ (args)
         self.size = Size2d (args.width, args.height)
 
+        self.texture_creator = generator.tools.MetalTextureCreator (width=self.width, height=self.height, color=0.5, shine=0.1)
+
     #--------------------------------------------------------------------------
     # Return if this generator creates an active layer which must be detected as a separate image segmentation class
     #
@@ -206,7 +208,7 @@ class SheetMetalGenerator (generator.generator.Generator):
         border = Polygon2d (border)
         border.draw (mask, 1.0, fill=True)
 
-        specimen_image = generator.tools.create_metal_texture (self.width, self.height, color=0.5, shine=0.1)
+        specimen_image = self.texture_creator.create ()
 
         copy_mask = np.dstack ((mask, mask, mask))
         specimen = copy_mask * specimen_image

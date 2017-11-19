@@ -34,8 +34,6 @@ from generator.generator import Generator
 #
 class BackgroundGenerator (Generator):
 
-    TYPE = 'background'
-
     def __init__ (self, args):
         super ().__init__ (args)
 
@@ -87,7 +85,7 @@ class BackgroundGenerator (Generator):
 #
 class EmptyBackgroundGenerator (BackgroundGenerator):
 
-    TYPE = 'none'
+    TYPE = 'empty'
 
     #
     # Constructor
