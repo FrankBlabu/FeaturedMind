@@ -164,7 +164,7 @@ def train ():
                    generator.fixture.FixtureGenerator (args) ]
 
     data = generator.generator.StackedGenerator (args, generators)
-
+    data.set_use_threading (False)
 
     #
     # Print some startup information

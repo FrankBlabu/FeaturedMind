@@ -6,8 +6,11 @@
 #
 
 import argparse
+import h5py
+import os.path
 import random
 import numpy as np
+
 import common.utils as utils
 import generator.background
 import generator.generator
@@ -344,6 +347,13 @@ class SheetMetalGenerator (generator.generator.Generator):
 
 
 #--------------------------------------------------------------------------
+# Local functions
+#
+def get_file_name (args, index):
+    return os.path.join (args.save, 'dataset_{index:0>8}.h5'.format (index=index))
+
+
+#--------------------------------------------------------------------------
 # MAIN
 #
 if __name__ == '__main__':
@@ -358,6 +368,8 @@ if __name__ == '__main__':
     parser.add_argument ('-x', '--width',   type=int, default=640,  help='Width of the generated images')
     parser.add_argument ('-y', '--height',  type=int, default=480,  help='Height of the generated images')
     parser.add_argument ('-f', '--fixture', action='store_true', default=False, help='Add fixture')
+    parser.add_argument ('-s', '--save',    type=str, default=None, help='Directory for saving the generated images')
+    parser.add_argument ('-r', '--runs',    type=int, default=1, help='Number of runs (for saved images)')
 
     generator.background.BackgroundGenerator.add_to_args_definition (parser)
     args = parser.parse_args ()
@@ -369,7 +381,23 @@ if __name__ == '__main__':
         parts.append (generator.fixture.FixtureGenerator (args))
 
     source = generator.generator.StackedGenerator (args, parts)
-    image, mask = source.generate ()
 
-    utils.show_image ([image, 'Sheet metal'],
-                      [mask,  'Specimen mask'])
+    if args.save is None:
+        if args.runs > 1:
+            raise RuntimeError ('Runs (option -r) can only be specified if the generated images are saved (option -s)')
+
+        image, mask = source.generate ()
+
+        utils.show_image ([image, 'Sheet metal'],
+                          [mask,  'Specimen mask'])
+
+    else:
+        for index in range (args.runs):
+
+            image, mask = source.generate ()
+
+            h5f = h5py.File (get_file_name (args, index), 'w')
+            h5f.create_dataset ('image', data=image)
+            h5f.create_dataset ('mask', data=mask)
+            h5f.flush ()
+            h5f.close ()
