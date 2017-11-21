@@ -10,23 +10,35 @@ import random
 import cProfile
 import pstats
 import sys
+import time
 
 import generator.background
 import generator.fixture
 import generator.sheetmetal
-import generator.tools
+
 
 #----------------------------------------------------------------------------------------------------------------------
 # Test generator run time
 #
-@generator.tools.timeit
 def test_run_time (generator, runs):
+
+    start_time = time.time ()
 
     for i in range (runs):
         print('\rRun {run} / {total}'.format (run=(i + 1), total=runs), end='\r')
         image, mask = generator.generate ()
 
     print ()
+
+    end_time = time.time ()
+
+    duration = int ((end_time - start_time) * 1000)
+
+    if runs == 1:
+        print ('Execution time : {duration} ms'.format (duration=duration))
+    else:
+        print ('Execution time : {duration} ms (avg. {steptime} ms per run)'.format (duration=duration,
+                                                                                     steptime=duration / runs))
 
 #----------------------------------------------------------------------------------------------------------------------
 # Profile generator execution
@@ -36,7 +48,7 @@ def test_profile (generator, runs):
     pr = cProfile.Profile ()
     pr.enable ()
 
-    image, mask = generator.generate ()
+    test_run_time (generator, runs)
 
     pr.disable ()
 
@@ -65,7 +77,7 @@ if __name__ == '__main__':
     parser.add_argument ('-y', '--height',    type=int, default=512, help='Height of the generated image')
     parser.add_argument ('-g', '--generator', action='store', choices=[generator.TYPE for generator in generators])
     parser.add_argument ('-p', '--profile',   action='store_true', default=False, help='Profile run')
-    parser.add_argument ('-r', '--runs',      type=int, default=None, help='Number of runs for timing measurement')
+    parser.add_argument ('-r', '--runs',      type=int, default=1, help='Number of runs for timing measurement')
 
     generator.background.BackgroundGenerator.add_to_args_definition (parser)
 
@@ -83,10 +95,6 @@ if __name__ == '__main__':
         raise RuntimeError ('Unknown generator type \'{typename}\''.format (typename=args.generator))
 
     if args.profile:
-        if args.runs is not None:
-            test_profile (generator, args.runs)
-        else:
-            test_profile (generator, 1)
-
-    elif args.runs is not None:
+        test_profile (generator, args.runs)
+    else:
         test_run_time (generator, args.runs)
