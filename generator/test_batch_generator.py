@@ -81,6 +81,7 @@ if __name__ == '__main__':
     parser.add_argument ('-p', '--profile',   action='store_true', default=False, help='Profile run')
     parser.add_argument ('-r', '--runs',      type=int, default=1, help='Number of runs for timing measurement')
     parser.add_argument ('-b', '--batchsize', type=int, default=5, help='Batchsize')
+    parser.add_argument ('-t', '--threading', action='store_true', default=False, help='Use threading')
 
     generator.background.BackgroundGenerator.add_to_args_definition (parser)
     args = parser.parse_args ()
@@ -90,7 +91,7 @@ if __name__ == '__main__':
              generator.fixture.FixtureGenerator (args)]
 
     source = generator.generator.StackedGenerator (args, parts)
-    source.set_use_threading (False)
+    source.set_use_threading (args.threading)
 
     if args.profile:
         test_profile (source, args)

@@ -48,7 +48,13 @@ class MetalTextureCreator:
         self.color = color
         self.shine = shine
 
-        self.cache = {}
+        self.images = []
+        for _ in range (3):
+            image = self.create_single_image ()
+            self.images.append (np.dstack ((image, image, image)))
+
+            flipped = image[:, ::-1]
+            self.images.append (np.dstack ((flipped, flipped, flipped)))
 
     #------------------------------------------------------------------------------------------------------------------
     # Create a metal texture
@@ -56,35 +62,32 @@ class MetalTextureCreator:
     # See http://www.jhlabs.com/ip/brushed_metal.html for the algorithm
     #
     def create (self):
+        return random.choice (self.images)
+
+    def create_single_image (self):
 
         rotation = np.random.uniform (0, 90.0 / 15.0) * 15.0
         offset = np.random.uniform (0, 1 / 0.25) * 0.25 * math.pi / 2
 
-        key = (rotation, offset)
+        image = np.zeros ((self.height * 2, self.width * 2, 1), dtype=np.float32)
+        image[:,:] = self.color
 
-        if key not in self.cache:
+        image = skimage.util.random_noise (image, mode='gaussian', mean=0, var=0.005)
+        image = skimage.filters.gaussian (image, sigma=[0, 12, 0], mode='nearest')
 
-            image = np.zeros ((self.height * 2, self.width * 2, 1), dtype=np.float32)
-            image[:,:] = self.color
+        offset = np.random.uniform ()
 
-            image = skimage.util.random_noise (image, mode='gaussian', mean=0, var=0.005)
-            image = skimage.filters.gaussian (image, sigma=[0, 12, 0], mode='nearest')
+        for y in range (image.shape[0]):
+            for x in range (image.shape[1]):
+                factor = self.shine * math.sin (x * math.pi / self.width - offset)
+                image[y,x] += factor
 
-            offset = np.random.uniform ()
+        image = skimage.transform.rotate (image, rotation, resize=False)
+        image = image[self.height - int (self.height / 2) : self.height + int (self.height / 2),
+                      self.width  - int (self.width / 2)  : self.width  + int (self.width / 2),
+                      :]
 
-            for y in range (image.shape[0]):
-                for x in range (image.shape[1]):
-                    factor = self.shine * math.sin (x * math.pi / self.width - offset)
-                    image[y,x] += factor
-
-            image = skimage.transform.rotate (image, rotation, resize=False)
-            image = image[self.height - int (self.height / 2) : self.height + int (self.height / 2),
-                          self.width  - int (self.width / 2)  : self.width  + int (self.width / 2),
-                          :]
-
-            self.cache[key] = np.dstack ((image, image, image))
-
-        return self.cache[key]
+        return image
 
 
 #--------------------------------------------------------------------------
