@@ -160,10 +160,10 @@ def train ():
     # Setup generator
     #
     generators = [ generator.background.BackgroundGenerator.create (args),
-                   generator.sheetmetal.SheetMetalGenerator (args.width, args.height),
-                   generator.fixture.FixtureGenerator (args.width, args.height) ]
+                   generator.sheetmetal.SheetMetalGenerator (args),
+                   generator.fixture.FixtureGenerator (args) ]
 
-    data = generator.generator.StackedGenerator (args.width, args.height, 3, generators)
+    data = generator.generator.StackedGenerator (args, generators)
 
 
     #
