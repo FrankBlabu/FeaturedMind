@@ -174,10 +174,10 @@ def batch_generator (generator, batch_size):
 
     classes = generator.get_number_of_classes ()
 
-    batch_x = np.zeros ((batch_size, generator.height, generator.width, 3))
-    batch_y = np.zeros ((batch_size, generator.height, generator.width, classes))
-
     while True:
+
+        batch_x = np.zeros ((batch_size, generator.height, generator.width, 3))
+        batch_y = np.zeros ((batch_size, generator.height, generator.width, classes))
 
         for i in range (batch_size):
             image, mask = generator.generate ()
