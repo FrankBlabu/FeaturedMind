@@ -10,6 +10,7 @@ import queue
 import threading
 
 import skimage.filters
+import common.utils
 
 from abc import ABC, abstractmethod
 
@@ -191,7 +192,7 @@ def batch_generator (generator, batch_size):
             assert mask.shape[0] == image.shape[0]
             assert mask.shape[1] == image.shape[1]
 
-            batch_x[i] = image
+            batch_x[i] = common.utils.mean_center (image)
 
             for layer in range (classes):
                 batch_y[i,:,:,layer][mask == layer + 1] = 1

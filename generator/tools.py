@@ -9,29 +9,11 @@ import argparse
 import random
 import math
 import numpy as np
-import time
 
 import common.utils as utils
 
 import skimage.filters
 import skimage.util
-
-#----------------------------------------------------------------------------------------------------------------------
-# DECORATOR @timeit
-#
-# Decorator used to measure execution time of a method
-def timeit (func):
-
-    def timed (*args, **kw):
-        start_time = time.time ()
-        result = func (*args, **kw)
-        end_time = time.time ()
-
-        print ('Execution time of \'{funcname}\': {time} ms'.format (funcname=func.__name__, time=int ((end_time - start_time) * 1000)))
-
-        return result
-
-    return timed
 
 #----------------------------------------------------------------------------------------------------------------------
 # CLASS MetalTextureCreator

@@ -52,7 +52,7 @@ def recall (y_true, y_pred):
 #
 # f1 = 2 * precision * recall / (precision + recall)
 #
-# Meaning: 'Balance' between precision and recall
+# Meaning: 'Balance' or harmonic average between precision and recall
 #
 def f1_score (y_true, y_pred):
     p = precision (y_true, y_pred)
@@ -64,7 +64,7 @@ def f1_score (y_true, y_pred):
 #--------------------------------------------------------------------------
 # Sorensen-Dice coefficient computing (see https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient)
 #
-#    This is a method to measure similarities between two samples
+#  This is a method to measure similarities between two samples
 #
 def dice_coef (y_true, y_pred):
 

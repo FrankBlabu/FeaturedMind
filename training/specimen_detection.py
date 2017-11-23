@@ -35,7 +35,7 @@ import generator.sheetmetal
 #
 # @param generator Generator object creating the training/validation/test batches
 #
-def create_model (generator):
+def create_model (generator, learning_rate=1e-5):
 
     inputs = tf.keras.layers.Input (shape=(generator.height, generator.width, generator.depth), name='input')
 
@@ -85,7 +85,7 @@ def create_model (generator):
     conv10 = tf.keras.layers.Conv2D (generator.get_number_of_classes (), (1, 1), activation='sigmoid') (conv9)
 
     model = tf.keras.models.Model (inputs=[inputs], outputs=[conv10])
-    model.compile (optimizer=tf.keras.optimizers.Adam (lr=1e-5),
+    model.compile (optimizer=tf.keras.optimizers.Adam (lr=learning_rate),
                    loss=common.losses.dice_coef,
                    metrics=['accuracy',
                             common.metrics.precision,
