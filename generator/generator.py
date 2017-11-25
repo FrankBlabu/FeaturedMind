@@ -171,7 +171,7 @@ class StackedGenerator (Generator):
 #----------------------------------------------------------------------------------------------------------------------
 # Generator for training batches
 #
-def batch_generator (generator, batch_size):
+def batch_generator (generator, batch_size, mean_center=True):
 
     classes = generator.get_number_of_classes ()
 
@@ -192,7 +192,7 @@ def batch_generator (generator, batch_size):
             assert mask.shape[0] == image.shape[0]
             assert mask.shape[1] == image.shape[1]
 
-            batch_x[i] = common.utils.mean_center (image)
+            batch_x[i] = common.utils.mean_center (image) if mean_center else image
 
             for layer in range (classes):
                 batch_y[i,:,:,layer][mask == layer + 1] = 1

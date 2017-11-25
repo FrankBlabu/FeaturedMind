@@ -14,8 +14,6 @@ import common.losses as losses
 import common.metrics as metrics
 import common.utils as utils
 import generator.background as background
-import skimage.color
-import skimage.filters
 import tensorflow as tf
 
 import generator.background
@@ -62,10 +60,12 @@ model = tf.keras.models.load_model (args.model, custom_objects={
 # Create test specimen and setup input tensors
 #
 generators = [ generator.background.BackgroundGenerator.create (args),
-               generator.sheetmetal.SheetMetalGenerator (args.width, args.height),
-               generator.fixture.FixtureGenerator (args.width, args.height) ]
+               generator.sheetmetal.SheetMetalGenerator (args),
+               generator.fixture.FixtureGenerator (args) ]
 
-data = generator.generator.batch_generator (generator.generator.StackedGenerator (args.width, args.height, 3, generators), 10)
+data = generator.generator.batch_generator (generator=generator.generator.StackedGenerator (args, generators),
+                                            batch_size=5,
+                                            mean_center=False)
 
 images, masks = next (data)
 
@@ -93,19 +93,15 @@ result = model.predict (images)[0]
 
 print ('Duration: {0:.4f}s'.format ((time.process_time () - start_time) / 10))
 
-#result[result < 0.5] = 0.0
+print (result.shape)
 
 mask = np.zeros (result.shape[0:2])
 
-mask[result[:,:,0] > 0.5] = 255
-#mask[result[:,:,1] > 0.5] = 1.0
+mask[result[:,:,0] > 0.5] = 1.0
+mask[result[:,:,1] > 0.5] = 0.5
 
-#edges = result.reshape ((result.shape[0], result.shape[1]))
-#edges = skimage.filters.sobel (edges)
-
-utils.show_image ([images[0],                     'Generated image'],
-                  [skimage.color.gray2rgb (mask), 'Predicted specimen features'])
-
+utils.show_image ([images[0], 'Generated image'],
+                  [mask,      'Predicted specimen features'])
 
 
 #

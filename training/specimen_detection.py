@@ -56,21 +56,21 @@ def create_model (generator, learning_rate=1e-5):
 
     conv4 = tf.keras.layers.Conv2D (256, (3, 3), activation='relu', padding='same') (pool3)
     conv4 = tf.keras.layers.Conv2D (256, (3, 3), activation='relu', padding='same') (conv4)
-    pool4 = tf.keras.layers.MaxPooling2D (pool_size=(2, 2)) (conv4)
+    #pool4 = tf.keras.layers.MaxPooling2D (pool_size=(2, 2)) (conv4)
 
-    conv5 = tf.keras.layers.Conv2D (512, (3, 3), activation='relu', padding='same') (pool4)
-    conv5 = tf.keras.layers.Conv2D (512, (3, 3), activation='relu', padding='same') (conv5)
+    #conv5 = tf.keras.layers.Conv2D (512, (3, 3), activation='relu', padding='same') (pool4)
+    #conv5 = tf.keras.layers.Conv2D (512, (3, 3), activation='relu', padding='same') (conv5)
 
-    drop5 = tf.keras.layers.Dropout (0.1) (conv5)
+    #drop5 = tf.keras.layers.Dropout (0.1) (conv5)
 
     #
     # Upsampling
     #
-    up6 = tf.keras.layers.concatenate ([tf.keras.layers.UpSampling2D (size=(2, 2)) (drop5), conv4], axis=3)
-    conv6 = tf.keras.layers.Conv2D (256, (3, 3), activation='relu', padding='same') (up6)
-    conv6 = tf.keras.layers.Conv2D (256, (3, 3), activation='relu', padding='same') (conv6)
+    #up6 = tf.keras.layers.concatenate ([tf.keras.layers.UpSampling2D (size=(2, 2)) (drop5), conv4], axis=3)
+    #conv6 = tf.keras.layers.Conv2D (256, (3, 3), activation='relu', padding='same') (up6)
+    #conv6 = tf.keras.layers.Conv2D (256, (3, 3), activation='relu', padding='same') (conv6)
 
-    up7 = tf.keras.layers.concatenate ([tf.keras.layers.UpSampling2D (size=(2, 2)) (conv6), conv3], axis=3)
+    up7 = tf.keras.layers.concatenate ([tf.keras.layers.UpSampling2D (size=(2, 2)) (conv4), conv3], axis=3)
     conv7 = tf.keras.layers.Conv2D (128, (3, 3), activation='relu', padding='same') (up7)
     conv7 = tf.keras.layers.Conv2D (128, (3, 3), activation='relu', padding='same') (conv7)
 
@@ -115,7 +115,6 @@ def train ():
     parser.add_argument ('-o', '--output',               type=str, default=None, help='Model output file name')
     parser.add_argument ('-l', '--log',                  type=str, default=None, help='Log file directory')
     parser.add_argument ('-t', '--tensorboard',          action='store_true', default=False, help='Open log in tensorboard')
-    parser.add_argument ('-v', '--verbose',              action='store_true', default=False, help='Verbose output')
     parser.add_argument ('-i', '--intermediate-saving',  action='store_true', default=False, help='Save intermediate model after each epoch')
     parser.add_argument ('-c', '--continue-training',    type=str, default=None, help='Continue training of existing model')
 
@@ -143,7 +142,12 @@ def train ():
     callbacks = []
 
     if args.log is not None:
-        callbacks.append (tf.keras.callbacks.TensorBoard (os.path.abspath (args.log), write_graph=True, write_images=True))
+        callbacks.append (tf.keras.callbacks.TensorBoard (os.path.abspath (args.log),
+        batch_size=args.batchsize,
+        histogram_freq=1,
+        write_grads=True,
+        write_graph=True,
+        write_images=True))
 
     if args.intermediate_saving:
         callbacks.append (tf.keras.callbacks.ModelCheckpoint
@@ -154,7 +158,7 @@ def train ():
          save_weights_only=False,
          mode='max'))
 
-    callbacks.append (tf.keras.callbacks.EarlyStopping (monitor='val_loss', min_delta=0, patience=1, verbose=args.verbose, mode='min'))
+    callbacks.append (tf.keras.callbacks.EarlyStopping (monitor='val_loss', min_delta=0, patience=1, verbose=True, mode='min'))
 
     #
     # Setup generator
@@ -209,7 +213,7 @@ def train ():
                          epochs=args.epochs,
                          validation_data=generator.generator.batch_generator (data, args.batchsize),
                          validation_steps=int (args.steps / 10) if args.steps >= 10 else 1,
-                         verbose=1 if args.verbose else 0,
+                         verbose=True,
                          callbacks=callbacks)
 
     if args.output is not None:
