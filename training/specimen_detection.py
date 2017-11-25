@@ -144,7 +144,6 @@ def train ():
     if args.log is not None:
         callbacks.append (tf.keras.callbacks.TensorBoard (os.path.abspath (args.log),
         batch_size=args.batchsize,
-        histogram_freq=1,
         write_grads=True,
         write_graph=True,
         write_images=True))
