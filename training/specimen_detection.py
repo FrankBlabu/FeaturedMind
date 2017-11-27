@@ -35,9 +35,77 @@ import generator.sheetmetal
 #
 # @param generator Generator object creating the training/validation/test batches
 #
-def create_model (generator, learning_rate=1e-5):
+def create_model (generator, learning_rate, number_of_classes):
 
     inputs = tf.keras.layers.Input (shape=(generator.height, generator.width, generator.depth), name='input')
+
+    #
+    # Create VGG-16 model with pretrained weights (see https://keras.io/applications/#vgg16)
+    #
+    # Example see: https://github.com/divamgupta/image-segmentation-keras/blob/master/Models/VGGSegnet.py
+    #
+    x = tf.keras.applications.vgg16.VGG16 (include_top=False,
+                                           weights='imagenet',
+                                           input_tensor=inputs,
+                                           input_shape=(generator.height, generator.width, generator.depth),
+                                           pooling='None')
+
+    x.summary ()
+
+    #x = tf.keras.layers.Flatten (name='flatten') (x.output)
+    #x = tf.keras.layers.Dense (4096, activation='relu', name='fc1') (x)
+    #x = tf.keras.layers.Dense (4096, activation='relu', name='fc2') (x)
+    #x = tf.keras.layers.Dense (number_of_classes, activation='softmax', name='predictions') (x)
+
+    x = tf.keras.layers.ZeroPadding2D ((1, 1)) (x.output)
+    x = tf.keras.layers.Conv2D (512, (3, 3), padding='valid') (x)
+    x = tf.keras.layers.BatchNormalization () (x)
+
+    x = tf.keras.layers.UpSampling2D ((2,2)) (x)
+    x = tf.keras.layers.ZeroPadding2D ((1,1)) (x)
+    x = tf.keras.layers.Conv2D (256, (3, 3), padding='valid') (x)
+    x = tf.keras.layers.BatchNormalization () (x)
+
+    x = tf.keras.layers.UpSampling2D ((2,2)) (x)
+    x = tf.keras.layers.ZeroPadding2D ((1,1)) (x)
+    x = tf.keras.layers.Conv2D (128 , (3, 3), padding='valid') (x)
+    x = tf.keras.layers.BatchNormalization () (x)
+
+    x = tf.keras.layers.UpSampling2D ((2,2)) (x)
+    x = tf.keras.layers.ZeroPadding2D ((1,1)) (x)
+    x = tf.keras.layers.Conv2D (64, (3, 3), padding='valid',) (x)
+    x = tf.keras.layers.BatchNormalization () (x)
+
+    x = tf.keras.layers.Conv2D (number_of_classes, (3, 3) , padding='same') (x)
+
+    m  = tf.keras.models.Model (inputs, x)
+
+    print ("*** 1: ", m.output_shape)
+
+    output_height = m.output_shape[1]   # ???
+    output_width = m.output_shape[2]    # ???
+
+    x = tf.keras.layers.Reshape ((output_height * output_width, -1)) (x)
+    x = tf.keras.layers.Permute ((2, 1)) (x)
+    x = tf.keras.layers.Activation ('softmax') (x)
+
+    model = tf.keras.models.Model (inputs=[inputs], outputs=[x])
+    model.output_width  = output_width
+    model.output_height = output_height
+
+    model.compile (optimizer=tf.keras.optimizers.Adam (lr=learning_rate),
+                   loss=common.losses.dice_coef,
+                   metrics=['accuracy',
+                            common.metrics.precision,
+                            common.metrics.recall,
+                            common.metrics.f1_score,
+                            common.metrics.dice_coef])
+
+
+    return model
+
+
+
 
     #
     # Downsampling
@@ -143,21 +211,20 @@ def train ():
 
     if args.log is not None:
         callbacks.append (tf.keras.callbacks.TensorBoard (os.path.abspath (args.log),
-        batch_size=args.batchsize,
-        write_grads=True,
-        write_graph=True,
-        write_images=True))
+                                                          batch_size=args.batchsize,
+                                                          write_grads=True,
+                                                          write_graph=True,
+                                                          write_images=True))
 
     if args.intermediate_saving:
-        callbacks.append (tf.keras.callbacks.ModelCheckpoint
-        (args.output,
-         monitor='dice_coef',
-         verbose=0,
-         save_best_only=True,
-         save_weights_only=False,
-         mode='max'))
+        callbacks.append (tf.keras.callbacks.ModelCheckpoint (args.output,
+                                                              monitor='dice_coef',
+                                                              verbose=0,
+                                                              save_best_only=True,
+                                                              save_weights_only=False,
+                                                              mode='max'))
 
-    callbacks.append (tf.keras.callbacks.EarlyStopping (monitor='val_loss', min_delta=0, patience=1, verbose=True, mode='min'))
+    #callbacks.append (tf.keras.callbacks.EarlyStopping (monitor='val_loss', min_delta=0, patience=1, verbose=True, mode='min'))
 
     #
     # Setup generator
@@ -199,13 +266,7 @@ def train ():
                                                                                     'recall'   : common.metrics.recall,
                                                                                     'f1_score' : common.metrics.f1_score})
     else:
-        model = create_model (generator=data)
-
-    #metadata = {'ImageWidth': args.width,
-    #            'ImageHeight': args.height,
-    #            'Steps': args.steps,
-    #            'Epochs': args.epochs,
-    #            'Batches': args.batchsize}
+        model = create_model (generator=data, learning_rate=1e-5, number_of_classes=data.get_number_of_classes ())
 
     model.fit_generator (generator=generator.generator.batch_generator (data, args.batchsize),
                          steps_per_epoch=args.steps,
