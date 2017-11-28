@@ -140,7 +140,9 @@ def mean_center (image):
     assert len (image.shape) == 3
 
     for channel in range (image.shape[-1]):
-        image[:, channel] = (image[:, channel] - image[:,channel].mean ()) /  image[:, channel].std ()
+        std = image[:, channel].std ()
+        if not math.isclose (std, 0):
+            image[:, channel] = (image[:, channel] - image[:,channel].mean ()) / std
 
     return image
 

@@ -13,6 +13,7 @@ import argparse
 import gc
 import os
 import subprocess
+import sys
 import webbrowser
 
 import tensorflow as tf
@@ -50,13 +51,15 @@ def create_model (generator, learning_rate, number_of_classes):
                                            input_shape=(generator.height, generator.width, generator.depth),
                                            pooling='None')
 
-    x.summary ()
+    #
+    # The VGG 16 part of the model has pretrained, fixed weights and must not be trained again here.
+    #
+    for layer in x.layers:
+        layer.trainable = False
 
-    #x = tf.keras.layers.Flatten (name='flatten') (x.output)
-    #x = tf.keras.layers.Dense (4096, activation='relu', name='fc1') (x)
-    #x = tf.keras.layers.Dense (4096, activation='relu', name='fc2') (x)
-    #x = tf.keras.layers.Dense (number_of_classes, activation='softmax', name='predictions') (x)
-
+    #
+    # Upsampling to 'convert' object detection values into image segmentation results
+    #
     x = tf.keras.layers.ZeroPadding2D ((1, 1)) (x.output)
     x = tf.keras.layers.Conv2D (512, (3, 3), padding='valid') (x)
     x = tf.keras.layers.BatchNormalization () (x)
@@ -77,82 +80,12 @@ def create_model (generator, learning_rate, number_of_classes):
     x = tf.keras.layers.BatchNormalization () (x)
 
     x = tf.keras.layers.Conv2D (number_of_classes, (3, 3) , padding='same') (x)
-
-    m  = tf.keras.models.Model (inputs, x)
-
-    print ("*** 1: ", m.output_shape)
-
-    output_height = m.output_shape[1]   # ???
-    output_width = m.output_shape[2]    # ???
-
-    x = tf.keras.layers.Reshape ((output_height * output_width, -1)) (x)
-    x = tf.keras.layers.Permute ((2, 1)) (x)
     x = tf.keras.layers.Activation ('softmax') (x)
 
     model = tf.keras.models.Model (inputs=[inputs], outputs=[x])
-    model.output_width  = output_width
-    model.output_height = output_height
 
-    model.compile (optimizer=tf.keras.optimizers.Adam (lr=learning_rate),
-                   loss=common.losses.dice_coef,
-                   metrics=['accuracy',
-                            common.metrics.precision,
-                            common.metrics.recall,
-                            common.metrics.f1_score,
-                            common.metrics.dice_coef])
+    model.summary ()
 
-
-    return model
-
-
-
-
-    #
-    # Downsampling
-    #
-    conv1 = tf.keras.layers.Conv2D (32, (3, 3), activation='relu', padding='same') (inputs)
-    conv1 = tf.keras.layers.Conv2D (32, (3, 3), activation='relu', padding='same') (conv1)
-    pool1 = tf.keras.layers.MaxPooling2D (pool_size=(2, 2)) (conv1)
-
-    conv2 = tf.keras.layers.Conv2D (64, (3, 3), activation='relu', padding='same') (pool1)
-    conv2 = tf.keras.layers.Conv2D (64, (3, 3), activation='relu', padding='same') (conv2)
-    pool2 = tf.keras.layers.MaxPooling2D (pool_size=(2, 2)) (conv2)
-
-    conv3 = tf.keras.layers.Conv2D (128, (3, 3), activation='relu', padding='same') (pool2)
-    conv3 = tf.keras.layers.Conv2D (128, (3, 3), activation='relu', padding='same') (conv3)
-    pool3 = tf.keras.layers.MaxPooling2D (pool_size=(2, 2)) (conv3)
-
-    conv4 = tf.keras.layers.Conv2D (256, (3, 3), activation='relu', padding='same') (pool3)
-    conv4 = tf.keras.layers.Conv2D (256, (3, 3), activation='relu', padding='same') (conv4)
-    #pool4 = tf.keras.layers.MaxPooling2D (pool_size=(2, 2)) (conv4)
-
-    #conv5 = tf.keras.layers.Conv2D (512, (3, 3), activation='relu', padding='same') (pool4)
-    #conv5 = tf.keras.layers.Conv2D (512, (3, 3), activation='relu', padding='same') (conv5)
-
-    #drop5 = tf.keras.layers.Dropout (0.1) (conv5)
-
-    #
-    # Upsampling
-    #
-    #up6 = tf.keras.layers.concatenate ([tf.keras.layers.UpSampling2D (size=(2, 2)) (drop5), conv4], axis=3)
-    #conv6 = tf.keras.layers.Conv2D (256, (3, 3), activation='relu', padding='same') (up6)
-    #conv6 = tf.keras.layers.Conv2D (256, (3, 3), activation='relu', padding='same') (conv6)
-
-    up7 = tf.keras.layers.concatenate ([tf.keras.layers.UpSampling2D (size=(2, 2)) (conv4), conv3], axis=3)
-    conv7 = tf.keras.layers.Conv2D (128, (3, 3), activation='relu', padding='same') (up7)
-    conv7 = tf.keras.layers.Conv2D (128, (3, 3), activation='relu', padding='same') (conv7)
-
-    up8 = tf.keras.layers.concatenate ([tf.keras.layers.UpSampling2D (size=(2, 2)) (conv7), conv2], axis=3)
-    conv8 = tf.keras.layers.Conv2D (64, (3, 3), activation='relu', padding='same') (up8)
-    conv8 = tf.keras.layers.Conv2D (64, (3, 3), activation='relu', padding='same') (conv8)
-
-    up9 = tf.keras.layers.concatenate ([tf.keras.layers.UpSampling2D (size=(2, 2)) (conv8), conv1], axis=3)
-    conv9 = tf.keras.layers.Conv2D (32, (3, 3), activation='relu', padding='same') (up9)
-    conv9 = tf.keras.layers.Conv2D (32, (3, 3), activation='relu', padding='same') (conv9)
-
-    conv10 = tf.keras.layers.Conv2D (generator.get_number_of_classes (), (1, 1), activation='sigmoid') (conv9)
-
-    model = tf.keras.models.Model (inputs=[inputs], outputs=[conv10])
     model.compile (optimizer=tf.keras.optimizers.Adam (lr=learning_rate),
                    loss=common.losses.dice_coef,
                    metrics=['accuracy',
@@ -267,6 +200,8 @@ def train ():
                                                                                     'f1_score' : common.metrics.f1_score})
     else:
         model = create_model (generator=data, learning_rate=1e-5, number_of_classes=data.get_number_of_classes ())
+
+    print (model.input_shape, model.output_shape)
 
     model.fit_generator (generator=generator.generator.batch_generator (data, args.batchsize),
                          steps_per_epoch=args.steps,

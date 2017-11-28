@@ -5,6 +5,7 @@
 # Frank Blankenburg, Oct. 2017
 #
 
+import itertools
 import numpy as np
 import queue
 import threading
@@ -93,7 +94,7 @@ class StackedGenerator (Generator):
     def generate (self):
 
         image = np.zeros ((self.height, self.width, self.depth), dtype=np.float32)
-        mask  = np.zeros ((self.height, self.width), dtype=np.float32)
+        mask  = np.zeros ((self.height, self.width, self.get_number_of_classes ()), dtype=np.float32)
         step = 0
 
         results = []
@@ -123,9 +124,9 @@ class StackedGenerator (Generator):
                     copy_mask = np.dstack ((copy_mask, copy_mask, copy_mask))
 
                     image = (1 - copy_mask) * image + copy_mask * step_image
-                    mask[step_mask > 0] = step
+                    mask[:,:,step] = step_mask
 
-                step += 1
+                    step += 1
 
             for thread in threads:
                 thread.join ()
@@ -149,9 +150,9 @@ class StackedGenerator (Generator):
                     copy_mask = np.dstack ((copy_mask, copy_mask, copy_mask))
 
                     image = (1 - copy_mask) * image + copy_mask * step_image
-                    mask[step_mask > 0] = step
+                    mask[:,:,step] = step_mask
 
-                step += 1
+                    step += 1
 
         return image, mask
 
@@ -159,13 +160,7 @@ class StackedGenerator (Generator):
     # Return the number of classes generated
     #
     def get_number_of_classes (self):
-
-        n = 0
-        for generator in self.generators:
-            if generator.is_active_layer ():
-                n += 1
-
-        return n
+        return sum (1 for i in self.generators if i.is_active_layer ())
 
 
 #----------------------------------------------------------------------------------------------------------------------

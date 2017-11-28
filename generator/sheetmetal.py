@@ -6,10 +6,10 @@
 #
 
 import argparse
-import h5py
 import os.path
 import random
 import numpy as np
+import scipy
 
 import common.utils as utils
 import generator.background
@@ -368,7 +368,6 @@ if __name__ == '__main__':
     parser.add_argument ('-x', '--width',   type=int, default=640,  help='Width of the generated images')
     parser.add_argument ('-y', '--height',  type=int, default=480,  help='Height of the generated images')
     parser.add_argument ('-f', '--fixture', action='store_true', default=False, help='Add fixture')
-    parser.add_argument ('-s', '--save',    type=str, default=None, help='Directory for saving the generated images')
     parser.add_argument ('-r', '--runs',    type=int, default=1, help='Number of runs (for saved images)')
 
     generator.background.BackgroundGenerator.add_to_args_definition (parser)
@@ -382,22 +381,13 @@ if __name__ == '__main__':
 
     source = generator.generator.StackedGenerator (args, parts)
 
-    if args.save is None:
-        if args.runs > 1:
-            raise RuntimeError ('Runs (option -r) can only be specified if the generated images are saved (option -s)')
+    if args.runs > 1:
+        raise RuntimeError ('Runs (option -r) can only be specified if the generated images are saved (option -s)')
 
-        image, mask = source.generate ()
+    image, mask = source.generate ()
 
-        utils.show_image ([image, 'Sheet metal'],
-                          [mask,  'Specimen mask'])
+    while mask.shape[2] < image.shape[2]:
+        mask = np.dstack ((mask, np.zeros ((mask.shape[0], mask.shape[1], 1))))
 
-    else:
-        for index in range (args.runs):
-
-            image, mask = source.generate ()
-
-            h5f = h5py.File (get_file_name (args, index), 'w')
-            h5f.create_dataset ('image', data=image)
-            h5f.create_dataset ('mask', data=mask)
-            h5f.flush ()
-            h5f.close ()
+    utils.show_image ([image, 'Sheet metal'],
+                      [mask,  'Specimen mask'])
