@@ -13,7 +13,6 @@ import argparse
 import gc
 import os
 import subprocess
-import sys
 import webbrowser
 
 import tensorflow as tf
@@ -83,8 +82,6 @@ def create_model (generator, learning_rate, number_of_classes):
     x = tf.keras.layers.Activation ('softmax') (x)
 
     model = tf.keras.models.Model (inputs=[inputs], outputs=[x])
-
-    model.summary ()
 
     model.compile (optimizer=tf.keras.optimizers.Adam (lr=learning_rate),
                    loss=common.losses.dice_coef,
@@ -201,12 +198,22 @@ def train ():
     else:
         model = create_model (generator=data, learning_rate=1e-5, number_of_classes=data.get_number_of_classes ())
 
-    print (model.input_shape, model.output_shape)
 
-    model.fit_generator (generator=generator.generator.batch_generator (data, args.batchsize),
+    batches1 = generator.generator.batch_generator (data,
+                                                    batch_size=args.batchsize,
+                                                    mask_width = model.output_shape[2],
+                                                    mask_height = model.output_shape[1],
+                                                    mean_center=True)
+    batches2 = generator.generator.batch_generator (data,
+                                                    batch_size=args.batchsize,
+                                                    mask_width = model.output_shape[2],
+                                                    mask_height = model.output_shape[1],
+                                                    mean_center=True)
+
+    model.fit_generator (generator=batches1,
                          steps_per_epoch=args.steps,
                          epochs=args.epochs,
-                         validation_data=generator.generator.batch_generator (data, args.batchsize),
+                         validation_data=batches2,
                          validation_steps=int (args.steps / 10) if args.steps >= 10 else 1,
                          verbose=True,
                          callbacks=callbacks)

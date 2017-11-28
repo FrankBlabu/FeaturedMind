@@ -5,7 +5,6 @@
 # Frank Blankenburg, Oct. 2017
 #
 
-import itertools
 import numpy as np
 import queue
 import threading

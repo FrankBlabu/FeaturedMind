@@ -9,7 +9,6 @@ import argparse
 import os.path
 import random
 import numpy as np
-import scipy
 
 import common.utils as utils
 import generator.background
