@@ -384,7 +384,15 @@ if __name__ == '__main__':
     if args.runs > 1:
         raise RuntimeError ('Runs (option -r) can only be specified if the generated images are saved (option -s)')
 
-    image, mask = source.generate ()
+    batch_generator = generator.generator.batch_generator (source,
+                                                           batch_size=1,
+                                                           mask_width=int (args.width / 4),
+                                                           mask_height=int (args.height / 4),
+                                                           mean_center=False)
+    image_batch, mask_batch = next (batch_generator)
+
+    image = image_batch[0]
+    mask = mask_batch[0]
 
     while mask.shape[2] < image.shape[2]:
         mask = np.dstack ((mask, np.zeros ((mask.shape[0], mask.shape[1], 1))))

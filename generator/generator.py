@@ -166,14 +166,19 @@ class StackedGenerator (Generator):
 #----------------------------------------------------------------------------------------------------------------------
 # Generator for training batches
 #
-def batch_generator (generator, batch_size, mean_center=True):
+def batch_generator (generator, batch_size, mask_width, mask_height, mean_center=True):
 
     classes = generator.get_number_of_classes ()
 
     while True:
 
         batch_x = np.zeros ((batch_size, generator.height, generator.width, 3))
-        batch_y = np.zeros ((batch_size, generator.height, generator.width, classes))
+        batch_y = np.zeros ((batch_size, mask_height, mask_width, classes))
+
+        assert mask_width > 0
+        assert mask_height > 0
+        assert mask_height <= generator.height
+        assert mask_width <= generator.width
 
         for i in range (batch_size):
             image, mask = generator.generate ()
@@ -183,13 +188,20 @@ def batch_generator (generator, batch_size, mean_center=True):
             assert image.shape[1] == generator.width
             assert image.shape[2] == generator.depth
 
-            assert len (mask.shape) == 2
             assert mask.shape[0] == image.shape[0]
             assert mask.shape[1] == image.shape[1]
+            assert mask.shape[2] == classes
 
             batch_x[i] = common.utils.mean_center (image) if mean_center else image
 
-            for layer in range (classes):
-                batch_y[i,:,:,layer][mask == layer + 1] = 1
+            step_height = int (generator.height / mask_height)
+            step_width = int (generator.width / mask_width)
+            step_area = step_width * step_height
+
+            for h in range (mask_height):
+                for w in range (mask_width):
+                    sample = mask[h * step_height: h * step_height + step_height,
+                                  w * step_width:w * step_width + step_width]
+                    batch_y[i,h,w] = sample.sum (axis=(0, 1)) / step_area
 
         yield batch_x, batch_y
