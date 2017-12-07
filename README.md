@@ -27,4 +27,6 @@ The outcome varies, depending on the background image type and, of course, the t
 
 ## Current state ##
 
-Current I'm getting quite impressive results when retraining a pre-trained object detection network like VGG16 or InceptionV3. I'm experimenting with various parameters and model setups to learn more about the possibilities here.
+* Current I'm getting quite impressive results when retraining a pre-trained object detection network like VGG16 or InceptionV3 and real-live background images. 
+* I'm experimenting with various parameters and model setups to learn more about the possibilities here.
+* The simulated fixtures are not very close to real live ones, so more work has probably to be done here before being able to make a statement of the possible outcome of real world training data.
