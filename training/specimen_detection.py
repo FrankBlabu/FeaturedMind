@@ -37,8 +37,6 @@ import generator.sheetmetal
 #
 def create_model (generator, learning_rate, number_of_classes):
 
-    #inputs = tf.keras.layers.Input (shape=(generator.height, generator.width, generator.depth), name='input')
-
     #
     # Create VGG-16 model with pretrained weights (see https://keras.io/applications/#vgg16)
     #
@@ -52,8 +50,10 @@ def create_model (generator, learning_rate, number_of_classes):
     #
     # The VGG 16 part of the model has pretrained, fixed weights and must not be trained again here.
     #
+    trainable_layers = [ 'block3', 'block4', 'block5' ]
+
     for layer in vgg16.layers:
-        layer.trainable = False
+        layer.trainable = layer.name.startswith (tuple (trainable_layers))
 
     #
     # Upsampling to 'convert' object detection values into image segmentation results
