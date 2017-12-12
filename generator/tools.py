@@ -51,7 +51,7 @@ class MetalTextureCreator:
         rotation = np.random.uniform (0, 90.0 / 15.0) * 15.0
         offset = np.random.uniform (0, 1 / 0.25) * 0.25 * math.pi / 2
 
-        image = np.zeros ((self.height * 2, self.width * 2, 1), dtype=np.float32)
+        image = np.zeros ((self.height * 2, self.width * 2, 1), dtype=np.float64)
         image[:,:] = self.color
 
         image = skimage.util.random_noise (image, mode='gaussian', mean=0, var=0.005)

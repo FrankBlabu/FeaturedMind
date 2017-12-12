@@ -29,7 +29,7 @@ class TestGenerator (generator.Generator):
 
     def generate (self):
         image = np.random.rand (self.height, self.width, self.depth)
-        mask = np.zeros ((self.height, self.width), dtype=np.float32)
+        mask = np.zeros ((self.height, self.width), dtype=np.float64)
         mask[0, 0] = 1
         mask[1, 1] = 2
 

@@ -62,7 +62,7 @@ class SheetMetalGenerator (generator.generator.Generator):
         #
         # Mask marking the area covered by the sheet
         #
-        mask = np.zeros ((self.height, self.width), dtype=np.float32)
+        mask = np.zeros ((self.height, self.width), dtype=np.float64)
 
         #
         # Step 1: Compute area used for the specimen border
@@ -366,35 +366,22 @@ if __name__ == '__main__':
 
     parser.add_argument ('-x', '--width',   type=int, default=640,  help='Width of the generated images')
     parser.add_argument ('-y', '--height',  type=int, default=480,  help='Height of the generated images')
-    parser.add_argument ('-f', '--fixture', action='store_true', default=False, help='Add fixture')
-    parser.add_argument ('-r', '--runs',    type=int, default=1, help='Number of runs (for saved images)')
 
-    generator.background.BackgroundGenerator.add_to_args_definition (parser)
     args = parser.parse_args ()
 
-    parts = [generator.background.BackgroundGenerator.create (args),
-             SheetMetalGenerator (args)]
+    generator = SheetMetalGenerator (args)
+    image, mask = generator.generate ()
 
-    if args.fixture:
-        parts.append (generator.fixture.FixtureGenerator (args))
+    assert len (image.shape) == 3
+    assert image.shape[0] == args.height
+    assert image.shape[1] == args.width
+    assert image.shape[2] == 3
+    assert image.dtype == np.float64
 
-    source = generator.generator.StackedGenerator (args, parts)
-
-    if args.runs > 1:
-        raise RuntimeError ('Runs (option -r) can only be specified if the generated images are saved (option -s)')
-
-    batch_generator = generator.generator.batch_generator (source,
-                                                           batch_size=1,
-                                                           mask_width=int (args.width / 4),
-                                                           mask_height=int (args.height / 4),
-                                                           mean_center=False)
-    image_batch, mask_batch = next (batch_generator)
-
-    image = image_batch[0]
-    mask = mask_batch[0]
-
-    while mask.shape[2] < image.shape[2]:
-        mask = np.dstack ((mask, np.zeros ((mask.shape[0], mask.shape[1], 1))))
+    assert len (mask.shape) == 2
+    assert mask.shape[0] == args.height
+    assert mask.shape[1] == args.width
+    assert mask.dtype == np.float64
 
     utils.show_image ([image, 'Sheet metal'],
                       [mask,  'Specimen mask'])

@@ -12,6 +12,7 @@ import pstats
 import sys
 import time
 
+import common.utils
 import generator.generator
 import generator.background
 import generator.fixture
@@ -26,16 +27,18 @@ def test_run_time (source, args):
     start_time = time.time ()
 
     run = 0
-    for batch in generator.generator.batch_generator (source, args.batchsize):
+    result = None
+
+    for batch in generator.generator.batch_generator (source, batch_size=args.batchsize, mask_width=args.width / 8, mask_height = args.height / 8):
 
         intermediate_time = time.time ()
         duration = int ((intermediate_time - start_time) * 1000)
 
         run += 1
         if run == args.runs:
-            break
-
-        print('\rRun {run} / {total}: {time} ms'.format (run=run + 1, total=args.runs, time=duration), end='\r')
+            result = batch
+        else:
+            print('\rRun {run} / {total}: {time} ms'.format (run=run + 1, total=args.runs, time=duration), end='\r')
 
     print ()
 
@@ -48,6 +51,8 @@ def test_run_time (source, args):
     print ('Generated data sets: {n}'.format (n=n))
     print ('Execution time : {duration} ms'.format (duration=duration))
     print ('Execution time per dataset: {duration} ms'.format (duration=(duration / n)))
+
+    return result
 
 #----------------------------------------------------------------------------------------------------------------------
 # Profile generator execution
@@ -95,5 +100,8 @@ if __name__ == '__main__':
 
     if args.profile:
         test_profile (source, args)
-    else:
+    elif args.runs > 1:
         test_run_time (source, args)
+    else:
+        batch = test_run_time (source, args)
+        common.utils.show_image ([batch[0][0], 'Fixture'], [batch[1][0], 'Mask'])

@@ -99,7 +99,7 @@ class EmptyBackgroundGenerator (BackgroundGenerator):
     # Generate single image
     #
     def generate (self):
-        return np.zeros ((self.height, self.width, 3), dtype=np.float32), None
+        return np.zeros ((self.height, self.width, 3), dtype=np.float64), None
 
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -128,12 +128,12 @@ class NoisyRectBackgroundGenerator (BackgroundGenerator):
 
         shape = (int (self.height), int (self.width), 3)
 
-        image = np.zeros (shape, dtype=np.float32)
+        image = np.zeros (shape, dtype=np.float64)
         image = skimage.util.random_noise (image, mode='gaussian', seed=None, clip=True, mean=0.2, var=0.0001)
 
         for _ in range (random.randint (30, 80)):
 
-            rect_image = np.zeros (shape, dtype=np.float32)
+            rect_image = np.zeros (shape, dtype=image.dtype)
 
             rect = Rect2d (Point2d (.2 * self.width, .45 * self.height),
                            Point2d (.8 * self.width, .55 * self.height))
@@ -157,7 +157,8 @@ class NoisyRectBackgroundGenerator (BackgroundGenerator):
             mask |= rect_image[:,:,2] >= color[2]
             image[mask] = rect_image[mask]
 
-        return skimage.filters.gaussian (image, sigma=3, multichannel=True), None
+        image = skimage.filters.gaussian (image, sigma=3, multichannel=True)
+        return image, None
 
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -242,8 +243,9 @@ class ImageBackgroundGenerator (BackgroundGenerator):
         # The cropped image part can still be smaller that the target image and has to be scaled up accordingly
         #
         image = skimage.transform.resize (image, (self.height, self.width, image.shape[2]), mode='reflect')
+        image = np.reshape (image, (image.shape[0], image.shape[1], image.shape[2]))
 
-        return np.reshape (image, (image.shape[0], image.shape[1], image.shape[2])), None
+        return image, None
 
 
 
@@ -281,7 +283,12 @@ if __name__ == '__main__':
     # Generate image probe
     #
     image, mask = generator.generate ()
+
     assert mask is None
+    assert image.shape[0] == args.height
+    assert image.shape[1] == args.width
+    assert image.shape[2] == 3
+    assert image.dtype == np.float64
 
     if args.profile:
         pr.disable ()

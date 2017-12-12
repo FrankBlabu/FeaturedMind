@@ -55,8 +55,8 @@ class FixtureGenerator (generator.generator.Generator):
         #
         # Generale image as RGB with some background noise
         #
-        image = np.zeros ((self.height, self.width, self.depth), dtype=np.float32)
-        mask  = np.zeros ((self.height, self.width), dtype=np.float32)
+        image = np.zeros ((self.height, self.width, self.depth), dtype=np.float64)
+        mask  = np.zeros ((self.height, self.width), dtype=np.float64)
 
         #
         # We are adding 1-2 fixtures per image
@@ -156,7 +156,7 @@ class FixtureGenerator (generator.generator.Generator):
         #
         source_image = self.texture_creator.create ()
 
-        source_mask = np.zeros ((source_image.shape[0], source_image.shape[1]), dtype=np.float32)
+        source_mask = np.zeros ((source_image.shape[0], source_image.shape[1]), dtype=source_image.dtype)
         polygon.draw (source_mask, 1.0, True)
 
         copy_mask = skimage.filters.gaussian (source_mask, sigma=1, mode='nearest')
@@ -193,5 +193,16 @@ if __name__ == '__main__':
 
     source = generator.generator.StackedGenerator (args, parts)
     image, mask = source.generate ()
+
+    assert len (mask.shape) == 3
+    assert image.shape[0] == args.height
+    assert image.shape[1] == args.width
+    assert image.shape[2] == 3
+    assert image.dtype == np.float64
+
+    assert len (mask.shape) == 2
+    assert mask.shape[0] == args.height
+    assert mask.shape[1] == args.width
+    assert mask.dtype == np.float64
 
     utils.show_image ([image, 'Fixture'], [mask, 'Mask'])

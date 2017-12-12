@@ -97,7 +97,7 @@ def show_image (*args, show_legend=False):
     elif len (args) == 2:
         partitions = [ (1, 2, 1), (1, 2, 2) ]
     elif len (args) == 3:
-        partitions = [ (2,3,(1,3)), (2,3,4), (2,3,5), (2,3,6) ]
+        partitions = [ (1,3,1), (1,3,2), (1,3,3) ]
     elif len (args) == 4:
         partitions = [ (2, 2, 1), (2, 2, 2), (2, 2, 3), (2, 2, 4) ]
     else:
@@ -177,7 +177,7 @@ def cutout (image, area):
 #--------------------------------------------------------------------------
 # Transform image
 #
-# The image must have a float compatible data type (np.float32, usually !). Otherwise
+# The image must have a float compatible data type (np.float64, usually !). Otherwise
 # the value range is destroyed. The skimage parameter 'preserve_range' would prevent that,
 # but generate visible object borders.
 #

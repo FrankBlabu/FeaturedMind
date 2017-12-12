@@ -65,6 +65,8 @@ generators = [ generator.background.BackgroundGenerator.create (args),
 
 data = generator.generator.batch_generator (generator=generator.generator.StackedGenerator (args, generators),
                                             batch_size=5,
+                                            mask_width = model.output_shape[2],
+                                            mask_height = model.output_shape[1],
                                             mean_center=False)
 
 images, masks = next (data)
