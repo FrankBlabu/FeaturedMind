@@ -242,8 +242,8 @@ def generate_sample (generator, mask_width, mask_height):
     for h in range (mask_height):
         for w in range (mask_width):
 
-            sample = full_mask[h * step_height:(h + 1) * step_height,  w * step_width:(w + 1) * step_width + step_width]
-            mask[h,w] = sample.sum (axis=(0, 1)) / step_area
+            sample = full_mask[h * step_height:h * step_height + step_height,  w * step_width:w * step_width + step_width]
+            mask[h,w] = np.round (sample.sum (axis=(0, 1)) / step_area + 0.4)
 
     sample = {}
     sample['image']          = common.utils.mean_center (full_image)
