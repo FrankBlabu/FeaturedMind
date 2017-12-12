@@ -82,8 +82,27 @@ def add_overlay_to_image (image, overlay):
     return (np.ones (image.shape) - overlay_alpha) * image + overlay_alpha * overlay_image
 
 
+def mask_channels_to_image (masks):
+    """
+    Given an array with multiple channels of masks, create an image where each mask is represented by
+    a color channel. The mask channels can overlay.
+
+    :param masks: Stacked channels of masks
+    """
+    if len (masks.shape) == 2:
+        masks = np.expand_dims (masks, axis=2)
+
+    assert len (masks.shape) == 3
+    assert masks.shape[2] <= 3 and 'Just three mask layers are supported at the moment'
+
+    while masks.shape[2] < 3:
+        masks = np.dstack ((masks, np.zeros (masks[:,:,0].shape)))
+
+    return masks
+
+
 #----------------------------------------------------------------------------
-# Show images in dialog
+# Show images in popup dialog
 #
 # @param images Images to show
 # @param titles Image titles
@@ -138,13 +157,14 @@ def mean_center (image):
     '''
 
     assert len (image.shape) == 3
+    centered = np.copy (image)
 
-    for channel in range (image.shape[-1]):
-        std = image[:, channel].std ()
+    for channel in range (centered.shape[-1]):
+        std = centered[:, channel].std ()
         if not math.isclose (std, 0):
-            image[:, channel] = (image[:, channel] - image[:,channel].mean ()) / std
+            centered[:, channel] = (centered[:, channel] - centered[:,channel].mean ()) / std
 
-    return image
+    return centered
 
 def mean_uncenter (image):
     '''

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# test_batch_generator.py - Test for the batch generator
+# test_sample_generator.py - Test for the sample generation
 #
 # Frank Blankenburg, Nov. 2017
 #
@@ -83,9 +83,6 @@ if __name__ == '__main__':
 
     parser.add_argument ('-x', '--width',     type=int, default=512,  help='Width of the generated images')
     parser.add_argument ('-y', '--height',    type=int, default=512,  help='Height of the generated images')
-    parser.add_argument ('-p', '--profile',   action='store_true', default=False, help='Profile run')
-    parser.add_argument ('-r', '--runs',      type=int, default=1, help='Number of runs for timing measurement')
-    parser.add_argument ('-b', '--batchsize', type=int, default=5, help='Batchsize')
     parser.add_argument ('-t', '--threading', action='store_true', default=False, help='Use threading')
 
     generator.background.BackgroundGenerator.add_to_args_definition (parser)
@@ -98,11 +95,9 @@ if __name__ == '__main__':
     source = generator.generator.StackedGenerator (args, parts)
     source.set_use_threading (args.threading)
 
-    if args.profile:
-        test_profile (source, args)
-    elif args.runs > 1:
-        test_run_time (source, args)
-    else:
-        batch = test_run_time (source, args)
-        common.utils.show_image ([batch[0][0], 'Image'],
-                                 [common.utils.mask_channels_to_image (batch[1][0]), 'Mask'])
+    sample = generator.generator.generate_sample (source, int (args.width / 8), int (args.height / 8))
+
+    common.utils.show_image ([common.utils.mean_uncenter (sample['image']), 'Image'],
+                             [common.utils.mask_channels_to_image (sample['mask']), 'Mask'],
+                             [sample['original_image'], 'Original image'],
+                             [common.utils.mask_channels_to_image (sample['original_mask']), 'Original mask'])

@@ -7,8 +7,6 @@
 
 import argparse
 import random
-import sys
-import time
 
 import common.utils
 import generator.generator
@@ -46,4 +44,4 @@ if __name__ == '__main__':
 
     image, masks = source.generate ()
 
-    common.utils.show_image ([image, 'Fixture'], [masks[:,:,0], 'Sheet metal mask'], [masks[:,:,1], 'Fixture mask'])
+    common.utils.show_image ([image, 'Fixture'], [common.utils.mask_channels_to_image (masks), 'Mask'])

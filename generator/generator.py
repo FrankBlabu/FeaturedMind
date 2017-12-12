@@ -222,12 +222,12 @@ def generate_sample (generator, mask_width, mask_height):
     assert full_image.shape[0] == generator.height
     assert full_image.shape[1] == generator.width
     assert full_image.shape[2] == generator.depth
-    assert full_image.dtype is np.float64
+    assert full_image.dtype == np.float64
 
-    assert len (full_mask.shape) == 2
+    assert len (full_mask.shape) == 3
     assert full_mask.shape[0] == full_image.shape[0]
     assert full_mask.shape[1] == full_image.shape[1]
-    assert full_mask.dtype is np.float64
+    assert full_mask.dtype == np.float64
 
     #
     # Square areas of the mask are combined into a more coarse version to match the
@@ -235,14 +235,14 @@ def generate_sample (generator, mask_width, mask_height):
     #
     mask = np.zeros ((mask_height, mask_width, full_mask.shape[2]), dtype=full_mask.dtype)
 
-    step_height = int (generator.height / mask_height)
-    step_width = int (generator.width / mask_width)
+    step_height = int (full_image.shape[0] / mask_height)
+    step_width = int (full_image.shape[1] / mask_width)
     step_area = step_width * step_height
 
     for h in range (mask_height):
         for w in range (mask_width):
-            sample = mask[h * step_height: h * step_height + step_height,
-            w * step_width:w * step_width + step_width]
+
+            sample = full_mask[h * step_height:(h + 1) * step_height,  w * step_width:(w + 1) * step_width + step_width]
             mask[h,w] = sample.sum (axis=(0, 1)) / step_area
 
     sample = {}
@@ -250,6 +250,8 @@ def generate_sample (generator, mask_width, mask_height):
     sample['mask']           = mask
     sample['original_image'] = full_image
     sample['original_mask']  = full_mask
+
+    assert sample['image'] is not sample['original_image']
 
     return sample
 
