@@ -160,9 +160,9 @@ def mean_center (image):
     centered = np.copy (image)
 
     for channel in range (centered.shape[-1]):
-        std = centered[:, channel].std ()
-        if not math.isclose (std, 0):
-            centered[:, channel] = (centered[:, channel] - centered[:,channel].mean ()) / std
+        c = centered[:, channel]
+        c -= c.min () + (c.max () - c.min ()) / 2
+        c /= max (abs (c.min ()), abs (c.max ()))
 
     return centered
 

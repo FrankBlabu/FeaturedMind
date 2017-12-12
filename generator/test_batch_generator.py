@@ -29,14 +29,15 @@ def test_run_time (source, args):
     run = 0
     result = None
 
-    for batch in generator.generator.batch_generator (source, batch_size=args.batchsize, mask_width=args.width / 8, mask_height = args.height / 8):
+    source = generator.generator.batch_generator (source, batch_size=args.batchsize, mask_width=int (args.width / 8), mask_height = int (args.height / 8))
+    for run, batch in enumerate (source):
 
         intermediate_time = time.time ()
         duration = int ((intermediate_time - start_time) * 1000)
 
-        run += 1
-        if run == args.runs:
+        if run + 1 == args.runs:
             result = batch
+            break
         else:
             print('\rRun {run} / {total}: {time} ms'.format (run=run + 1, total=args.runs, time=duration), end='\r')
 
@@ -104,5 +105,5 @@ if __name__ == '__main__':
         test_run_time (source, args)
     else:
         batch = test_run_time (source, args)
-        common.utils.show_image ([batch[0][0], 'Image'],
+        common.utils.show_image ([common.utils.mean_uncenter (batch[0][0]), 'Image'],
                                  [common.utils.mask_channels_to_image (batch[1][0]), 'Mask'])

@@ -200,13 +200,12 @@ def train ():
     training_batches = generator.generator.batch_generator (data,
                                                             batch_size=args.batchsize,
                                                             mask_width = model.output_shape[2],
-                                                            mask_height = model.output_shape[1],
-                                                            mean_center=True)
+                                                            mask_height = model.output_shape[1])
+
     validation_batches = generator.generator.batch_generator (data,
                                                               batch_size=args.batchsize,
                                                               mask_width = model.output_shape[2],
-                                                              mask_height = model.output_shape[1],
-                                                              mean_center=True)
+                                                              mask_height = model.output_shape[1])
 
     model.fit_generator (generator=training_batches,
                          steps_per_epoch=args.steps,
